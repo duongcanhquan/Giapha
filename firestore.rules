@@ -20,6 +20,23 @@ service cloud.firestore {
         && familyDoc(familyId).owner_id == request.auth.uid;
     }
 
+    function staffPath(familyId) {
+      return /databases/$(database)/documents/families/$(familyId)/staff/$(request.auth.uid);
+    }
+
+    function isFamilyStaff(familyId) {
+      return isSignedIn() && exists(staffPath(familyId));
+    }
+
+    function staffRole(familyId) {
+      return get(staffPath(familyId)).data.role;
+    }
+
+    function isFamilyStaffWriter(familyId) {
+      return isFamilyStaff(familyId)
+        && staffRole(familyId) in ['truong_ho', 'truong_chi', 'editor'];
+    }
+
     /** Custom claim branch_admin — hỗ trợ branch_id đơn hoặc branch_ids[] */
     function isClaimBranchAdmin() {
       return isSignedIn()
@@ -97,7 +114,55 @@ service cloud.firestore {
     function canWriteMember(data) {
       return isSuperAdmin()
         || isFamilyOwner(data.family_id)
+        || isFamilyStaffWriter(data.family_id)
         || branchAdminMatches(data);
+    }
+
+    /* ─── registration_keys (tra trùng email/SĐT công khai) ─── */
+
+    match /registration_keys/{key} {
+      allow read: if true;
+      allow create: if isSuperAdmin()
+        || (
+          isSignedIn()
+          && request.resource.data.keys().hasAll(['registration_id', 'status'])
+          && request.resource.data.status == 'pending'
+        );
+      allow update: if isSuperAdmin()
+        || (
+          isSignedIn()
+          && resource.data.status == 'rejected'
+          && request.resource.data.status == 'pending'
+        );
+      allow delete: if isSuperAdmin();
+    }
+
+    /* ─── family_registrations (đăng ký chờ duyệt) ───────────── */
+
+    match /family_registrations/{regId} {
+      allow read: if isSuperAdmin()
+        || (isSignedIn() && resource.data.applicant_uid == request.auth.uid);
+
+      allow create: if isSignedIn()
+        && request.resource.data.applicant_uid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasAll([
+          'applicant_uid', 'full_name', 'family_surname', 'email', 'phone',
+          'address', 'family_name', 'status', 'norm_email', 'norm_phone',
+          'norm_surname', 'norm_family_name'
+        ]);
+
+      allow update: if isSuperAdmin();
+      allow delete: if isSuperAdmin()
+        || (
+          isSignedIn()
+          && resource.data.applicant_uid == request.auth.uid
+          && resource.data.status == 'pending'
+          && (
+            !('family_id' in resource.data)
+            || resource.data.family_id == null
+          )
+        );
     }
 
     /* ─── families ───────────────────────────────────────────── */
@@ -105,14 +170,21 @@ service cloud.firestore {
     match /families/{familyId} {
       allow read: if true || isSuperAdmin();
 
+      /** Chỉ Super Admin tạo sau khi duyệt đăng ký */
       allow create: if isSuperAdmin()
-        || (
-          isSignedIn()
-          && request.resource.data.owner_id == request.auth.uid
-          && request.resource.data.keys().hasAll(['name', 'owner_id'])
-        );
+        && request.resource.data.keys().hasAll(['name', 'owner_id']);
 
       allow update, delete: if isSuperAdmin() || isFamilyOwner(familyId);
+
+      match /staff/{uid} {
+        allow read: if isSuperAdmin()
+          || isFamilyOwner(familyId)
+          || isFamilyStaff(familyId);
+
+        allow write: if isSuperAdmin()
+          || isFamilyOwner(familyId)
+          || (isFamilyStaff(familyId) && staffRole(familyId) == 'truong_ho');
+      }
     }
 
     /* ─── family_managers (trưởng nhánh do chủ mời) ─────────── */
@@ -130,7 +202,6 @@ service cloud.firestore {
         )
       );
 
-      // Chỉ chủ dòng họ / super admin được tạo — tránh tự phong quyền
       allow create: if isSignedIn() && (
         isSuperAdmin()
         || (
@@ -147,7 +218,6 @@ service cloud.firestore {
         isSuperAdmin()
         || isFamilyOwner(resource.data.family_id)
         || (
-          // Claim / kích hoạt theo email — không được tự đổi danh sách chi
           resource.data.email == request.auth.token.email
           && request.resource.data.email == resource.data.email
           && request.resource.data.family_id == resource.data.family_id
@@ -182,17 +252,18 @@ service cloud.firestore {
         && (
           isSuperAdmin()
           || isFamilyOwner(resource.data.family_id)
+          || isFamilyStaffWriter(resource.data.family_id)
           || (
             branchAdminMatches(resource.data)
             && branchAdminMatches(request.resource.data)
           )
         );
 
-      // Trưởng nhánh xoá được người thuộc chi mình (bỏ giới hạn path sâu)
       allow delete: if hasFamilyId(resource.data)
         && (
           isSuperAdmin()
           || isFamilyOwner(resource.data.family_id)
+          || isFamilyStaffWriter(resource.data.family_id)
           || branchAdminMatches(resource.data)
         );
 
@@ -224,6 +295,7 @@ service cloud.firestore {
         && (
           isSuperAdmin()
           || isFamilyOwner(request.resource.data.family_id)
+          || isFamilyStaffWriter(request.resource.data.family_id)
           || isBranchAdminFor(
             request.resource.data.family_id,
             request.resource.data.branch_id
@@ -235,6 +307,7 @@ service cloud.firestore {
         && (
           isSuperAdmin()
           || isFamilyOwner(resource.data.family_id)
+          || isFamilyStaffWriter(resource.data.family_id)
           || (
             isBranchAdminFor(resource.data.family_id, resource.data.branch_id)
             && request.resource.data.branch_id == resource.data.branch_id
@@ -245,6 +318,7 @@ service cloud.firestore {
         && (
           isSuperAdmin()
           || isFamilyOwner(resource.data.family_id)
+          || isFamilyStaffWriter(resource.data.family_id)
           || isBranchAdminFor(resource.data.family_id, resource.data.branch_id)
         );
     }

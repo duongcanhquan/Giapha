@@ -153,22 +153,28 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
   const isSuperAdmin = access.role === "super_admin";
   const isBranchAdmin = access.role === "branch_admin";
   const canManageManagers =
-    access.role === "owner" || access.role === "super_admin";
+    access.role === "owner" ||
+    access.role === "super_admin" ||
+    access.role === "truong_ho";
   const nav = isBranchAdmin ? BRANCH_NAV : OWNER_NAV;
 
   const roleLabel = isSuperAdmin
     ? "Super Admin"
     : access.role === "owner"
-      ? "Chủ dòng họ"
-      : `Trưởng nhánh${
-          access.branchNames?.filter(Boolean).length
-            ? ` · ${access.branchNames.filter(Boolean).join(", ")}`
-            : access.branchName
-              ? ` · ${access.branchName}`
-              : access.branchIds?.length
-                ? ` · ${access.branchIds.join(", ")}`
-                : ""
-        }`;
+      ? "Admin gia phả"
+      : access.role === "truong_ho"
+        ? "Trưởng họ"
+        : access.role === "editor"
+          ? "Người cập nhật"
+          : `Trưởng nhánh${
+              access.branchNames?.filter(Boolean).length
+                ? ` · ${access.branchNames.filter(Boolean).join(", ")}`
+                : access.branchName
+                  ? ` · ${access.branchName}`
+                  : access.branchIds?.length
+                    ? ` · ${access.branchIds.join(", ")}`
+                    : ""
+            }`;
 
   const displayName = userDisplayName(authUser);
   const initials = userInitials(authUser);

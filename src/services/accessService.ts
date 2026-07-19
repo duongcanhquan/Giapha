@@ -1,9 +1,16 @@
 import type { User } from "firebase/auth";
 import { getFamily } from "@/services/familyService";
 import { findActiveBranchManager } from "@/services/managerService";
+import { getFamilyStaffMember } from "@/services/staffService";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 
-export type FamilyAccessRole = "super_admin" | "owner" | "branch_admin" | null;
+export type FamilyAccessRole =
+  | "super_admin"
+  | "owner"
+  | "truong_ho"
+  | "branch_admin"
+  | "editor"
+  | null;
 
 export type FamilyAccess = {
   allowed: boolean;
@@ -46,7 +53,7 @@ export async function checkSuperAdminAccess(
 
 /**
  * Kiểm tra quyền quản trị `familyId`:
- * Super Admin · Family Owner · Branch Admin (claim hoặc danh sách family_managers).
+ * Super Admin · Owner · Staff (trưởng họ / chi / editor) · Branch Admin (claim hoặc family_managers).
  */
 export async function checkFamilyAdminAccess(
   familyId: string,
@@ -75,6 +82,25 @@ export async function checkFamilyAdminAccess(
       return { allowed: true, role: "owner" };
     }
 
+    const staff = await getFamilyStaffMember(familyId, user.uid);
+    if (staff) {
+      if (staff.role === "truong_ho") {
+        return { allowed: true, role: "truong_ho" };
+      }
+      if (staff.role === "truong_chi") {
+        const branchId = staff.branch_id ?? null;
+        return {
+          allowed: true,
+          role: "branch_admin",
+          branchId,
+          branchIds: branchId ? [branchId] : [],
+        };
+      }
+      if (staff.role === "editor") {
+        return { allowed: true, role: "editor" };
+      }
+    }
+
     const claimFamilyId = token.claims.family_id;
     const claimBranchId = token.claims.branch_id;
     const claimBranchIds = token.claims.branch_ids;
@@ -98,7 +124,6 @@ export async function checkFamilyAdminAccess(
       };
     }
 
-    // Danh sách mời / trưởng nhánh trong Firestore (không cần custom claim)
     const listed = await findActiveBranchManager(
       familyId,
       user.uid,
@@ -132,7 +157,14 @@ export function canAccessBranch(
   access: FamilyAccess,
   branchId: string | null | undefined,
 ): boolean {
-  if (access.role === "owner" || access.role === "super_admin") return true;
+  if (
+    access.role === "owner" ||
+    access.role === "super_admin" ||
+    access.role === "truong_ho" ||
+    access.role === "editor"
+  ) {
+    return true;
+  }
   if (access.role !== "branch_admin") return false;
   if (!branchId) return false;
   const ids = access.branchIds?.length

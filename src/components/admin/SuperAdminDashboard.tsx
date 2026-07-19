@@ -4,12 +4,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
+import { RegistrationQueue } from "@/components/admin/RegistrationQueue";
 import { SuperAdminBanner } from "@/components/admin/SuperAdminBanner";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { checkSuperAdminAccess } from "@/services/accessService";
 import { subscribeAuth, signOutUser } from "@/services/authService";
 import { listAllFamilies } from "@/services/familyService";
 import type { Family } from "@/types/genealogy";
+
+type Tab = "registrations" | "families";
 
 export function SuperAdminDashboard() {
   const router = useRouter();
@@ -18,6 +21,7 @@ export function SuperAdminDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("registrations");
 
   useEffect(() => {
     let cancelled = false;
@@ -155,46 +159,77 @@ export function SuperAdminDashboard() {
           </p>
         ) : null}
 
-        <div className="overflow-x-auto rounded-[var(--gp-radius-lg)] border border-[var(--gp-gold)]/25 bg-[#2a1212]/80 shadow-[var(--gp-shadow-lift)]">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-[var(--gp-gold)]/20 text-xs uppercase tracking-[0.12em] text-[var(--gp-seal-ink)]/50">
-              <tr>
-                <th className="px-4 py-3 font-semibold">Tên dòng họ</th>
-                <th className="px-4 py-3 font-semibold">family_id</th>
-                <th className="px-4 py-3 font-semibold">Owner</th>
-                <th className="px-4 py-3 font-semibold">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody>
-              {families.map((family) => (
-                <tr
-                  key={family.id}
-                  className="border-b border-white/5 last:border-0 transition hover:bg-[var(--gp-gold)]/5"
-                >
-                  <td className="px-4 py-3 font-display font-semibold">
-                    {family.name}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--gp-seal-ink)]/55">
-                    {family.id}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-[var(--gp-seal-ink)]/55">
-                    {family.owner_id}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href={`/dashboard/${encodeURIComponent(family.id)}`}
-                        className="rounded-[var(--gp-radius-sm)] bg-[var(--gp-seal)] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[var(--gp-lacquer)]"
-                      >
-                        Quản lý
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mb-6 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setTab("registrations")}
+            className={[
+              "rounded-[var(--gp-radius-sm)] px-3 py-1.5 text-sm font-semibold",
+              tab === "registrations"
+                ? "bg-[var(--gp-seal)] text-white"
+                : "border border-[var(--gp-gold)]/30 text-[var(--gp-seal-ink)]/80 hover:bg-white/5",
+            ].join(" ")}
+          >
+            Đăng ký chờ duyệt
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("families")}
+            className={[
+              "rounded-[var(--gp-radius-sm)] px-3 py-1.5 text-sm font-semibold",
+              tab === "families"
+                ? "bg-[var(--gp-seal)] text-white"
+                : "border border-[var(--gp-gold)]/30 text-[var(--gp-seal-ink)]/80 hover:bg-white/5",
+            ].join(" ")}
+          >
+            Dòng họ ({families.length})
+          </button>
         </div>
+
+        {tab === "registrations" ? (
+          <RegistrationQueue />
+        ) : (
+          <div className="overflow-x-auto rounded-[var(--gp-radius-lg)] border border-[var(--gp-gold)]/25 bg-[#2a1212]/80 shadow-[var(--gp-shadow-lift)]">
+            <table className="min-w-full text-left text-sm">
+              <thead className="border-b border-[var(--gp-gold)]/20 text-xs uppercase tracking-[0.12em] text-[var(--gp-seal-ink)]/50">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Tên dòng họ</th>
+                  <th className="px-4 py-3 font-semibold">family_id</th>
+                  <th className="px-4 py-3 font-semibold">Owner</th>
+                  <th className="px-4 py-3 font-semibold">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {families.map((family) => (
+                  <tr
+                    key={family.id}
+                    className="border-b border-white/5 last:border-0 transition hover:bg-[var(--gp-gold)]/5"
+                  >
+                    <td className="px-4 py-3 font-display font-semibold">
+                      {family.name}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--gp-seal-ink)]/55">
+                      {family.id}
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--gp-seal-ink)]/55">
+                      {family.owner_id}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Link
+                          href={`/dashboard/${encodeURIComponent(family.id)}`}
+                          className="rounded-[var(--gp-radius-sm)] bg-[var(--gp-seal)] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[var(--gp-lacquer)]"
+                        >
+                          Quản lý
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </main>
     </div>
   );

@@ -41,14 +41,28 @@ Tạo `duongcanhquan@admin.local` / `123456` với claim `{ role: 'super_admin' 
 
 ## Onboarding
 
-1. `/register` → Auth  
-2. `/onboarding/create-family` → tạo `families` + seed Thủy tổ  
-3. `/dashboard/[familyId]`
+1. `/register` → gửi hồ sơ tạo gia phả (`pending`)  
+2. Super Admin duyệt tại `/super-admin` → tạo `families`  
+3. Người tạo vào `/dashboard/[familyId]` (Admin dòng họ)
+
+## Firebase Auth
+
+Trong [Firebase Console](https://console.firebase.google.com/) của đúng `projectId`:
+
+1. **Build → Authentication → Get started**
+2. **Sign-in method → Email/Password → Enable**
+3. **Authentication → Settings → Authorized domains**: thêm `localhost`, domain Vercel (vd. `giapha-apcs-projects-f1bac39d.vercel.app`)
+4. Project settings → Your apps → copy config vào `.env.local` / Vercel Environment Variables (`NEXT_PUBLIC_FIREBASE_*`)
+
+### Lỗi `auth/configuration-not-found`
+
+Auth **chưa được khởi tạo** trên project (hoặc sai `apiKey` / `projectId` / `authDomain`). Làm đủ 4 bước trên, redeploy Vercel (hoặc restart `npm run dev`), rồi thử lại.
 
 ## Chạy local
 
 ```bash
 cp .env.example .env.local
+# điền NEXT_PUBLIC_FIREBASE_* từ Firebase Console
 npm install
 npm run dev
 ```

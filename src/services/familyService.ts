@@ -73,14 +73,19 @@ function mapFamily(id: string, data: Record<string, unknown>): Family {
 }
 
 /**
- * Tạo dòng họ — owner_id = UID hiện tại (Family Owner).
+ * Tạo dòng họ cho `ownerId` (chỉ Super Admin sau khi duyệt đăng ký).
  * Seed Thủy tổ generation 1.
  */
-export async function createFamily(input: CreateFamilyInput): Promise<Family> {
+export async function createFamilyForOwner(
+  ownerId: string,
+  input: CreateFamilyInput,
+): Promise<Family> {
   const auth = getFirebaseAuth();
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error("Cần đăng nhập trước khi tạo gia phả.");
+  if (!auth.currentUser) {
+    throw new Error("Cần đăng nhập Super Admin để tạo gia phả.");
+  }
+  if (!ownerId.trim()) {
+    throw new Error("Thiếu owner_id người tạo gia phả.");
   }
 
   const name = input.name.trim();
@@ -115,7 +120,7 @@ export async function createFamily(input: CreateFamilyInput): Promise<Family> {
   const family: Family = {
     id: ref.id,
     name,
-    owner_id: user.uid,
+    owner_id: ownerId,
     created_at: new Date().toISOString(),
     settings,
   };
@@ -126,6 +131,7 @@ export async function createFamily(input: CreateFamilyInput): Promise<Family> {
     owner_id: family.owner_id,
     created_at: serverTimestamp(),
     settings,
+    status: "active",
   });
 
   batch.set(founderRef, {
@@ -152,6 +158,18 @@ export async function createFamily(input: CreateFamilyInput): Promise<Family> {
 
   await batch.commit();
   return family;
+}
+
+/** @deprecated Dùng submitFamilyRegistration + duyệt Super Admin */
+export async function createFamily(
+  ..._args: [CreateFamilyInput]
+): Promise<Family> {
+  void _args;
+  const user = getFirebaseAuth().currentUser;
+  if (!user) throw new Error("Cần đăng nhập.");
+  throw new Error(
+    "Không thể tự tạo gia phả. Hãy đăng ký và chờ Super Admin duyệt.",
+  );
 }
 
 export async function getFamily(familyId: string): Promise<Family | null> {

@@ -1,19 +1,6 @@
-import Link from "next/link";
-import { CreateFamilyForm } from "@/components/auth/CreateFamilyForm";
+import { redirect } from "next/navigation";
 
+/** Tự tạo gia phả đã tắt — chuyển sang chờ duyệt / đăng ký */
 export default function CreateFamilyPage() {
-  return (
-    <main className="flex min-h-screen flex-col bg-[#dfe6ec] px-4 py-10">
-      <div className="mb-8 text-center">
-        <Link
-          href="/"
-          className="text-sm font-semibold tracking-wide text-[#7a1f1f]"
-          style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
-        >
-          Gia phả
-        </Link>
-      </div>
-      <CreateFamilyForm />
-    </main>
-  );
+  redirect("/onboarding/pending");
 }

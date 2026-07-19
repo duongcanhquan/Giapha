@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { checkSuperAdminAccess } from "@/services/accessService";
+import { resolvePostLoginPath } from "@/lib/auth/post-login-redirect";
 import { getCurrentUser, signInWithEmail } from "@/services/authService";
-import { listOwnedFamilies } from "@/services/familyService";
-import { listManagedFamilyIdsForEmail } from "@/services/managerService";
 
 export function LoginForm() {
   const router = useRouter();
@@ -24,21 +22,9 @@ export function LoginForm() {
     try {
       await signInWithEmail(email, password);
       const user = getCurrentUser();
-      if (user && (await checkSuperAdminAccess(user))) {
-        router.replace("/super-admin");
-        return;
-      }
-      const owned = await listOwnedFamilies();
-      if (owned.length > 0) {
-        router.replace(`/dashboard/${encodeURIComponent(owned[0]!.id)}`);
-        return;
-      }
-      const managed = await listManagedFamilyIdsForEmail(user?.email ?? email);
-      if (managed.length > 0) {
-        router.replace(`/dashboard/${encodeURIComponent(managed[0]!)}`);
-        return;
-      }
-      router.replace("/onboarding/create-family");
+      if (!user) throw new Error("Đăng nhập thất bại.");
+      const path = await resolvePostLoginPath(user);
+      router.replace(path);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng nhập thất bại.");
     } finally {
@@ -92,7 +78,7 @@ export function LoginForm() {
       <p className="text-center text-sm text-[var(--gp-muted)]">
         Chưa có tài khoản?{" "}
         <Link href="/register" className="font-semibold text-[var(--gp-lacquer)] hover:underline">
-          Đăng ký
+          Đăng ký tạo gia phả
         </Link>
       </p>
     </form>
