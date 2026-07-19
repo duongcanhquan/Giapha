@@ -302,9 +302,9 @@ function FamilyTreeInner({
 
   const fitViewOptions = useMemo(
     () => ({
-      padding: isMobile ? 0.28 : 0.2,
-      maxZoom: isMobile ? 0.42 : 0.48,
-      minZoom: 0.06,
+      padding: 0.16,
+      minZoom: 0.01,
+      maxZoom: 1.15,
       duration: isMobile ? 0 : 200,
     }),
     [isMobile],
@@ -395,14 +395,15 @@ function FamilyTreeInner({
 
   const fitOverview = useCallback(
     (animated = false) => {
+      // Cho phép zoom rất nhỏ để 500 node vẫn vào khung — tránh canvas trắng
       void fitView({
-        padding: isMobile ? 0.28 : 0.2,
-        maxZoom: isMobile ? 0.42 : 0.48,
-        minZoom: 0.06,
-        duration: animated ? 420 : 0,
+        padding: 0.16,
+        minZoom: 0.01,
+        maxZoom: 1.15,
+        duration: animated ? 380 : 0,
       });
     },
-    [fitView, isMobile],
+    [fitView],
   );
 
   const fitToPath = useCallback(
@@ -426,23 +427,23 @@ function FamilyTreeInner({
           }
           void fitView({
             nodes: retry.map((id) => ({ id })),
-            padding: isMobile ? 0.35 : 0.28,
-            maxZoom: isMobile ? 0.95 : 1.05,
-            minZoom: 0.1,
+            padding: 0.28,
+            maxZoom: 1.2,
+            minZoom: 0.05,
             duration: 520,
           });
-        }, 140);
+        }, 180);
         return;
       }
       void fitView({
         nodes: visiblePath.map((id) => ({ id })),
-        padding: isMobile ? 0.35 : 0.28,
-        maxZoom: isMobile ? 0.95 : 1.05,
-        minZoom: 0.1,
+        padding: 0.28,
+        maxZoom: 1.2,
+        minZoom: 0.05,
         duration: 520,
       });
     },
-    [data.members, getNode, fitView, fitOverview, isMobile],
+    [data.members, getNode, fitView, fitOverview],
   );
 
   const focusMember = useCallback(
@@ -506,21 +507,19 @@ function FamilyTreeInner({
     [traceRoute, clearHighlight, focusMember, fitOverview],
   );
 
-  // Lần đầu: thu nhỏ toàn cây (overview). Không auto-zoom từng người.
+  // Lần đầu + khi đổi số node: fit vào khung (tránh viewport lệch → trắng)
   useEffect(() => {
-    if (forceExpanded) return;
     if (!nodes.length) return;
+    // Đang tìm / highlight path — không cướp camera
     if (highlightId) return;
     const t = window.setTimeout(() => {
       fitOverview(!overviewDoneRef.current);
       overviewDoneRef.current = true;
-    }, 100);
+    }, 200);
     return () => window.clearTimeout(t);
-    // Chỉ khi số node visible đổi lớn (gom/mở), không chase mọi frame
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodes.length, forceExpanded]);
+  }, [nodes.length, forceExpanded, fitOverview, highlightId]);
 
-  // Sau khi expand path cho tìm kiếm: fit lại khi nodes cập nhật
+  // Sau expand path tìm kiếm
   useEffect(() => {
     const pending = pendingFitPathRef.current;
     if (!pending || !highlightId) return;
@@ -529,7 +528,7 @@ function FamilyTreeInner({
       if (pendingFitPathRef.current !== pending) return;
       fitToPath(pending);
       pendingFitPathRef.current = null;
-    }, 80);
+    }, 120);
     return () => window.clearTimeout(t);
   }, [nodes, highlightId, fitToPath]);
 
@@ -580,6 +579,7 @@ function FamilyTreeInner({
                 setCollapsedIds(
                   computeCompactCollapsedIds(data.members, childrenIndex, 3),
                 );
+                window.setTimeout(() => fitOverview(true), 220);
               }}
               title="Thu gọn từ đời 3 — dễ đọc cây dài"
             >
@@ -591,8 +591,10 @@ function FamilyTreeInner({
               onClick={() => {
                 setViewMode("full");
                 setCollapsedIds(new Set());
+                // Fit lại sau khi bung toàn bộ (tránh canvas trắng)
+                window.setTimeout(() => fitOverview(true), 220);
               }}
-              title="Hiện toàn bộ node"
+              title="Hiện toàn bộ node — cây lớn sẽ rất nhỏ; dùng zoom/search để đọc"
             >
               Toàn cây
             </button>
@@ -672,9 +674,20 @@ function FamilyTreeInner({
         edgeTypes={edgeTypes}
         fitView
         fitViewOptions={fitViewOptions}
-        onlyRenderVisibleElements
-        minZoom={0.08}
-        maxZoom={2}
+        onInit={(instance) => {
+          window.setTimeout(() => {
+            void instance.fitView({
+              padding: 0.16,
+              minZoom: 0.01,
+              maxZoom: 1.15,
+              duration: 0,
+            });
+            overviewDoneRef.current = true;
+          }, 60);
+        }}
+        onlyRenderVisibleElements={false}
+        minZoom={0.01}
+        maxZoom={2.5}
         panOnScroll={interactive}
         panOnDrag={interactive}
         zoomOnScroll={interactive}

@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import Link from "next/link";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { FamilyTree, type FamilyTreeHandle } from "@/components/family-tree";
 import { MemberFormModal } from "@/components/dashboard/MemberFormModal";
 import { MembersManager } from "@/components/dashboard/MembersManager";
@@ -29,6 +31,7 @@ export function FamilyAdminWorkspace({
   const [profileMember, setProfileMember] = useState<FamilyMember | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [treeBranchFilter, setTreeBranchFilter] = useState<string | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const openCreate = useCallback((parentId?: string | null) => {
     setFormMode("create");
@@ -60,10 +63,7 @@ export function FamilyAdminWorkspace({
   }, [mutate]);
 
   const focusOnTree = useCallback((memberId: string) => {
-    document
-      .getElementById("clan-tree-canvas")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    window.setTimeout(() => treeRef.current?.traceRoute(memberId), 180);
+    window.setTimeout(() => treeRef.current?.traceRoute(memberId), 80);
   }, []);
 
   if (isLoading && !tree) {
@@ -85,89 +85,144 @@ export function FamilyAdminWorkspace({
     );
   }
 
+  if (tableOnly) {
+    return (
+      <div className="space-y-6">
+        <MembersManager
+          familyId={familyId}
+          tree={tree}
+          onRefresh={onSaved}
+          onCreate={() => openCreate()}
+          onEdit={openEdit}
+          exportSlot={
+            <ExportTreeButton
+              data={tree}
+              label="Xuất Infographic"
+              className="gp-btn gp-btn-ghost disabled:opacity-60"
+            />
+          }
+        />
+        <MemberFormModal
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          mode={formMode}
+          familyId={familyId}
+          members={tree.members}
+          member={editing}
+          defaultParentId={defaultParentId}
+          onSaved={onSaved}
+        />
+        <ProfileModal
+          member={profileMember}
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      {!tableOnly ? (
-        <>
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-3">
+      <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="gp-eyebrow">Quản trị hương hỏa</p>
+          <h1 className="gp-title mt-1 text-2xl md:text-3xl">
+            Cây dòng họ {tree.clan_name}
+          </h1>
+          <p className="gp-lede mt-1 max-w-2xl text-sm">
+            Cây ưu tiên toàn khung — mặc định gom nhánh để nhìn rõ. Tìm tên →
+            mờ phần khác, sáng đường huyết thống. Bảng chi tiết:{" "}
+            <Link
+              href={`/dashboard/${familyId}/members`}
+              className="font-semibold text-[var(--gp-lacquer)] underline-offset-2 hover:underline"
+            >
+              Thành viên
+            </Link>
+            .
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="gp-btn gp-btn-ghost"
+            onClick={() => setStatsOpen((v) => !v)}
+            aria-expanded={statsOpen}
+          >
+            {statsOpen ? (
+              <>
+                <ChevronUp size={16} aria-hidden /> Thu số liệu
+              </>
+            ) : (
+              <>
+                <ChevronDown size={16} aria-hidden /> Infographic
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            className="gp-btn gp-btn-primary"
+            onClick={() => openCreate()}
+          >
+            + Thêm thành viên
+          </button>
+          <ExportTreeButton
+            data={tree}
+            label="Xuất Infographic"
+            className="gp-btn gp-btn-ghost disabled:opacity-60"
+          />
+        </div>
+      </header>
+
+      {statsOpen ? (
+        <div className="max-h-[40vh] shrink-0 overflow-auto">
           <ClanOverviewInfographic
             tree={tree}
             onFocusMember={(id) => {
               openProfile(id);
               focusOnTree(id);
             }}
-            onFilterBranch={(branchId) => {
-              setTreeBranchFilter(branchId);
-              document
-                .getElementById("clan-tree-canvas")
-                ?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
+            onFilterBranch={(branchId) => setTreeBranchFilter(branchId)}
           />
+        </div>
+      ) : (
+        <div className="clan-infographic-mini shrink-0">
+          <span>
+            <strong>{tree.members.length}</strong> người ·{" "}
+            <strong>{tree.branches?.length ?? 1}</strong> chi · mặc định{" "}
+            <strong>Gom nhánh</strong>
+          </span>
+          <button
+            type="button"
+            className="text-xs font-semibold text-[var(--gp-lacquer)] underline-offset-2 hover:underline"
+            onClick={() => setStatsOpen(true)}
+          >
+            Mở infographic
+          </button>
+        </div>
+      )}
 
-          <section id="clan-tree-canvas" className="scroll-mt-4 space-y-3">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="gp-eyebrow">Quản trị hương hỏa</p>
-                <h1 className="gp-title mt-1 text-2xl md:text-3xl">
-                  Dòng họ {tree.clan_name}
-                </h1>
-                <p className="gp-lede mt-1.5 max-w-xl text-sm">
-                  Cây mở thu nhỏ toàn cảnh — zoom dần để đọc. Tìm tên → mờ phần
-                  khác, sáng đúng đường huyết thống tới người đó.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="gp-btn gp-btn-primary"
-                  onClick={() => openCreate()}
-                >
-                  + Thêm thành viên
-                </button>
-                <ExportTreeButton
-                  data={tree}
-                  label="Xuất Infographic"
-                  className="gp-btn gp-btn-ghost disabled:opacity-60"
-                />
-              </div>
-            </div>
-
-            <FamilyTree
-              ref={treeRef}
-              data={tree}
-              showToolbar
-              className="h-[min(72vh,680px)]"
-              branchFilterControlled={treeBranchFilter}
-              onMemberOpen={openProfile}
-              onMemberDoubleClick={(id) => {
-                const m = tree.members.find((x) => x.id === id);
-                if (m) openEdit(m);
-              }}
-              onPlaceholderUpdate={(payload: PlaceholderUpdatePayload) => {
-                const m = tree.members.find((x) => x.id === payload.id);
-                if (m) openEdit(m);
-              }}
-            />
-          </section>
-        </>
-      ) : null}
-
-      <MembersManager
-        familyId={familyId}
-        tree={tree}
-        onRefresh={onSaved}
-        onCreate={() => openCreate()}
-        onEdit={openEdit}
-        hideHeaderActions={!tableOnly}
-        exportSlot={
-          tableOnly ? (
-            <ExportTreeButton
-              data={tree}
-              label="Xuất Infographic"
-              className="gp-btn gp-btn-ghost disabled:opacity-60"
-            />
-          ) : null
-        }
-      />
+      <section
+        id="clan-tree-canvas"
+        className="clan-tree-stage"
+        aria-label="Cây hương hỏa"
+      >
+        <FamilyTree
+          ref={treeRef}
+          data={tree}
+          showToolbar
+          className="clan-tree-stage__canvas"
+          branchFilterControlled={treeBranchFilter}
+          onMemberOpen={openProfile}
+          onMemberDoubleClick={(id) => {
+            const m = tree.members.find((x) => x.id === id);
+            if (m) openEdit(m);
+          }}
+          onPlaceholderUpdate={(payload: PlaceholderUpdatePayload) => {
+            const m = tree.members.find((x) => x.id === payload.id);
+            if (m) openEdit(m);
+          }}
+        />
+      </section>
 
       <MemberFormModal
         open={formOpen}

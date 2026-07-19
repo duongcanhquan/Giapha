@@ -16,7 +16,7 @@ type DashboardShellProps = {
 };
 
 const NAV = [
-  { href: "", label: "Tổng quan" },
+  { href: "", label: "Cây hương hỏa" },
   { href: "/members", label: "Thành viên" },
   { href: "/branches", label: "Nhánh" },
   { href: "/appearance", label: "Giao diện" },
@@ -170,7 +170,7 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <header className="flex items-center justify-between gap-2 border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)]/90 px-4 py-3 md:hidden">
             <div>
               <p className="gp-eyebrow">Quản trị</p>
@@ -205,7 +205,7 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
             })}
           </nav>
 
-          <main className="flex-1 p-4 md:p-7">{children}</main>
+          <main className="flex min-h-0 flex-1 flex-col p-3 md:p-5">{children}</main>
         </div>
       </div>
     </div>
