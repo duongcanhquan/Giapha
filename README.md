@@ -28,6 +28,9 @@ npm install
 npm run dev
 ```
 
+- `/` — landing kể chuyện dòng họ (scroll timeline)
+- `/cay` — cây gia phả, Profile Modal (double-click), xuất PDF A0
+
 ## FamilyTree API
 
 ```tsx
@@ -77,3 +80,9 @@ await updateMember("id", { full_name: "Tên mới", contact: { phone: "..." } })
 ```
 
 Copy `.env.example` → `.env.local` và điền Firebase config.
+
+## Trải nghiệm văn hóa
+
+- **Profile Modal** (shadcn Dialog): double-click node → tên húy/thụy, tiểu sử, form tính ngày giỗ.
+- **Âm lịch**: `src/lib/lunar/death-date.ts` dùng `lunar-javascript` dịch `death_date` → `lunar_death_date`.
+- **Xuất in ấn**: `ExportTreeButton` clone cây, ẩn control/minimap/grid, xuất PDF khổ A0 (`html2canvas` + `jspdf`).

@@ -46,6 +46,16 @@ export interface TreeLogic {
   };
 }
 
+/** Các loại tên trong truyền thống gia phả */
+export interface MemberNames {
+  /** Tên húy (tên thật khi còn sống) */
+  huy?: string | null;
+  /** Tên thụy / thụy hiệu (sau khi mất) */
+  thuy?: string | null;
+  /** Tên thường gọi / tự */
+  tu?: string | null;
+}
+
 /**
  * Thành viên trong cây gia phả (document công khai trên `members/{id}`).
  * KHÔNG chứa `contact` — contact nằm ở subcollection riêng.
@@ -71,8 +81,15 @@ export interface FamilyMember {
    */
   path: string[];
   tree_logic: TreeLogic;
+  names?: MemberNames;
+  /** Tiểu sử ngắn */
+  biography?: string | null;
   birth_year?: number | null;
   death_year?: number | null;
+  /** Ngày mất dương lịch ISO `YYYY-MM-DD` */
+  death_date?: string | null;
+  /** Ngày giỗ âm lịch (đã dịch), dạng `YYYY-M-D` */
+  lunar_death_date?: string | null;
   notes?: string;
   created_at?: string;
   updated_at?: string;

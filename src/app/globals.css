@@ -16,3 +16,45 @@ body {
   color: var(--foreground);
   font-family: var(--font-be-vietnam), "Be Vietnam Pro", sans-serif;
 }
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in-95 {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.fade-in-0 {
+  animation-name: fade-in;
+  animation-duration: 160ms;
+}
+
+.zoom-in-95 {
+  animation-name: zoom-in-95;
+  animation-duration: 160ms;
+}
+
+.data-\[state\=open\]\:animate-in[data-state="open"] {
+  animation-fill-mode: both;
+}
+
+.data-\[state\=closed\]\:animate-out[data-state="closed"] {
+  animation-fill-mode: both;
+}

@@ -62,9 +62,16 @@ export type FamilyTreeProps = {
   className?: string;
   /** Gọi khi người dùng cập nhật placeholder từ form */
   onPlaceholderUpdate?: (payload: PlaceholderUpdatePayload) => void;
+  /** Double-click node → mở hồ sơ (ProfileModal) */
+  onMemberDoubleClick?: (memberId: string) => void;
   /** Highlight sẵn khi mount (tuỳ chọn) */
   initialHighlightId?: string | null;
   showToolbar?: boolean;
+  showMiniMap?: boolean;
+  showControls?: boolean;
+  showBackground?: boolean;
+  /** Tắt pan/zoom/drag — dùng khi xuất PDF */
+  interactive?: boolean;
 };
 
 function applyHighlight(
@@ -138,8 +145,13 @@ function FamilyTreeInner({
   data,
   className,
   onPlaceholderUpdate,
+  onMemberDoubleClick,
   initialHighlightId = null,
   showToolbar = true,
+  showMiniMap = true,
+  showControls = true,
+  showBackground = true,
+  interactive = true,
   treeRef,
 }: InnerProps) {
   const { fitView, setCenter, getNode } = useReactFlow();
@@ -264,29 +276,42 @@ function FamilyTreeInner({
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
+        onNodesChange={interactive ? onNodesChange : undefined}
+        onEdgesChange={interactive ? onEdgesChange : undefined}
+        onNodeDoubleClick={(_, node) => {
+          onMemberDoubleClick?.(node.id);
+        }}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
         minZoom={0.25}
         maxZoom={2}
-        panOnScroll
+        panOnScroll={interactive}
+        panOnDrag={interactive}
+        zoomOnScroll={interactive}
+        zoomOnPinch={interactive}
+        nodesDraggable={interactive}
+        nodesConnectable={false}
+        elementsSelectable={interactive}
         selectionOnDrag={false}
         proOptions={{ hideAttribution: true }}
       >
-        <Background gap={22} size={1} color="rgba(138, 106, 58, 0.22)" />
-        <MiniMap
-          pannable
-          zoomable
-          nodeStrokeWidth={2}
-          nodeColor={(node) => {
-            if (node.type === "placeholder") return "#a8a29a";
-            const status = (node.data as { lifeStatus?: LifeStatus }).lifeStatus;
-            return status === "DECEASED" ? "#6b5a3e" : "#2f7d4a";
-          }}
-        />
-        <Controls showInteractive={false} />
+        {showBackground ? (
+          <Background gap={22} size={1} color="rgba(138, 106, 58, 0.22)" />
+        ) : null}
+        {showMiniMap ? (
+          <MiniMap
+            pannable
+            zoomable
+            nodeStrokeWidth={2}
+            nodeColor={(node) => {
+              if (node.type === "placeholder") return "#a8a29a";
+              const status = (node.data as { lifeStatus?: LifeStatus }).lifeStatus;
+              return status === "DECEASED" ? "#6b5a3e" : "#2f7d4a";
+            }}
+          />
+        ) : null}
+        {showControls ? <Controls showInteractive={false} /> : null}
       </ReactFlow>
 
       {editingMember ? (

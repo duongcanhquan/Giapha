@@ -366,3 +366,45 @@
   background: var(--ft-lacquer);
   color: #fffdf8;
 }
+
+/* —— Export / print stage —— */
+.ft-export-stage {
+  display: flex;
+  flex-direction: column;
+  padding: 48px 56px 40px;
+  box-sizing: border-box;
+}
+
+.ft-export-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #7a1f1f;
+  padding-bottom: 12px;
+  color: #1c1410;
+  font-family: var(--font-literata), Literata, Georgia, serif;
+}
+
+.ft-export-title p {
+  margin: 0;
+  font-size: 42px;
+  font-weight: 600;
+}
+
+.ft-export-title span {
+  font-family: var(--font-be-vietnam), "Be Vietnam Pro", sans-serif;
+  font-size: 18px;
+  color: #6a6258;
+}
+
+.ft-export-tree {
+  flex: 1;
+  min-height: 0;
+  border-radius: 0;
+  background: #fffdf8 !important;
+}
+
+.ft-export-tree .react-flow__attribution {
+  display: none !important;
+}

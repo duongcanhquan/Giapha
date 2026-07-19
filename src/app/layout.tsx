@@ -15,8 +15,9 @@ const literata = Literata({
 });
 
 export const metadata: Metadata = {
-  title: "Giapha — Cây gia phả",
-  description: "Cây gia phả tương tác với React Flow, trace route và placeholder khuyết danh.",
+  title: "Giapha — Dòng họ & cây gia phả",
+  description:
+    "Landing kể chuyện dòng họ, cây gia phả tương tác, lịch giỗ âm lịch và xuất PDF in ấn.",
 };
 
 export default function RootLayout({
