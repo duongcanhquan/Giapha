@@ -57,6 +57,11 @@ export type UpdateFamilyAppearanceInput = {
   theme: FamilyTheme;
 };
 
+export type UpdateFamilyProfileInput = {
+  name?: string;
+  description?: string;
+};
+
 export type UpdateFamilyBranchesInput = {
   branches: FamilyBranch[];
 };
@@ -89,6 +94,11 @@ export interface MemberTreeLogic {
   path: string[];
   branch_id: string;
   relationship_type: RelationshipType;
+  /**
+   * Id dâu (SpouseInfo.id trên hồ sơ cha) — mẹ sinh ra người này.
+   * Giúp vẽ cạnh «Mẹ → con» đúng vợ nào (khi có nhiều dâu).
+   */
+  mother_spouse_id?: string | null;
   position?: {
     x?: number;
     y?: number;
@@ -182,6 +192,8 @@ export type AddMemberInput = {
   family_id: string;
   full_name: string;
   parent_id: string;
+  /** Id dâu/vợ trong cha.spouses — gắn cạnh «Mẹ → con» trên cây */
+  mother_spouse_id?: string | null;
   traditional_names?: TraditionalNames;
   is_alive?: boolean;
   gender?: Gender;

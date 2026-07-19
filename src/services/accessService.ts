@@ -8,8 +8,12 @@ export type FamilyAccessRole = "super_admin" | "owner" | "branch_admin" | null;
 export type FamilyAccess = {
   allowed: boolean;
   role: FamilyAccessRole;
+  /** @deprecated Dùng branchIds — chi đầu tiên */
   branchId?: string | null;
   branchName?: string | null;
+  /** Các chi được quyền sửa (branch_admin) */
+  branchIds?: string[];
+  branchNames?: string[];
 };
 
 /**
@@ -73,16 +77,24 @@ export async function checkFamilyAdminAccess(
 
     const claimFamilyId = token.claims.family_id;
     const claimBranchId = token.claims.branch_id;
+    const claimBranchIds = token.claims.branch_ids;
 
     if (
       token.claims.role === "branch_admin" &&
       typeof claimFamilyId === "string" &&
       claimFamilyId === familyId
     ) {
+      const fromClaim = Array.isArray(claimBranchIds)
+        ? claimBranchIds.map(String).filter(Boolean)
+        : typeof claimBranchId === "string" && claimBranchId
+          ? [claimBranchId]
+          : [];
       return {
         allowed: true,
         role: "branch_admin",
-        branchId: typeof claimBranchId === "string" ? claimBranchId : null,
+        branchIds: fromClaim,
+        branchId: fromClaim[0] ?? null,
+        branchName: null,
       };
     }
 
@@ -93,11 +105,19 @@ export async function checkFamilyAdminAccess(
       user.email,
     );
     if (listed) {
+      const branchIds = listed.branch_ids?.length
+        ? listed.branch_ids
+        : listed.branch_id
+          ? [listed.branch_id]
+          : [];
+      const branchNames = listed.branch_names ?? [];
       return {
         allowed: true,
         role: "branch_admin",
-        branchId: listed.branch_id,
-        branchName: listed.branch_name,
+        branchIds,
+        branchNames,
+        branchId: branchIds[0] ?? null,
+        branchName: branchNames[0] || listed.branch_name || null,
       };
     }
 
@@ -105,4 +125,20 @@ export async function checkFamilyAdminAccess(
   } catch {
     return { allowed: false, role: null };
   }
+}
+
+/** branch_admin có được sửa member thuộc chi này không */
+export function canAccessBranch(
+  access: FamilyAccess,
+  branchId: string | null | undefined,
+): boolean {
+  if (access.role === "owner" || access.role === "super_admin") return true;
+  if (access.role !== "branch_admin") return false;
+  if (!branchId) return false;
+  const ids = access.branchIds?.length
+    ? access.branchIds
+    : access.branchId
+      ? [access.branchId]
+      : [];
+  return ids.includes(branchId);
 }

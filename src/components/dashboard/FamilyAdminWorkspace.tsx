@@ -24,9 +24,17 @@ export function FamilyAdminWorkspace({
   tableOnly = false,
 }: FamilyAdminWorkspaceProps) {
   const dash = useDashboardAccessOptional();
-  const lockedBranchId = dash?.isBranchAdmin
-    ? dash.access.branchId ?? null
+  /** null = không khóa; string[] (kể cả []) = trưởng nhánh chỉ thấy các chi đó */
+  const lockedBranchIds: string[] | null = dash?.isBranchAdmin
+    ? dash.access.branchIds?.length
+      ? dash.access.branchIds
+      : dash.access.branchId
+        ? [dash.access.branchId]
+        : []
     : null;
+  const lockedBranchId =
+    lockedBranchIds?.length === 1 ? lockedBranchIds[0]! : null;
+  const branchScopeLocked = lockedBranchIds !== null;
 
   const { tree, isLoading, error, mutate } = useFamilyTree(familyId);
   const treeRef = useRef<FamilyTreeHandle>(null);
@@ -43,7 +51,12 @@ export function FamilyAdminWorkspace({
 
   useEffect(() => {
     if (lockedBranchId) setTreeBranchFilter(lockedBranchId);
-  }, [lockedBranchId]);
+    else if (branchScopeLocked && lockedBranchIds && lockedBranchIds.length > 1) {
+      setTreeBranchFilter(null);
+    } else if (branchScopeLocked && lockedBranchIds?.length === 0) {
+      setTreeBranchFilter("__none__");
+    }
+  }, [lockedBranchId, lockedBranchIds, branchScopeLocked]);
 
   const openCreate = useCallback((parentId?: string | null) => {
     setFormMode("create");
@@ -54,18 +67,20 @@ export function FamilyAdminWorkspace({
 
   const openEdit = useCallback(
     (member: FamilyMember) => {
-      if (
-        lockedBranchId &&
-        member.tree_logic.branch_id !== lockedBranchId
-      ) {
-        return;
+      if (branchScopeLocked) {
+        if (
+          !lockedBranchIds?.length ||
+          !lockedBranchIds.includes(member.tree_logic.branch_id)
+        ) {
+          return;
+        }
       }
       setFormMode("edit");
       setEditing(member);
       setDefaultParentId(null);
       setFormOpen(true);
     },
-    [lockedBranchId],
+    [branchScopeLocked, lockedBranchIds],
   );
 
   const openProfile = useCallback(
@@ -114,6 +129,7 @@ export function FamilyAdminWorkspace({
           tree={tree}
           onRefresh={onSaved}
           onCreate={() => openCreate()}
+          onAddChild={(parent) => openCreate(parent.id)}
           onEdit={openEdit}
           exportSlot={
             <ExportTreeButton
@@ -129,12 +145,15 @@ export function FamilyAdminWorkspace({
           mode={formMode}
           familyId={familyId}
           members={tree.members}
+          branches={tree.branches}
           member={editing}
           defaultParentId={defaultParentId}
+          lockedBranchIds={lockedBranchIds}
           onSaved={onSaved}
         />
         <ProfileModal
           member={profileMember}
+          members={tree.members}
           open={profileOpen}
           onOpenChange={setProfileOpen}
         />
@@ -151,13 +170,14 @@ export function FamilyAdminWorkspace({
             Cây dòng họ {tree.clan_name}
           </h1>
           <p className="gp-lede mt-1 max-w-2xl text-sm">
-            {lockedBranchId ? (
+            {lockedBranchIds?.length ? (
               <>
-                Bạn đang quản lý chi{" "}
+                Bạn đang quản lý{" "}
                 <strong>
-                  {dash?.access.branchName ?? lockedBranchId}
+                  {dash?.access.branchNames?.filter(Boolean).join(", ") ||
+                    lockedBranchIds.join(", ")}
                 </strong>{" "}
-                — chỉ thêm/sửa người thuộc chi này.{" "}
+                — chỉ thêm/sửa người thuộc các chi này.{" "}
               </>
             ) : (
               <>
@@ -216,8 +236,15 @@ export function FamilyAdminWorkspace({
               focusOnTree(id);
             }}
             onFilterBranch={(branchId) => {
-              if (lockedBranchId) {
-                setTreeBranchFilter(lockedBranchId);
+              if (lockedBranchIds?.length === 1) {
+                setTreeBranchFilter(lockedBranchIds[0]!);
+                return;
+              }
+              if (
+                lockedBranchIds?.length &&
+                branchId &&
+                !lockedBranchIds.includes(branchId)
+              ) {
                 return;
               }
               setTreeBranchFilter(branchId);
@@ -251,8 +278,17 @@ export function FamilyAdminWorkspace({
           data={tree}
           showToolbar
           className="clan-tree-stage__canvas"
-          branchFilterControlled={treeBranchFilter}
-          branchFilterLocked={Boolean(lockedBranchId)}
+          branchFilterControlled={
+            treeBranchFilter === "__none__" ? null : treeBranchFilter
+          }
+          branchFilterLocked={Boolean(lockedBranchId) || treeBranchFilter === "__none__"}
+          allowedBranchIds={
+            branchScopeLocked
+              ? lockedBranchIds && lockedBranchIds.length > 0
+                ? lockedBranchIds
+                : ["__none__"]
+              : null
+          }
           onMemberOpen={openProfile}
           onMemberDoubleClick={(id) => {
             const m = tree.members.find((x) => x.id === id);
@@ -260,7 +296,26 @@ export function FamilyAdminWorkspace({
           }}
           onPlaceholderUpdate={(payload: PlaceholderUpdatePayload) => {
             const m = tree.members.find((x) => x.id === payload.id);
-            if (m) openEdit(m);
+            if (!m) return;
+            // Mở form sửa với dữ liệu đã điền từ popup placeholder trên cây
+            setFormMode("edit");
+            setEditing({
+              ...m,
+              full_name: payload.full_name || m.full_name,
+              gender: payload.gender ?? m.gender,
+              status: {
+                ...m.status,
+                is_alive: payload.is_alive ?? m.status.is_alive,
+                is_placeholder: false,
+              },
+              dates: {
+                ...m.dates,
+                birth: payload.birth ?? m.dates.birth,
+                death: payload.death ?? m.dates.death,
+              },
+            });
+            setDefaultParentId(null);
+            setFormOpen(true);
           }}
         />
       </section>
@@ -271,14 +326,16 @@ export function FamilyAdminWorkspace({
         mode={formMode}
         familyId={familyId}
         members={tree.members}
+        branches={tree.branches}
         member={editing}
         defaultParentId={defaultParentId}
-        lockedBranchId={lockedBranchId}
+        lockedBranchIds={lockedBranchIds}
         onSaved={onSaved}
       />
 
       <ProfileModal
         member={profileMember}
+        members={tree.members}
         open={profileOpen}
         onOpenChange={setProfileOpen}
       />

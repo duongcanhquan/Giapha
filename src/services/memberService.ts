@@ -143,6 +143,7 @@ export async function addMember(
       path,
       branch_id: branchId,
       relationship_type: relationshipType,
+      mother_spouse_id: input.mother_spouse_id ?? null,
       position: parent.tree_logic.position,
     },
     spouses: input.spouses ?? [],
@@ -200,11 +201,25 @@ export async function updateMember(
   delete patch.family_id;
   delete patch.contact;
   if (patch.tree_logic && typeof patch.tree_logic === "object") {
-    const logic = patch.tree_logic as Record<string, unknown>;
-    delete logic.path;
+    const logic = { ...(patch.tree_logic as Record<string, unknown>) };
+    delete patch.tree_logic;
+    delete logic.path; // path chỉ do server/materialized path quản
+    for (const [key, value] of Object.entries(logic)) {
+      if (value !== undefined) {
+        patch[`tree_logic.${key}`] = value;
+      }
+    }
   }
 
-  if (Object.keys(publicFields).length > 0) {
+  // Firestore từ chối undefined
+  for (const key of Object.keys(patch)) {
+    if (patch[key] === undefined) {
+      delete patch[key];
+    }
+  }
+
+  const writableKeys = Object.keys(patch).filter((k) => k !== "updated_at");
+  if (writableKeys.length > 0) {
     await updateDoc(ref, patch);
   }
 

@@ -121,6 +121,8 @@ export type FamilyTreeProps = {
   branchFilterControlled?: string | null;
   /** Khoá lọc chi (trưởng nhánh) — không cho «Mọi chi» */
   branchFilterLocked?: boolean;
+  /** Giới hạn các chi trưởng nhánh được xem (1 hoặc nhiều) */
+  allowedBranchIds?: string[] | null;
 };
 
 function bloodMemberId(nodeOrMemberId: string): string {
@@ -242,6 +244,7 @@ function FamilyTreeInner({
   initialBranchFilter = null,
   branchFilterControlled,
   branchFilterLocked = false,
+  allowedBranchIds = null,
   treeRef,
 }: InnerProps) {
   const { fitView, getNode } = useReactFlow();
@@ -357,14 +360,23 @@ function FamilyTreeInner({
   }, [viewMode, highlightId, data.members, childrenIndex]);
 
   const searchMembers = useMemo(() => {
-    if (!branchFilterLocked || !branchFilter) return data.members;
-    return data.members.filter((m) => m.tree_logic.branch_id === branchFilter);
-  }, [data.members, branchFilterLocked, branchFilter]);
+    let list = data.members;
+    if (allowedBranchIds?.length) {
+      list = list.filter((m) =>
+        allowedBranchIds.includes(m.tree_logic.branch_id),
+      );
+    }
+    if (branchFilterLocked && branchFilter) {
+      list = list.filter((m) => m.tree_logic.branch_id === branchFilter);
+    }
+    return list;
+  }, [data.members, branchFilterLocked, branchFilter, allowedBranchIds]);
 
   const visibleData = useMemo((): FamilyTreeData => {
     const members = filterVisibleMembers(data.members, {
       collapsedIds,
       branchId: branchFilter,
+      allowedBranchIds,
       includeIds,
     });
     // Nếu lọc chi làm mất thủy tổ path-connect — vẫn OK vì mỗi nhánh có subtree
@@ -375,7 +387,7 @@ function FamilyTreeInner({
       members,
       relations,
     };
-  }, [data, collapsedIds, branchFilter, includeIds]);
+  }, [data, collapsedIds, branchFilter, allowedBranchIds, includeIds]);
 
   const fitViewOptions = useMemo(
     () => ({
@@ -666,9 +678,11 @@ function FamilyTreeInner({
   };
 
   const branches = data.branches ?? [];
-  const visibleBranches = branchFilterLocked
-    ? branches.filter((b) => b.id === branchFilter)
-    : branches;
+  const visibleBranches = allowedBranchIds?.length
+    ? branches.filter((b) => allowedBranchIds.includes(b.id))
+    : branchFilterLocked
+      ? branches.filter((b) => b.id === branchFilter)
+      : branches;
   const visibleCount = visibleData.members.length;
   const totalCount = data.members.length;
   const showMiniMapEffective = showMiniMap && !isMobile;

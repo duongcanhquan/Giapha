@@ -109,6 +109,8 @@ export function lineageNeighborhoodIds(
 export type VisibleTreeOptions = {
   collapsedIds: Set<string>;
   branchId?: string | null;
+  /** Khi trưởng nhánh có nhiều chi — chỉ hiện các chi này (bỏ qua nếu branchId đang lọc 1 chi) */
+  allowedBranchIds?: string[] | null;
   includeIds?: Set<string> | null;
 };
 
@@ -116,11 +118,25 @@ export function filterVisibleMembers(
   members: FamilyMember[],
   options: VisibleTreeOptions,
 ): FamilyMember[] {
-  const { collapsedIds, branchId = null, includeIds = null } = options;
+  const {
+    collapsedIds,
+    branchId = null,
+    allowedBranchIds = null,
+    includeIds = null,
+  } = options;
 
   return members.filter((m) => {
     if (includeIds && !includeIds.has(m.id)) return false;
     if (branchId && m.tree_logic.branch_id !== branchId) return false;
+    if (allowedBranchIds !== null && allowedBranchIds !== undefined) {
+      if (allowedBranchIds.length === 0) return false;
+      if (
+        !branchId &&
+        !allowedBranchIds.includes(m.tree_logic.branch_id)
+      ) {
+        return false;
+      }
+    }
     if (isHiddenByCollapse(m, collapsedIds)) return false;
     return true;
   });

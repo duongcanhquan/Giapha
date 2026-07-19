@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { getFamily, updateFamilyAppearance } from "@/services/familyService";
+import {
+  getFamily,
+  updateFamilyAppearance,
+  updateFamilyProfile,
+} from "@/services/familyService";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { appToast } from "@/lib/toast";
 import type { FamilyTheme } from "@/types/family";
@@ -19,15 +23,22 @@ const DEFAULT_THEME: FamilyTheme = {
 
 export function AppearanceSettings({ familyId }: AppearanceSettingsProps) {
   const [theme, setTheme] = useState<FamilyTheme>(DEFAULT_THEME);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void getFamily(familyId)
       .then((family) => {
-        if (cancelled || !family?.settings.theme) return;
-        setTheme({ ...DEFAULT_THEME, ...family.settings.theme });
+        if (cancelled || !family) return;
+        setName(family.name);
+        setDescription(family.settings.description ?? "");
+        if (family.settings.theme) {
+          setTheme({ ...DEFAULT_THEME, ...family.settings.theme });
+        }
       })
       .catch(() => {
         /* demo */
@@ -36,6 +47,26 @@ export function AppearanceSettings({ familyId }: AppearanceSettingsProps) {
       cancelled = true;
     };
   }, [familyId]);
+
+  const onSaveProfile = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSavingProfile(true);
+    try {
+      if (!isFirebaseConfigured()) {
+        appToast.success("Hồ sơ (demo)", "Chưa cấu hình Firebase.");
+        return;
+      }
+      await updateFamilyProfile(familyId, { name, description });
+      appToast.success("Đã lưu tên / mô tả dòng họ");
+    } catch (err) {
+      appToast.error(
+        "Lưu hồ sơ thất bại",
+        err instanceof Error ? err.message : undefined,
+      );
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -70,24 +101,61 @@ export function AppearanceSettings({ familyId }: AppearanceSettingsProps) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div>
         <h1
           className="text-2xl font-semibold"
           style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
         >
-          Thiết lập Giao diện
+          Cài đặt dòng họ
         </h1>
         <p className="mt-1 text-sm text-stone-600">
-          Ảnh nền và màu sắc áp dụng khi họ hàng mở link chia sẻ của dòng họ.
+          Tên, mô tả và giao diện áp dụng khi họ hàng mở link chia sẻ.
         </p>
       </div>
+
+      <form
+        onSubmit={(e) => void onSaveProfile(e)}
+        className="max-w-xl space-y-3 rounded-xl border border-stone-300/60 bg-[#fffdf8] p-4"
+      >
+        <h2 className="text-sm font-bold uppercase tracking-wide text-[#7a1f1f]">
+          Hồ sơ
+        </h2>
+        <label className="block text-sm font-semibold">
+          Tên dòng họ
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+          />
+        </label>
+        <label className="block text-sm font-semibold">
+          Mô tả
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={savingProfile}
+          className="rounded-lg bg-[#7a1f1f] px-4 py-2 text-sm font-semibold text-[#fffdf8] disabled:opacity-60"
+        >
+          {savingProfile ? "Đang lưu…" : "Lưu hồ sơ"}
+        </button>
+      </form>
 
       <form
         key={`${theme.primary_color}-${theme.accent_color}-${theme.surface_color}-${theme.background_image ?? ""}`}
         onSubmit={(e) => void onSubmit(e)}
         className="max-w-xl space-y-4 rounded-xl border border-stone-300/60 bg-[#fffdf8] p-4"
       >
+        <h2 className="text-sm font-bold uppercase tracking-wide text-[#7a1f1f]">
+          Giao diện
+        </h2>
         <label className="block text-sm font-semibold">
           Ảnh nền (URL)
           <input

@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { checkSuperAdminAccess } from "@/services/accessService";
 import { getCurrentUser, signInWithEmail } from "@/services/authService";
 import { listOwnedFamilies } from "@/services/familyService";
+import { listManagedFamilyIdsForEmail } from "@/services/managerService";
 
 export function LoginForm() {
   const router = useRouter();
@@ -28,11 +29,16 @@ export function LoginForm() {
         return;
       }
       const owned = await listOwnedFamilies();
-      if (owned.length === 0) {
-        router.replace("/onboarding/create-family");
-      } else {
-        router.replace(`/dashboard/${encodeURIComponent(owned[0].id)}`);
+      if (owned.length > 0) {
+        router.replace(`/dashboard/${encodeURIComponent(owned[0]!.id)}`);
+        return;
       }
+      const managed = await listManagedFamilyIdsForEmail(user?.email ?? email);
+      if (managed.length > 0) {
+        router.replace(`/dashboard/${encodeURIComponent(managed[0]!)}`);
+        return;
+      }
+      router.replace("/onboarding/create-family");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng nhập thất bại.");
     } finally {

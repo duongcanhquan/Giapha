@@ -15,6 +15,8 @@ import { getMemberContact } from "@/services/memberService";
 
 type ProfileModalProps = {
   member: FamilyMember | null;
+  /** Toàn bộ thành viên — để hiện cha/mẹ và dòng sinh */
+  members?: FamilyMember[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
@@ -25,7 +27,12 @@ function spouseRoleLabel(role?: SpouseInfo["role"]) {
   return "Phối ngẫu";
 }
 
-export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) {
+export function ProfileModal({
+  member,
+  members = [],
+  open,
+  onOpenChange,
+}: ProfileModalProps) {
   const [solarInput, setSolarInput] = useState("");
   const [contact, setContact] = useState<MemberContact | null>(null);
 
@@ -63,6 +70,28 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
     return computeAnniversary(solarInput);
   }, [solarInput]);
 
+  const lineage = useMemo(() => {
+    if (!member) return null;
+    const father =
+      members.find((m) => m.id === member.tree_logic.parent_id) ?? null;
+    const motherId = member.tree_logic.mother_spouse_id;
+    const mother =
+      father && motherId
+        ? (father.spouses.find((s) => s.id === motherId) ?? null)
+        : null;
+    const children = members.filter(
+      (m) => m.tree_logic.parent_id === member.id && !m.status.is_placeholder,
+    );
+    const childrenByMother = new Map<string, FamilyMember[]>();
+    for (const child of children) {
+      const mid = child.tree_logic.mother_spouse_id ?? "_unknown";
+      const list = childrenByMother.get(mid) || [];
+      list.push(child);
+      childrenByMother.set(mid, list);
+    }
+    return { father, mother, children, childrenByMother };
+  }, [member, members]);
+
   if (!member) return null;
 
   const hasContact =
@@ -83,6 +112,72 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
         </DialogHeader>
 
         <div className="space-y-5 text-sm">
+          {lineage && (lineage.father || lineage.children.length > 0) ? (
+            <section className="rounded-lg border border-[#7a1f1f]/18 bg-[#7a1f1f]/04 p-3">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
+                Dòng huyết thống
+              </h3>
+              <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5">
+                {lineage.father ? (
+                  <>
+                    <dt className="text-[#6a6258]">Cha</dt>
+                    <dd className="font-medium">
+                      {lineage.father.full_name || "Khuyết danh"}
+                    </dd>
+                  </>
+                ) : null}
+                {lineage.mother ? (
+                  <>
+                    <dt className="text-[#6a6258]">Mẹ (dâu)</dt>
+                    <dd className="font-medium">
+                      {lineage.mother.full_name}
+                      {lineage.mother.maiden_name
+                        ? ` · họ gốc ${lineage.mother.maiden_name}`
+                        : ""}
+                    </dd>
+                  </>
+                ) : lineage.father ? (
+                  <>
+                    <dt className="text-[#6a6258]">Mẹ</dt>
+                    <dd className="text-[#6a6258]">Chưa gắn dâu / mẹ</dd>
+                  </>
+                ) : null}
+              </dl>
+              {lineage.children.length > 0 ? (
+                <div className="mt-3 space-y-2 border-t border-[#8a6a3a]/20 pt-2">
+                  <p className="text-xs font-semibold text-[#3d372f]">
+                    Con trong họ ({lineage.children.length})
+                  </p>
+                  {member.spouses
+                    .filter((s) => s.role === "DAU")
+                    .map((dau) => {
+                      const kids =
+                        lineage.childrenByMother.get(dau.id) ?? [];
+                      return (
+                        <p key={dau.id} className="text-xs leading-relaxed text-[#3d372f]">
+                          <span className="font-medium text-[#7a1f1f]">
+                            {dau.full_name}
+                          </span>
+                          {kids.length
+                            ? ` sinh: ${kids.map((k) => k.full_name || "?").join(", ")}`
+                            : " — chưa ghi con trong cây"}
+                        </p>
+                      );
+                    })}
+                  {(lineage.childrenByMother.get("_unknown") ?? []).length >
+                  0 ? (
+                    <p className="text-xs text-[#5c564e]">
+                      Chưa gắn mẹ:{" "}
+                      {(lineage.childrenByMother.get("_unknown") ?? [])
+                        .map((k) => k.full_name || "?")
+                        .join(", ")}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
           <section>
             <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
               Các loại tên

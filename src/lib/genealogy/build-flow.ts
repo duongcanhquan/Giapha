@@ -364,26 +364,30 @@ export function buildFlowGraph(
         } satisfies RelationshipEdgeData,
       });
 
-      // Nối mẹ (dâu) → các con của chồng trong họ — biết ai sinh / nuôi cùng đời
-      if (motherSpouse && spouse.id === motherSpouse.id && role === "DAU") {
-        const kids = childrenByParent.get(member.id) ?? [];
-        for (const child of kids) {
-          if (!memberById.has(child.id)) continue;
-          edges.push({
-            id: `mother-${spouse.id}-${child.id}`,
-            source: sid,
-            target: child.id,
-            sourceHandle: "child",
-            type: "relationship",
-            data: {
-              relationshipType: child.tree_logic.relationship_type,
-              kind: "MOTHER",
-              label: "Mẹ → con",
-            } satisfies RelationshipEdgeData,
-          });
-        }
-      }
-    });
+    // Nối đúng mẹ (dâu) → từng con theo mother_spouse_id; fallback dâu chính
+    const kids = childrenByParent.get(member.id) ?? [];
+    for (const child of kids) {
+      if (!memberById.has(child.id)) continue;
+      const motherId =
+        child.tree_logic.mother_spouse_id ??
+        (motherSpouse && role === "DAU" && spouse.id === motherSpouse.id
+          ? motherSpouse.id
+          : null);
+      if (!motherId || motherId !== spouse.id) continue;
+      edges.push({
+        id: `mother-${spouse.id}-${child.id}`,
+        source: sid,
+        target: child.id,
+        sourceHandle: "child",
+        type: "relationship",
+        data: {
+          relationshipType: child.tree_logic.relationship_type,
+          kind: "MOTHER",
+          label: "Mẹ → con",
+        } satisfies RelationshipEdgeData,
+      });
+    }
+  });
   }
 
   return {

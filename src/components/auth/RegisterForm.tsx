@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { registerWithEmail } from "@/services/authService";
+import { listManagedFamilyIdsForEmail } from "@/services/managerService";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -22,6 +23,11 @@ export function RegisterForm() {
 
     try {
       await registerWithEmail({ email, password, displayName });
+      const managed = await listManagedFamilyIdsForEmail(email);
+      if (managed.length > 0) {
+        router.replace(`/dashboard/${encodeURIComponent(managed[0]!)}`);
+        return;
+      }
       router.replace("/onboarding/create-family");
     } catch (err) {
       const message =

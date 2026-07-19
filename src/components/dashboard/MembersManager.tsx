@@ -15,6 +15,8 @@ type MembersManagerProps = {
   tree?: FamilyTreeData | null;
   onRefresh?: () => void;
   onCreate?: () => void;
+  /** Thêm con trực tiếp dưới một người (bỏ qua chọn cha) */
+  onAddChild?: (parent: FamilyMember) => void;
   onEdit?: (member: FamilyMember) => void;
   hideHeaderActions?: boolean;
   exportSlot?: ReactNode;
@@ -25,13 +27,18 @@ export function MembersManager({
   tree: treeProp,
   onRefresh,
   onCreate,
+  onAddChild,
   onEdit,
   hideHeaderActions = false,
   exportSlot,
 }: MembersManagerProps) {
   const dash = useDashboardAccessOptional();
-  const lockedBranchId = dash?.isBranchAdmin
-    ? dash.access.branchId ?? null
+  const lockedBranchIds: string[] | null = dash?.isBranchAdmin
+    ? dash.access.branchIds?.length
+      ? dash.access.branchIds
+      : dash.access.branchId
+        ? [dash.access.branchId]
+        : []
     : null;
   const hook = useFamilyTree(treeProp ? null : familyId);
   const tree = treeProp ?? hook.tree;
@@ -59,9 +66,11 @@ export function MembersManager({
     );
   }
 
-  const members = (tree?.members ?? []).filter((m) =>
-    lockedBranchId ? m.tree_logic.branch_id === lockedBranchId : true,
-  );
+  const members = (tree?.members ?? []).filter((m) => {
+    if (lockedBranchIds === null) return true;
+    if (lockedBranchIds.length === 0) return false;
+    return lockedBranchIds.includes(m.tree_logic.branch_id);
+  });
 
   const handleDelete = async (member: FamilyMember) => {
     const label = member.status.is_placeholder
@@ -137,6 +146,15 @@ export function MembersManager({
                 </td>
                 <td onDoubleClick={(e) => e.stopPropagation()}>
                   <div className="flex flex-wrap gap-2">
+                    {onAddChild && !m.status.is_placeholder ? (
+                      <button
+                        type="button"
+                        className="text-xs font-semibold text-[var(--gp-ink)] hover:underline"
+                        onClick={() => onAddChild(m)}
+                      >
+                        + Con
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="text-xs font-semibold text-[var(--gp-lacquer)] hover:underline"

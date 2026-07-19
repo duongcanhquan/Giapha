@@ -9,4 +9,5 @@ export type {
   CreateFamilyInput,
   UpdateFamilyAppearanceInput,
   UpdateFamilyBranchesInput,
+  UpdateFamilyProfileInput,
 } from "./genealogy";

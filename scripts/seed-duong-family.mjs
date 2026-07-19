@@ -27,6 +27,8 @@ const {
   where,
   writeBatch,
   serverTimestamp,
+  setDoc,
+  deleteDoc,
 } = require("firebase/firestore");
 const { Solar } = require("lunar-javascript");
 
@@ -602,7 +604,195 @@ function buildPeople() {
     },
   ];
 
+  enrichMarriageAndMaternity(people);
+
   return { people, byGen };
+}
+
+/**
+ * Bảo đảm: cha có con thì có dâu; mỗi con gắn mẹ (mother_spouse_id);
+ * ghi chú «cưới ai / sinh ai»; con gái lấy rể ghi rõ con theo họ chồng (ngoài cây).
+ */
+function enrichMarriageAndMaternity(people) {
+  const byKey = new Map(people.map((p) => [p.key, p]));
+  const childrenOf = new Map();
+  for (const p of people) {
+    if (!p.parent) continue;
+    const list = childrenOf.get(p.parent) || [];
+    list.push(p);
+    childrenOf.set(p.parent, list);
+  }
+
+  for (const [fatherKey, kids] of childrenOf) {
+    const father = byKey.get(fatherKey);
+    if (!father || father.placeholder || father.gender !== "MALE") continue;
+
+    kids.sort((a, b) => (a.birthYear || 0) - (b.birthYear || 0));
+
+    // Cha có con → phải có ít nhất 1 dâu
+    let daus = (father.spouses || []).filter((s) => s.role === "DAU");
+    if (daus.length === 0) {
+      father.spouses = father.spouses || [];
+      father.spouses.unshift(makeSpouseDauStandalone(father, 1));
+      daus = father.spouses.filter((s) => s.role === "DAU");
+    }
+
+    // Nếu nhiều con và chỉ 1 dâu đời cũ: có thể thêm kế thất (10%)
+    if (
+      kids.length >= 4 &&
+      daus.length === 1 &&
+      father.gen <= 9 &&
+      rand() < 0.12
+    ) {
+      father.spouses.push(makeSpouseDauStandalone(father, 2));
+      daus = father.spouses.filter((s) => s.role === "DAU");
+    }
+
+    const primary = daus[0];
+    const secondary = daus[1] || null;
+    const splitAt =
+      secondary && kids.length >= 3
+        ? Math.max(2, Math.ceil(kids.length * 0.65))
+        : kids.length;
+
+    const bornOf = new Map(); // spouseId -> child names
+
+    kids.forEach((child, idx) => {
+      const mother = secondary && idx >= splitAt ? secondary : primary;
+      child.mother_spouse_id = mother.id;
+      const motherLabel = mother.full_name;
+      const line = `Con của ${father.full_name} và dâu ${motherLabel}.`;
+      child.notes = child.notes
+        ? `${line} ${child.notes}`
+        : line;
+      if (!child.biography || !String(child.biography).includes("Con của")) {
+        child.biography = child.biography
+          ? `${line} ${child.biography}`
+          : `${line} Đời ${child.gen}, ${BRANCHES.find((b) => b.id === child.branch)?.name || child.branch}.`;
+      }
+      const arr = bornOf.get(mother.id) || [];
+      arr.push(child.full_name);
+      bornOf.set(mother.id, arr);
+    });
+
+    for (const dau of daus) {
+      const names = bornOf.get(dau.id) || [];
+      const bornText =
+        names.length > 0
+          ? `Lấy ${father.full_name} · Sinh ${names.length} con trong họ Dương: ${names.join(", ")}.`
+          : `Lấy ${father.full_name} · chưa ghi nhận con trong cây.`;
+      dau.notes = dau.notes ? `${bornText} ${dau.notes}` : bornText;
+    }
+
+    father.notes = father.notes
+      ? father.notes
+      : `Cưới ${daus.map((d) => d.full_name).join(" · ")} · ${kids.length} con ghi trong gia phả.`;
+  }
+
+  // Con gái lấy rể: ghi rõ có con theo họ chồng (không vào cây Dương — chuẩn hương hỏa)
+  for (const woman of people) {
+    if (woman.placeholder || woman.gender !== "FEMALE") continue;
+    const res = (woman.spouses || []).filter((s) => s.role === "RE");
+    if (!res.length) {
+      // Đảm bảo hầu hết phụ nữ trưởng thành đã lấy chồng (rể)
+      if (woman.birthYear && woman.birthYear <= 2000 && rand() < 0.82) {
+        woman.spouses = woman.spouses || [];
+        woman.spouses.push(makeSpouseReStandalone(woman, 1));
+      }
+    }
+    const husbands = (woman.spouses || []).filter((s) => s.role === "RE");
+    if (!husbands.length) continue;
+    const husband = husbands[0];
+    const outKids = int(1, woman.gen <= 10 ? 4 : 3);
+    const outNames = [];
+    for (let i = 0; i < outKids; i++) {
+      const husSurname = husband.full_name.split(" ")[0] || "Trần";
+      outNames.push(
+        `${husSurname} ${rand() < 0.45 ? "Thị" : "Văn"} ${pick(rand() < 0.45 ? FEMALE_GIVEN : MALE_GIVEN)}`,
+      );
+    }
+    const marryNote = `Lấy rể ${husband.full_name}; sinh ${outKids} con theo họ chồng (ngoài cây Dương): ${outNames.join(", ")}. Vẫn về giỗ tổ hằng năm.`;
+    woman.notes = marryNote;
+    husband.notes = husband.notes
+      ? husband.notes
+      : `Chồng của ${woman.full_name} (họ Dương) · ${outKids} con mang họ chồng.`;
+    if (!woman.biography || !String(woman.biography).includes("Lấy rể")) {
+      woman.biography = `${marryNote} Đời ${woman.gen}.`;
+    }
+  }
+
+  // Nam đã cưới nhưng chưa có con: vẫn ghi chú hôn nhân
+  for (const man of people) {
+    if (man.placeholder || man.gender !== "MALE") continue;
+    const kids = childrenOf.get(man.key) || [];
+    const daus = (man.spouses || []).filter((s) => s.role === "DAU");
+    if (daus.length && kids.length === 0) {
+      man.notes =
+        man.notes ||
+        `Cưới ${daus.map((d) => d.full_name).join(" · ")} · chưa có hoặc chưa ghi con trong cây.`;
+      for (const d of daus) {
+        d.notes =
+          d.notes ||
+          `Vợ của ${man.full_name} · chưa ghi nhận con trong gia phả hương hỏa.`;
+      }
+    }
+    // Nam trưởng thành chưa vợ → thêm dâu (để cây không thiếu phối ngẫu)
+    if (
+      !daus.length &&
+      man.birthYear &&
+      man.birthYear <= 2005 &&
+      rand() < 0.9
+    ) {
+      man.spouses = man.spouses || [];
+      man.spouses.push(makeSpouseDauStandalone(man, 1));
+    }
+  }
+}
+
+function makeSpouseDauStandalone(person, index) {
+  const wifeSurname = pick(WIFE_SURNAMES);
+  const given = pick(FEMALE_GIVEN);
+  const birthY = (person.birthYear || 1700) + int(1, 6);
+  const alive = person.is_alive && birthY >= 1945;
+  let death = null;
+  if (!alive && birthY < 1950) {
+    death = randomDate(
+      Math.min(birthY + int(55, 85), person.deathYear ?? birthY + 70),
+    );
+  } else if (!alive) {
+    death = randomDate(birthY + int(60, 90));
+  }
+  return {
+    id: `sp-${person.key}-d${index}`,
+    full_name: `${wifeSurname} Thị ${given}`,
+    role: "DAU",
+    maiden_name: wifeSurname,
+    is_alive: alive,
+    is_placeholder: false,
+    birth: randomDate(birthY),
+    death,
+    hometown: hometownFor(person.branch),
+    notes: `Dâu họ Dương — lấy ${person.full_name}`,
+  };
+}
+
+function makeSpouseReStandalone(person, index) {
+  const husSurname = pick(HUSBAND_SURNAMES);
+  const given = pick(MALE_GIVEN);
+  const birthY = (person.birthYear || 1700) + int(-2, 4);
+  const alive = person.is_alive && birthY >= 1945;
+  return {
+    id: `sp-${person.key}-r${index}`,
+    full_name: `${husSurname} Văn ${given}`,
+    role: "RE",
+    maiden_name: null,
+    is_alive: alive,
+    is_placeholder: false,
+    birth: randomDate(Math.max(1600, birthY)),
+    death: alive ? null : randomDate(birthY + int(55, 80)),
+    hometown: pick(VILLAGES).province,
+    notes: `Rể — chồng của ${person.full_name}`,
+  };
 }
 
 function validate(people) {
@@ -634,6 +824,23 @@ function validate(people) {
   }
   const hh = people.filter((p) => p.is_huong_hoa);
   if (hh.length !== 15) throw new Error(`Hương hỏa=${hh.length}, cần 15`);
+
+  // Mọi người có cha phải gắn mẹ (dâu) nếu cha là nam có vợ
+  const byKey = new Map(people.map((p) => [p.key, p]));
+  let missingMother = 0;
+  for (const p of people) {
+    if (!p.parent || p.placeholder) continue;
+    const father = byKey.get(p.parent);
+    if (!father || father.gender !== "MALE") continue;
+    const daus = (father.spouses || []).filter((s) => s.role === "DAU");
+    if (!daus.length) {
+      throw new Error(`Cha ${father.key} có con nhưng không có dâu`);
+    }
+    if (!p.mother_spouse_id) missingMother++;
+  }
+  if (missingMother > 0) {
+    throw new Error(`${missingMother} con thiếu mother_spouse_id`);
+  }
 }
 
 /* ── firebase IO ────────────────────────────────────────────── */
@@ -675,7 +882,9 @@ async function deleteOwnedDuong(db, uid) {
   );
   for (const fam of snap.docs) {
     const name = String(fam.data().name || "");
-    if (name !== FAMILY_NAME && !name.includes("Dương")) continue;
+    if (name !== FAMILY_NAME && !name.includes("Dương") && name !== "_test_" && name !== "_test2_") {
+      continue;
+    }
     const familyId = fam.id;
     console.log(`… Xóa gia phả cũ: ${name} (${familyId})`);
     const members = await getDocs(
@@ -685,30 +894,26 @@ async function deleteOwnedDuong(db, uid) {
       query(collection(db, "family_relations"), where("family_id", "==", familyId)),
     );
 
-    const contactRefs = [];
+    // Members trước (có contact) — từng bước để tránh batch lẫn rules get()
     for (const m of members.docs) {
-      contactRefs.push(doc(db, "family_members", m.id, "sensitive", "contact"));
-    }
-    for (let i = 0; i < contactRefs.length; i += 400) {
-      const batch = writeBatch(db);
-      for (const r of contactRefs.slice(i, i + 400)) batch.delete(r);
       try {
-        await batch.commit();
+        await deleteDoc(doc(db, "family_members", m.id, "sensitive", "contact"));
       } catch {
-        // contact có thể không tồn tại
+        /* không có contact */
       }
     }
-
-    const refs = [
-      ...members.docs.map((d) => d.ref),
-      ...relations.docs.map((d) => d.ref),
-      fam.ref,
-    ];
-    for (let i = 0; i < refs.length; i += 400) {
+    for (let i = 0; i < members.docs.length; i += 200) {
       const batch = writeBatch(db);
-      for (const r of refs.slice(i, i + 400)) batch.delete(r);
+      for (const d of members.docs.slice(i, i + 200)) batch.delete(d.ref);
       await batch.commit();
     }
+    for (let i = 0; i < relations.docs.length; i += 200) {
+      const batch = writeBatch(db);
+      for (const d of relations.docs.slice(i, i + 200)) batch.delete(d.ref);
+      await batch.commit();
+    }
+    await deleteDoc(fam.ref);
+    console.log(`✓ Đã xóa ${name}`);
   }
 }
 
@@ -721,27 +926,29 @@ async function writeTree(db, uid, people) {
   const familyRef = doc(collection(db, "families"));
   const familyId = familyRef.id;
 
-  const writes = [];
-  writes.push({
-    ref: familyRef,
-    data: {
-      name: FAMILY_NAME,
-      owner_id: uid,
-      created_at: serverTimestamp(),
-      settings: {
-        description:
-          "Gia phả họ Dương — mẫu lớn ~500 người, 15 đời, 6 chi nhánh, đầy đủ dâu/rể và địa chỉ.",
-        default_branch_id: BRANCH_MAIN,
-        branches: BRANCHES,
-        theme: {
-          primary_color: "#7a1f1f",
-          accent_color: "#b8952d",
-          surface_color: "#e4e8e5",
-          background_image: null,
-        },
+  // Commit family TRƯỚC — rules isFamilyOwner() cần get(family) khi tạo members
+  await setDoc(familyRef, {
+    name: FAMILY_NAME,
+    owner_id: uid,
+    created_at: serverTimestamp(),
+    settings: {
+      description:
+        "Gia phả họ Dương — mẫu lớn ~500 người, 15 đời, 6 chi. Đầy đủ dâu/rể, gắn mẹ→con, ghi rõ cưới ai / sinh ai.",
+      default_branch_id: BRANCH_MAIN,
+      branches: BRANCHES,
+      theme: {
+        primary_color: "#7a1f1f",
+        accent_color: "#b8952d",
+        surface_color: "#e4e8e5",
+        background_image: null,
       },
     },
   });
+  console.log(`✓ Family ${familyId}`);
+
+  const memberWrites = [];
+  const relationWrites = [];
+  const contactWrites = [];
 
   for (const p of people) {
     const id = idMap.get(p.key);
@@ -781,6 +988,7 @@ async function writeTree(db, uid, people) {
         path,
         branch_id: p.branch || BRANCH_MAIN,
         relationship_type: "BLOOD",
+        mother_spouse_id: p.mother_spouse_id || null,
         position: { order: p.gen },
       },
       spouses: (p.spouses || []).map((s) => ({
@@ -803,11 +1011,11 @@ async function writeTree(db, uid, people) {
       updated_at: serverTimestamp(),
     };
 
-    writes.push({ ref: doc(db, "family_members", id), data: member });
+    memberWrites.push({ ref: doc(db, "family_members", id), data: member });
 
     if (parentId) {
       const relRef = doc(collection(db, "family_relations"));
-      writes.push({
+      relationWrites.push({
         ref: relRef,
         data: {
           id: relRef.id,
@@ -821,7 +1029,7 @@ async function writeTree(db, uid, people) {
     }
 
     if (p.contact) {
-      writes.push({
+      contactWrites.push({
         ref: doc(db, "family_members", id, "sensitive", "contact"),
         data: {
           phone: p.contact.phone ?? null,
@@ -833,14 +1041,46 @@ async function writeTree(db, uid, people) {
     }
   }
 
-  for (let i = 0; i < writes.length; i += 400) {
-    const batch = writeBatch(db);
-    for (const w of writes.slice(i, i + 400)) batch.set(w.ref, w.data);
-    await batch.commit();
-    console.log(
-      `✓ Batch ${Math.floor(i / 400) + 1} (${Math.min(i + 400, writes.length)}/${writes.length})`,
-    );
+  async function commitAll(label, items) {
+    for (let i = 0; i < items.length; i += 200) {
+      const batch = writeBatch(db);
+      for (const w of items.slice(i, i + 200)) batch.set(w.ref, w.data);
+      await batch.commit();
+      console.log(
+        `✓ ${label} ${Math.min(i + 200, items.length)}/${items.length}`,
+      );
+    }
   }
+
+  await commitAll("Members", memberWrites);
+  await commitAll("Relations", relationWrites);
+
+  // Contact: mỗi write rules gọi 2× get() — batch Firestore ≤ ~20 get/transaction → chunk ≤ 8
+  let contactOk = 0;
+  for (let i = 0; i < contactWrites.length; i += 8) {
+    const chunk = contactWrites.slice(i, i + 8);
+    try {
+      const batch = writeBatch(db);
+      for (const w of chunk) batch.set(w.ref, w.data);
+      await batch.commit();
+      contactOk += chunk.length;
+      console.log(`✓ Contacts ${contactOk}/${contactWrites.length}`);
+    } catch (err) {
+      console.warn(
+        `⚠ Contacts batch ${i}–${i + chunk.length} lỗi, ghi từng cái…`,
+        err?.message || err,
+      );
+      for (const w of chunk) {
+        try {
+          await setDoc(w.ref, w.data);
+          contactOk++;
+        } catch (e2) {
+          console.warn(`  bỏ contact ${w.ref.path}: ${e2?.message || e2}`);
+        }
+      }
+    }
+  }
+  console.log(`✓ Contacts xong: ${contactOk}/${contactWrites.length}`);
 
   return familyId;
 }
@@ -855,6 +1095,7 @@ async function main() {
   let dau = 0;
   let re = 0;
   let withContact = 0;
+  let withMother = 0;
   for (const p of people) {
     for (const s of p.spouses || []) {
       spouseCount++;
@@ -862,6 +1103,7 @@ async function main() {
       if (s.role === "RE") re++;
     }
     if (p.contact) withContact++;
+    if (p.mother_spouse_id) withMother++;
   }
 
   for (let g = 1; g <= 15; g++) {
@@ -869,6 +1111,7 @@ async function main() {
   }
   console.log(`  Thành viên cây: ${people.length}`);
   console.log(`  Dâu/rể (spouses): ${spouseCount} (dâu=${dau}, rể=${re})`);
+  console.log(`  Con gắn mẹ (mother_spouse_id): ${withMother}`);
   console.log(`  Có địa chỉ/liên hệ: ${withContact}`);
   console.log(`  Tổng tên riêng ≈ ${people.filter((p) => !p.placeholder).length + spouseCount}`);
   console.log("———");

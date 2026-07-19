@@ -20,11 +20,25 @@ service cloud.firestore {
         && familyDoc(familyId).owner_id == request.auth.uid;
     }
 
+    /** Custom claim branch_admin — hỗ trợ branch_id đơn hoặc branch_ids[] */
     function isClaimBranchAdmin() {
       return isSignedIn()
         && request.auth.token.role == 'branch_admin'
-        && request.auth.token.family_id is string
-        && request.auth.token.branch_id is string;
+        && request.auth.token.family_id is string;
+    }
+
+    function claimHasBranch(branchId) {
+      return (
+        (
+          request.auth.token.keys().hasAny(['branch_ids'])
+          && request.auth.token.branch_ids is list
+          && branchId in request.auth.token.branch_ids
+        )
+        || (
+          request.auth.token.keys().hasAny(['branch_id'])
+          && request.auth.token.branch_id == branchId
+        )
+      );
     }
 
     /** Trưởng nhánh trong collection family_managers (doc id = familyId__uid) */
@@ -32,19 +46,30 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/family_managers/$(familyId + '__' + request.auth.uid));
     }
 
+    function managerHasBranch(data, branchId) {
+      return (
+        (
+          data.keys().hasAny(['branch_ids'])
+          && data.branch_ids is list
+          && branchId in data.branch_ids
+        )
+        || data.branch_id == branchId
+      );
+    }
+
     function isListedBranchAdmin(familyId, branchId) {
       return isSignedIn()
         && exists(/databases/$(database)/documents/family_managers/$(familyId + '__' + request.auth.uid))
         && listedManagerDoc(familyId).data.status == 'active'
         && listedManagerDoc(familyId).data.family_id == familyId
-        && listedManagerDoc(familyId).data.branch_id == branchId;
+        && managerHasBranch(listedManagerDoc(familyId).data, branchId);
     }
 
     function isBranchAdminFor(familyId, branchId) {
       return (
         isClaimBranchAdmin()
         && request.auth.token.family_id == familyId
-        && request.auth.token.branch_id == branchId
+        && claimHasBranch(branchId)
       ) || isListedBranchAdmin(familyId, branchId);
     }
 
@@ -67,13 +92,6 @@ service cloud.firestore {
 
     function hasNoContactField() {
       return !request.resource.data.keys().hasAny(['contact']);
-    }
-
-    function pathTooDeepToDelete() {
-      return resource.data.keys().hasAll(['tree_logic'])
-        && resource.data.tree_logic.keys().hasAll(['path'])
-        && resource.data.tree_logic.path is list
-        && resource.data.tree_logic.path.size() > 2;
     }
 
     function canWriteMember(data) {
@@ -112,18 +130,15 @@ service cloud.firestore {
         )
       );
 
+      // Chỉ chủ dòng họ / super admin được tạo — tránh tự phong quyền
       allow create: if isSignedIn() && (
         isSuperAdmin()
         || (
-          request.resource.data.keys().hasAll(['family_id', 'email', 'branch_id', 'role', 'status'])
+          isFamilyOwner(request.resource.data.family_id)
+          && request.resource.data.keys().hasAll(['family_id', 'email', 'role', 'status'])
           && (
-            isFamilyOwner(request.resource.data.family_id)
-            // Người được mời tự claim: tạo doc familyId__uid từ lời mời pending
-            || (
-              request.resource.data.uid == request.auth.uid
-              && request.resource.data.status == 'active'
-              && request.resource.data.email == request.auth.token.email
-            )
+            request.resource.data.keys().hasAny(['branch_ids'])
+            || request.resource.data.keys().hasAny(['branch_id'])
           )
         )
       );
@@ -132,11 +147,15 @@ service cloud.firestore {
         isSuperAdmin()
         || isFamilyOwner(resource.data.family_id)
         || (
-          // Claim / cập nhật uid của chính mình
+          // Claim / kích hoạt theo email — không được tự đổi danh sách chi
           resource.data.email == request.auth.token.email
           && request.resource.data.email == resource.data.email
           && request.resource.data.family_id == resource.data.family_id
           && request.resource.data.branch_id == resource.data.branch_id
+          && (
+            !resource.data.keys().hasAny(['branch_ids'])
+            || request.resource.data.branch_ids == resource.data.branch_ids
+          )
         )
       );
 
@@ -169,11 +188,12 @@ service cloud.firestore {
           )
         );
 
+      // Trưởng nhánh xoá được người thuộc chi mình (bỏ giới hạn path sâu)
       allow delete: if hasFamilyId(resource.data)
         && (
           isSuperAdmin()
           || isFamilyOwner(resource.data.family_id)
-          || (branchAdminMatches(resource.data) && !pathTooDeepToDelete())
+          || branchAdminMatches(resource.data)
         );
 
       match /sensitive/{docId} {
@@ -183,8 +203,13 @@ service cloud.firestore {
             && hasFamilyId(
               get(/databases/$(database)/documents/family_members/$(memberId)).data
             )
-            && canWriteMember(
-              get(/databases/$(database)/documents/family_members/$(memberId)).data
+            && (
+              isFamilyOwner(
+                get(/databases/$(database)/documents/family_members/$(memberId)).data.family_id
+              )
+              || canWriteMember(
+                get(/databases/$(database)/documents/family_members/$(memberId)).data
+              )
             )
           );
       }

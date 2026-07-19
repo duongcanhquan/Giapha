@@ -72,6 +72,8 @@ function mapMember(id: string, data: Record<string, unknown>): FamilyMember {
       relationship_type:
         (treeLogicRaw.relationship_type as FamilyMember["tree_logic"]["relationship_type"]) ??
         "BLOOD",
+      mother_spouse_id:
+        (treeLogicRaw.mother_spouse_id as string | null | undefined) ?? null,
       position: treeLogicRaw.position as FamilyMember["tree_logic"]["position"],
     },
     spouses: ((data.spouses as FamilyMember["spouses"]) ?? []).map((s) => ({

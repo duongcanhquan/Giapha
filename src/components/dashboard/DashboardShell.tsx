@@ -98,6 +98,19 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
     };
   }, [familyId, router]);
 
+  // Trưởng nhánh không được vào Nhánh / Giao diện (deep-link)
+  useEffect(() => {
+    if (status !== "ready" || !access) return;
+    if (access.role !== "branch_admin") return;
+    const base = `/dashboard/${familyId}`;
+    if (
+      pathname.startsWith(`${base}/appearance`) ||
+      pathname.startsWith(`${base}/branches`)
+    ) {
+      router.replace(base);
+    }
+  }, [status, access, pathname, familyId, router]);
+
   if (status === "loading" || !access) {
     return (
       <main className="grid min-h-screen place-items-center text-sm text-[var(--gp-muted)]">
@@ -125,7 +138,15 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
     ? "Super Admin"
     : access.role === "owner"
       ? "Chủ dòng họ"
-      : `Trưởng nhánh${access.branchName ? ` · ${access.branchName}` : ""}`;
+      : `Trưởng nhánh${
+          access.branchNames?.filter(Boolean).length
+            ? ` · ${access.branchNames.filter(Boolean).join(", ")}`
+            : access.branchName
+              ? ` · ${access.branchName}`
+              : access.branchIds?.length
+                ? ` · ${access.branchIds.join(", ")}`
+                : ""
+        }`;
 
   return (
     <DashboardAccessProvider

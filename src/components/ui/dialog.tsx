@@ -35,16 +35,18 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 grid w-[min(520px,calc(100%-2rem))] max-h-[min(90vh,720px)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-6 shadow-[var(--gp-shadow-lift)] data-[state=open]:animate-[fade-in_160ms_ease-out]",
+          "fixed left-1/2 top-1/2 z-50 flex w-[min(520px,calc(100%-2rem))] max-h-[min(90vh,720px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-0 shadow-[var(--gp-shadow-lift)] data-[state=open]:animate-[fade-in_160ms_ease-out]",
           className,
         )}
         {...props}
       >
-        {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[var(--gp-lacquer)]/40">
+        <DialogPrimitive.Close className="absolute right-4 top-4 z-10 rounded-md bg-[var(--gp-scroll)]/90 p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[var(--gp-lacquer)]/40">
           <X className="h-4 w-4" />
           <span className="sr-only">Đóng</span>
         </DialogPrimitive.Close>
+        <div className="max-h-[min(90vh,720px)] overflow-y-auto p-6 pt-7">
+          {children}
+        </div>
       </DialogPrimitive.Content>
     </DialogPortal>
   );

@@ -142,6 +142,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
 
       <ProfileModal
         member={profileMember}
+        members={tree.members}
         open={profileOpen}
         onOpenChange={setProfileOpen}
       />
