@@ -4,6 +4,7 @@ import type {
   FamilyRelation,
   FamilyTreeData,
 } from "@/types/genealogy";
+import { memberGeneration } from "@/types/genealogy";
 import type { MemberNodeData } from "@/components/family-tree/nodes/MemberNode";
 import type { PlaceholderNodeData } from "@/components/family-tree/nodes/PlaceholderNode";
 import type { RelationshipEdgeData } from "@/components/family-tree/edges/RelationshipEdge";
@@ -17,17 +18,20 @@ export type FamilyFlowNode = Node<MemberNodeData | PlaceholderNodeData>;
 export type FamilyFlowEdge = Edge<RelationshipEdgeData>;
 
 export function memberNodeType(member: FamilyMember): "member" | "placeholder" {
-  return member.is_placeholder ? "placeholder" : "member";
+  return member.status.is_placeholder ? "placeholder" : "member";
 }
 
-/** Layout theo đời: mỗi generation một hàng, xếp ngang theo thứ tự trong data. */
-export function layoutMembers(members: FamilyMember[]): Map<string, { x: number; y: number }> {
+/** Layout theo đời: mỗi generation một hàng */
+export function layoutMembers(
+  members: FamilyMember[],
+): Map<string, { x: number; y: number }> {
   const byGen = new Map<number, FamilyMember[]>();
 
   for (const m of members) {
-    const list = byGen.get(m.generation) ?? [];
+    const gen = memberGeneration(m);
+    const list = byGen.get(gen) ?? [];
     list.push(m);
-    byGen.set(m.generation, list);
+    byGen.set(gen, list);
   }
 
   const positions = new Map<string, { x: number; y: number }>();
@@ -54,6 +58,8 @@ export function buildFlowGraph(data: FamilyTreeData): {
   const nodes: FamilyFlowNode[] = data.members.map((member) => {
     const position = positions.get(member.id) ?? { x: 0, y: 0 };
     const type = memberNodeType(member);
+    const generation = memberGeneration(member);
+    const path = member.tree_logic.path;
 
     if (type === "placeholder") {
       return {
@@ -62,8 +68,8 @@ export function buildFlowGraph(data: FamilyTreeData): {
         position,
         data: {
           memberId: member.id,
-          generation: member.generation,
-          path: member.path,
+          generation,
+          path,
         } satisfies PlaceholderNodeData,
       };
     }
@@ -75,11 +81,16 @@ export function buildFlowGraph(data: FamilyTreeData): {
       data: {
         memberId: member.id,
         fullName: member.full_name,
-        generation: member.generation,
-        lifeStatus: member.life_status,
+        generation,
+        lifeStatus: member.status.is_alive ? "LIVING" : "DECEASED",
         isHuongHoa: Boolean(member.is_huong_hoa),
-        spouses: member.spouses,
-        path: member.path,
+        spouses: member.spouses.map((s) => ({
+          id: s.id,
+          full_name: s.full_name,
+          life_status: s.is_alive === false ? "DECEASED" : "LIVING",
+          is_placeholder: s.is_placeholder,
+        })),
+        path,
       } satisfies MemberNodeData,
     };
   });
@@ -106,17 +117,15 @@ export function relationToEdge(relation: FamilyRelation): FamilyFlowEdge {
   };
 }
 
-/** Tập node id nằm trên đường dẫn Thủy tổ → target (từ `member.path`). */
 export function extractPathIds(
   members: FamilyMember[],
   targetId: string,
 ): string[] {
   const member = members.find((m) => m.id === targetId);
   if (!member) return [];
-  return [...member.path];
+  return [...member.tree_logic.path];
 }
 
-/** Edge nằm trên path khi cả source và target đều thuộc path và liên tiếp trong path. */
 export function edgeIdsOnPath(
   relations: FamilyRelation[],
   pathIds: string[],

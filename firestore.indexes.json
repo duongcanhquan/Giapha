@@ -5,7 +5,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "family_id", "order": "ASCENDING" },
-        { "fieldPath": "branch_id", "order": "ASCENDING" }
+        { "fieldPath": "tree_logic.branch_id", "order": "ASCENDING" }
       ]
     },
     {
@@ -13,8 +13,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "family_id", "order": "ASCENDING" },
-        { "fieldPath": "branch_id", "order": "ASCENDING" },
-        { "fieldPath": "generation", "order": "ASCENDING" }
+        { "fieldPath": "tree_logic.path", "arrayConfig": "CONTAINS" }
       ]
     },
     {
@@ -22,16 +21,8 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "family_id", "order": "ASCENDING" },
-        { "fieldPath": "path", "arrayConfig": "CONTAINS" }
-      ]
-    },
-    {
-      "collectionGroup": "family_members",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "family_id", "order": "ASCENDING" },
-        { "fieldPath": "branch_id", "order": "ASCENDING" },
-        { "fieldPath": "path", "arrayConfig": "CONTAINS" }
+        { "fieldPath": "tree_logic.branch_id", "order": "ASCENDING" },
+        { "fieldPath": "tree_logic.path", "arrayConfig": "CONTAINS" }
       ]
     },
     {

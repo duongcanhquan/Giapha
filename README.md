@@ -1,85 +1,60 @@
 # Giapha
 
-Nền tảng SaaS cây gia phả tiếng Việt — nhiều dòng họ, React Flow, Firebase Auth/Firestore.
+Nền tảng SaaS cây gia phả tiếng Việt — multi-tenant, Next.js App Router, Tailwind, Firebase.
 
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind
-- [`@xyflow/react`](https://reactflow.dev/) (React Flow v12)
-- Framer Motion · Firebase Auth + Firestore · lunar-javascript · html2canvas/jspdf
+- [`@xyflow/react`](https://reactflow.dev/) · Framer Motion · SWR · Fuse.js
+- Firebase Auth + Firestore · lunar-javascript · html2canvas/jspdf
 
-## Collections (multi-tenant)
+## Schema (`src/types/genealogy.ts`)
 
-| Collection | Mô tả |
+| Collection | Fields |
 |------------|--------|
-| `families` | `{ id, name, description, owner_id, created_at }` |
-| `family_members` | Thành viên — **bắt buộc** `family_id` + `branch_id` |
-| `family_relations` | Cạnh cha→con — có `family_id` + `branch_id` |
-| `family_members/{id}/sensitive/contact` | SĐT/địa chỉ — không public |
+| `families` | `id, name, owner_id, created_at, settings` |
+| `family_members` | `id, family_id, full_name, traditional_names { birth, courtesy, posthumous }, status { is_alive, is_placeholder }, dates { birth, death, lunar_death }, tree_logic { parent_id, path, branch_id, relationship_type }, spouses` |
+| `family_relations` | cạnh React Flow |
+| `…/sensitive/contact` | SĐT/địa chỉ (không public) |
 
 ## Security Rules
 
 | Ai | Quyền |
 |----|--------|
-| Public | Read `families` + `family_members` / `family_relations` khi có `family_id` |
-| Family Owner (`families.owner_id == auth.uid`) | Full CRUD mọi `family_members` của `family_id` đó |
-| Branch Admin (claims `role`, `family_id`, `branch_id`) | Write khi `family_id` + `branch_id` khớp; delete chặn nếu `path.size() > 2` |
+| Public | Read khi document có `family_id` |
+| Family Owner | Write theo `families.owner_id` |
+| Branch Admin | Write khi `family_id` + `tree_logic.branch_id` khớp claims |
+| Super Admin | `request.auth.token.role == 'super_admin'` — full R/W |
 
 ```bash
-firebase deploy --only firestore:rules
+firebase deploy --only firestore:rules,firestore:indexes
 ```
+
+## Super Admin (one-shot)
+
+```bash
+export FIREBASE_SERVICE_ACCOUNT_PATH=./serviceAccount.json
+npm run admin:create-super
+```
+
+Tạo `duongcanhquan@admin.local` / `123456` với claim `{ role: 'super_admin' }`.
 
 ## Onboarding
 
-1. `/register` — Firebase Auth (email/password)
-2. Tự chuyển `/onboarding/create-family`
-3. Submit → tạo `families` (owner = UID) + seed Thủy tổ → `/cay?family_id=…`
+1. `/register` → Auth  
+2. `/onboarding/create-family` → tạo `families` + seed Thủy tổ  
+3. `/dashboard/[familyId]`
 
 ## Chạy local
 
 ```bash
-cp .env.example .env.local   # điền NEXT_PUBLIC_FIREBASE_*
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
-| Route | Nội dung |
-|-------|----------|
-| `/` | Landing kể chuyện |
-| `/register` · `/login` | Auth |
-| `/onboarding/create-family` | Tạo gia phả (Admin dòng họ) |
-| `/tree/[familyId]` | **Public** — FamilyTree read-only + Copy Link Chia Sẻ |
-| `/dashboard/[familyId]` | **Admin** — Auth Guard (Owner / Branch Admin) |
-| `/dashboard/[familyId]/members` | Quản lý thành viên |
-| `/dashboard/[familyId]/branches` | Quản lý nhánh |
-| `/dashboard/[familyId]/appearance` | Ảnh nền & màu sắc dòng họ |
-| `/cay` | Bản demo nội bộ (legacy) |
-
-## Services
-
-```ts
-import { createFamily } from "@/services/familyService";
-import { addMember, addPlaceholderNode, updateMember } from "@/services/memberService";
-
-await createFamily({ name: "Nguyễn", description: "…" });
-await addMember({
-  family_id: "…",
-  full_name: "Nguyễn Văn A",
-  parent_id: "founder-or-placeholder-id",
-});
-```
-
-## FamilyTree & văn hóa
-
-- Trace route, PlaceholderNode, ADOPTED dashed edges
-- Double-click → Profile Modal (húy/thụy, tiểu sử, lịch giỗ âm)
-- `ExportTreeButton` → PDF khổ A0
-
-## Performance & UX
-
-- **SWR** (`useFamilyTree`) — cache/revalidate theo `familyId`, không refetch khi đổi trang
-- **React Flow** `onlyRenderVisibleElements` — virtualize nodes khi cây lớn
-- **firestore.indexes.json** — composite `family_id` + `branch_id` + `path`
-- **error.tsx** boundaries + skeleton shimmer + **sonner** toast (`appToast`)
-- **Smart Search** (Fuse.js, bỏ dấu) → zoom/pan tới node
-- Mobile mặc định Fit View vừa màn hình
+| Route | Vai trò |
+|-------|---------|
+| `/tree/[familyId]` | Khách — read-only + share link |
+| `/dashboard/[familyId]` | Admin (Owner / Branch / Super) |
+| `/tree/family-demo-nguyen` | Demo không Firebase |

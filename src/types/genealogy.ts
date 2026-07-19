@@ -1,46 +1,94 @@
 /**
- * Cấu trúc dữ liệu gia phả — multi-tenant (cách ly theo `family_id`).
+ * Schema Gia phả Online — SaaS multi-tenant.
+ * Mọi `family_members` BẮT BUỘC có `family_id`.
  */
 
-/** Trạng thái sinh tồn của thành viên */
-export type LifeStatus = "LIVING" | "DECEASED";
-
-/** Quan hệ huyết thống / pháp lý giữa cha mẹ → con */
+/** Quan hệ huyết thống / pháp lý cha mẹ → con */
 export type RelationshipType = "BLOOD" | "ADOPTED";
 
-/** Giới tính (tuỳ chọn, phục vụ hiển thị) */
 export type Gender = "MALE" | "FEMALE" | "UNKNOWN";
 
 /**
- * Vai trò Auth:
- * - family owner: xác định qua `families.owner_id` (không cần claim)
- * - branch_admin: custom claims `{ role, family_id, branch_id }`
+ * Custom claims:
+ * - super_admin: platform
+ * - branch_admin + family_id + branch_id: trưởng nhánh
+ * - family owner: `families.owner_id == auth.uid` (không cần claim)
  */
-export type AuthRole = "branch_admin" | "member";
+export type AuthRole = "super_admin" | "branch_admin" | "member";
 
-/** Vợ/chồng gắn kèm người chính trên node */
-export interface SpouseInfo {
+/* ─── families ──────────────────────────────────────────────── */
+
+export interface FamilyTheme {
+  background_image?: string | null;
+  primary_color?: string;
+  accent_color?: string;
+  surface_color?: string;
+}
+
+export interface FamilyBranch {
   id: string;
-  full_name: string;
-  life_status: LifeStatus;
-  is_placeholder?: boolean;
+  name: string;
+  description?: string;
 }
 
-/**
- * Thông tin liên hệ nhạy cảm.
- * Lưu ở `family_members/{id}/sensitive/contact` — khách không đọc được.
- */
-export interface MemberContact {
-  phone?: string | null;
-  address?: string | null;
-  email?: string | null;
-  notes?: string | null;
+/** `families.settings` */
+export interface FamilySettings {
+  description?: string;
+  default_branch_id?: string;
+  theme?: FamilyTheme;
+  branches?: FamilyBranch[];
 }
 
-/** Logic vị trí trên cây / phân nhánh (bổ sung cho UI) */
-export interface TreeLogic {
-  /** Đồng bộ với `branch_id` top-level */
+/** Document collection `families` */
+export interface Family {
+  id: string;
+  name: string;
+  owner_id: string;
+  created_at?: string | null;
+  settings: FamilySettings;
+}
+
+export type CreateFamilyInput = {
+  name: string;
+  description?: string;
+};
+
+export type UpdateFamilyAppearanceInput = {
+  theme: FamilyTheme;
+};
+
+export type UpdateFamilyBranchesInput = {
+  branches: FamilyBranch[];
+};
+
+/* ─── family_members ────────────────────────────────────────── */
+
+/** traditional_names: birth (húy), courtesy (tự), posthumous (thụy) */
+export interface TraditionalNames {
+  birth?: string | null;
+  courtesy?: string | null;
+  posthumous?: string | null;
+}
+
+export interface MemberStatus {
+  is_alive: boolean;
+  is_placeholder: boolean;
+}
+
+/** Dương lịch ISO `YYYY-MM-DD`; lunar_death dạng `YYYY-M-D` */
+export interface MemberDates {
+  birth?: string | null;
+  death?: string | null;
+  lunar_death?: string | null;
+}
+
+export interface MemberTreeLogic {
+  /** null với Thủy tổ */
+  parent_id: string | null;
+  /** Materialized path Thủy tổ → bản thân */
+  path: string[];
   branch_id: string;
+  relationship_type: RelationshipType;
   position?: {
     x?: number;
     y?: number;
@@ -48,49 +96,48 @@ export interface TreeLogic {
   };
 }
 
-/** Các loại tên trong truyền thống gia phả */
-export interface MemberNames {
-  huy?: string | null;
-  thuy?: string | null;
-  tu?: string | null;
+export interface SpouseInfo {
+  id: string;
+  full_name: string;
+  is_alive?: boolean;
+  is_placeholder?: boolean;
 }
 
 /**
- * Document trên collection `family_members`.
- * BẮT BUỘC có `family_id` + `branch_id` để cách ly SaaS / phân quyền trưởng nhánh.
+ * Document collection `family_members`.
+ * Bắt buộc: `family_id`, `tree_logic.branch_id`, `tree_logic.path`.
  */
 export interface FamilyMember {
   id: string;
-  /** Tenant — id document trong collection `families` */
   family_id: string;
-  /** Nhánh quản trị (top-level, dùng trong Security Rules) */
-  branch_id: string;
   full_name: string;
-  generation: number;
-  life_status: LifeStatus;
+  traditional_names: TraditionalNames;
+  status: MemberStatus;
+  dates: MemberDates;
+  tree_logic: MemberTreeLogic;
+  spouses: SpouseInfo[];
   gender?: Gender;
   is_huong_hoa?: boolean;
-  is_placeholder: boolean;
-  spouses: SpouseInfo[];
-  parent_ids: string[];
-  path: string[];
-  tree_logic: TreeLogic;
-  names?: MemberNames;
   biography?: string | null;
-  birth_year?: number | null;
-  death_year?: number | null;
-  death_date?: string | null;
-  lunar_death_date?: string | null;
   notes?: string;
   created_at?: string;
   updated_at?: string;
+}
+
+/** Liên hệ nhạy cảm — subcollection `sensitive/contact` */
+export interface MemberContact {
+  phone?: string | null;
+  address?: string | null;
+  email?: string | null;
+  notes?: string | null;
 }
 
 export interface FamilyMemberWithContact extends FamilyMember {
   contact?: MemberContact | null;
 }
 
-/** Cạnh trên collection `family_relations` */
+/* ─── relations (cạnh render React Flow) ────────────────────── */
+
 export interface FamilyRelation {
   id: string;
   family_id: string;
@@ -98,7 +145,6 @@ export interface FamilyRelation {
   source: string;
   target: string;
   relationship_type: RelationshipType;
-  tree_logic?: Pick<TreeLogic, "branch_id">;
 }
 
 export interface FamilyTreeData {
@@ -108,29 +154,31 @@ export interface FamilyTreeData {
   relations: FamilyRelation[];
 }
 
+/* ─── service inputs ────────────────────────────────────────── */
+
 export interface PlaceholderUpdatePayload {
   id: string;
   full_name: string;
-  life_status?: LifeStatus;
+  is_alive?: boolean;
   gender?: Gender;
-  birth_year?: number | null;
-  death_year?: number | null;
+  birth?: string | null;
+  death?: string | null;
 }
 
 export type AddMemberInput = {
   family_id: string;
   full_name: string;
   parent_id: string;
-  life_status?: LifeStatus;
+  traditional_names?: TraditionalNames;
+  is_alive?: boolean;
   gender?: Gender;
   is_huong_hoa?: boolean;
   spouses?: SpouseInfo[];
   relationship_type?: RelationshipType;
   contact?: MemberContact;
   branch_id?: string;
-  tree_logic?: Partial<TreeLogic>;
-  birth_year?: number | null;
-  death_year?: number | null;
+  dates?: MemberDates;
+  biography?: string | null;
   notes?: string;
   id?: string;
 };
@@ -139,15 +187,28 @@ export type AddPlaceholderInput = {
   family_id: string;
   parent_id: string;
   branch_id?: string;
-  tree_logic?: Partial<TreeLogic>;
   relationship_type?: RelationshipType;
-  generation?: number;
   notes?: string;
   id?: string;
 };
 
 export type UpdateMemberInput = Partial<
-  Omit<FamilyMember, "id" | "path" | "family_id" | "created_at">
+  Omit<FamilyMember, "id" | "family_id" | "created_at">
 > & {
   contact?: MemberContact | null;
 };
+
+/* ─── view helpers (UI / React Flow) ────────────────────────── */
+
+/** Đời thứ N = độ dài materialized path */
+export function memberGeneration(member: FamilyMember): number {
+  return Math.max(1, member.tree_logic.path.length);
+}
+
+export function memberIsPlaceholder(member: FamilyMember): boolean {
+  return member.status.is_placeholder;
+}
+
+export function memberIsAlive(member: FamilyMember): boolean {
+  return member.status.is_alive;
+}

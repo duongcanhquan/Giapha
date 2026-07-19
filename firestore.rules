@@ -7,21 +7,19 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.role == 'super_admin';
+    }
+
     function familyDoc(familyId) {
       return get(/databases/$(database)/documents/families/$(familyId)).data;
     }
 
-    /** Admin dòng họ = owner của document families/{familyId} */
     function isFamilyOwner(familyId) {
       return isSignedIn()
         && familyDoc(familyId).owner_id == request.auth.uid;
     }
 
-    /**
-     * Branch Admin (Trưởng nhánh): custom claims
-     * - request.auth.token.family_id
-     * - request.auth.token.branch_id
-     */
     function isBranchAdmin() {
       return isSignedIn()
         && request.auth.token.role == 'branch_admin'
@@ -29,10 +27,15 @@ service cloud.firestore {
         && request.auth.token.branch_id is string;
     }
 
+    /** branch_id nằm trong tree_logic (schema mới) */
+    function memberBranchId(data) {
+      return data.tree_logic.branch_id;
+    }
+
     function branchAdminMatches(data) {
       return isBranchAdmin()
         && data.family_id == request.auth.token.family_id
-        && data.branch_id == request.auth.token.branch_id;
+        && memberBranchId(data) == request.auth.token.branch_id;
     }
 
     function hasFamilyId(data) {
@@ -46,47 +49,55 @@ service cloud.firestore {
     }
 
     function pathTooDeepToDelete() {
-      return resource.data.keys().hasAll(['path'])
-        && resource.data.path is list
-        && resource.data.path.size() > 2;
+      return resource.data.keys().hasAll(['tree_logic'])
+        && resource.data.tree_logic.keys().hasAll(['path'])
+        && resource.data.tree_logic.path is list
+        && resource.data.tree_logic.path.size() > 2;
+    }
+
+    function canWriteMember(data) {
+      return isSuperAdmin()
+        || isFamilyOwner(data.family_id)
+        || branchAdminMatches(data);
     }
 
     /* ─── families ───────────────────────────────────────────── */
 
     match /families/{familyId} {
-      /**
-       * Public read: ai cũng đọc được metadata dòng họ
-       * (cần biết / có family_id để truy cập sâu hơn ở client).
-       */
-      allow read: if true;
+      /** Public read — client truy cập khi biết / có family_id */
+      allow read: if true || isSuperAdmin();
 
-      /** Đăng ký onboarding: user tự tạo dòng họ với chính mình là owner */
-      allow create: if isSignedIn()
-        && request.resource.data.owner_id == request.auth.uid
-        && request.resource.data.keys().hasAll(['name', 'owner_id']);
+      allow create: if isSuperAdmin()
+        || (
+          isSignedIn()
+          && request.resource.data.owner_id == request.auth.uid
+          && request.resource.data.keys().hasAll(['name', 'owner_id'])
+        );
 
-      allow update, delete: if isFamilyOwner(familyId);
+      allow update, delete: if isSuperAdmin() || isFamilyOwner(familyId);
     }
 
-    /* ─── family_members (bắt buộc có family_id) ─────────────── */
+    /* ─── family_members ─────────────────────────────────────── */
 
     match /family_members/{memberId} {
-      /** Public read khi document có family_id (cách ly theo tenant ở tầng dữ liệu) */
-      allow read: if hasFamilyId(resource.data);
+      /**
+       * Public Read: cho phép read khi document có family_id
+       * (mọi query list/get hợp lệ đều mang family_id trên resource).
+       */
+      allow read: if hasFamilyId(resource.data) || isSuperAdmin();
 
       allow create: if hasFamilyId(request.resource.data)
         && hasNoContactField()
-        && (
-          isFamilyOwner(request.resource.data.family_id)
-          || branchAdminMatches(request.resource.data)
-        );
+        && request.resource.data.keys().hasAll(['tree_logic'])
+        && canWriteMember(request.resource.data);
 
       allow update: if hasFamilyId(resource.data)
         && hasFamilyId(request.resource.data)
         && request.resource.data.family_id == resource.data.family_id
         && hasNoContactField()
         && (
-          isFamilyOwner(resource.data.family_id)
+          isSuperAdmin()
+          || isFamilyOwner(resource.data.family_id)
           || (
             branchAdminMatches(resource.data)
             && branchAdminMatches(request.resource.data)
@@ -95,22 +106,19 @@ service cloud.firestore {
 
       allow delete: if hasFamilyId(resource.data)
         && (
-          isFamilyOwner(resource.data.family_id)
+          isSuperAdmin()
+          || isFamilyOwner(resource.data.family_id)
           || (branchAdminMatches(resource.data) && !pathTooDeepToDelete())
         );
 
-      /* Contact nhạy cảm — không public */
       match /sensitive/{docId} {
-        allow read, write: if isSignedIn()
-          && hasFamilyId(
-            get(/databases/$(database)/documents/family_members/$(memberId)).data
-          )
-          && (
-            isFamilyOwner(
-              get(/databases/$(database)/documents/family_members/$(memberId))
-                .data.family_id
+        allow read, write: if isSuperAdmin()
+          || (
+            isSignedIn()
+            && hasFamilyId(
+              get(/databases/$(database)/documents/family_members/$(memberId)).data
             )
-            || branchAdminMatches(
+            && canWriteMember(
               get(/databases/$(database)/documents/family_members/$(memberId)).data
             )
           );
@@ -120,28 +128,33 @@ service cloud.firestore {
     /* ─── family_relations ───────────────────────────────────── */
 
     match /family_relations/{relationId} {
-      allow read: if hasFamilyId(resource.data);
+      allow read: if hasFamilyId(resource.data) || isSuperAdmin();
 
       allow create: if hasFamilyId(request.resource.data)
-        && (
-          isFamilyOwner(request.resource.data.family_id)
-          || branchAdminMatches(request.resource.data)
-        );
+        && canWriteMember(request.resource.data);
 
       allow update: if hasFamilyId(resource.data)
         && request.resource.data.family_id == resource.data.family_id
         && (
-          isFamilyOwner(resource.data.family_id)
+          isSuperAdmin()
+          || isFamilyOwner(resource.data.family_id)
           || (
-            branchAdminMatches(resource.data)
-            && branchAdminMatches(request.resource.data)
+            isBranchAdmin()
+            && resource.data.family_id == request.auth.token.family_id
+            && resource.data.branch_id == request.auth.token.branch_id
+            && request.resource.data.branch_id == request.auth.token.branch_id
           )
         );
 
       allow delete: if hasFamilyId(resource.data)
         && (
-          isFamilyOwner(resource.data.family_id)
-          || branchAdminMatches(resource.data)
+          isSuperAdmin()
+          || isFamilyOwner(resource.data.family_id)
+          || (
+            isBranchAdmin()
+            && resource.data.family_id == request.auth.token.family_id
+            && resource.data.branch_id == request.auth.token.branch_id
+          )
         );
     }
   }

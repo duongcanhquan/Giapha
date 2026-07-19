@@ -14,9 +14,9 @@ type SearchableMember = FamilyMember & {
 function toSearchable(member: FamilyMember): SearchableMember {
   const parts = [
     member.full_name,
-    member.names?.huy,
-    member.names?.thuy,
-    member.names?.tu,
+    member.traditional_names.birth,
+    member.traditional_names.courtesy,
+    member.traditional_names.posthumous,
     member.notes,
   ]
     .filter(Boolean)
@@ -28,9 +28,6 @@ function toSearchable(member: FamilyMember): SearchableMember {
   };
 }
 
-/**
- * Fuzzy search thành viên — không phân biệt dấu / hoa thường.
- */
 export function searchMembers(
   members: FamilyMember[],
   query: string,

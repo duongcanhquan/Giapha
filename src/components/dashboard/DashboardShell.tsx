@@ -45,16 +45,22 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
             setFamily({
               id: familyId,
               name: sampleFamilyTree.clan_name,
-              description: "Demo dashboard",
               owner_id: "demo",
-              theme: {
-                primary_color: "#7a1f1f",
-                accent_color: "#c9a227",
-                surface_color: "#e9eef3",
+              settings: {
+                description: "Demo dashboard",
+                theme: {
+                  primary_color: "#7a1f1f",
+                  accent_color: "#c9a227",
+                  surface_color: "#e9eef3",
+                },
+                branches: [
+                  {
+                    id: "branch-main",
+                    name: "Chi chính",
+                    description: "Nhánh hương hỏa",
+                  },
+                ],
               },
-              branches: [
-                { id: "branch-main", name: "Chi chính", description: "Nhánh hương hỏa" },
-              ],
             });
             setStatus("ready");
             return;
@@ -80,8 +86,8 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
               f ?? {
                 id: familyId,
                 name: "Gia phả",
-                description: "",
                 owner_id: user.uid,
+                settings: {},
               },
             );
           }
@@ -90,8 +96,8 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
             setFamily({
               id: familyId,
               name: "Gia phả",
-              description: "",
               owner_id: user.uid,
+              settings: {},
             });
           }
         }
@@ -143,7 +149,12 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
           {family?.name ?? "…"}
         </p>
         <p className="mt-1 text-xs text-stone-500">
-          Vai trò: {access?.role === "owner" ? "Family Owner" : "Branch Admin"}
+          Vai trò:{" "}
+          {access?.role === "super_admin"
+            ? "Super Admin"
+            : access?.role === "owner"
+              ? "Family Owner"
+              : "Branch Admin"}
         </p>
 
         <nav className="mt-6 flex flex-col gap-1">

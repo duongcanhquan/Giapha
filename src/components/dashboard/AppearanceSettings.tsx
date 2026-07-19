@@ -26,8 +26,8 @@ export function AppearanceSettings({ familyId }: AppearanceSettingsProps) {
     let cancelled = false;
     void getFamily(familyId)
       .then((family) => {
-        if (cancelled || !family?.theme) return;
-        setTheme({ ...DEFAULT_THEME, ...family.theme });
+        if (cancelled || !family?.settings.theme) return;
+        setTheme({ ...DEFAULT_THEME, ...family.settings.theme });
       })
       .catch(() => {
         /* demo */

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { FamilyMember } from "@/types/genealogy";
+import { memberGeneration } from "@/types/genealogy";
 import {
   Dialog,
   DialogContent,
@@ -22,10 +23,13 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
 
   const storedLunar = useMemo(() => {
     if (!member) return null;
-    if (member.lunar_death_date && !member.death_date) {
-      return { display: `Âm lịch ${member.lunar_death_date}`, iso_like: member.lunar_death_date };
+    if (member.dates.lunar_death && !member.dates.death) {
+      return {
+        display: `Âm lịch ${member.dates.lunar_death}`,
+        iso_like: member.dates.lunar_death,
+      };
     }
-    return toLunarDeathDate(member.death_date);
+    return toLunarDeathDate(member.dates.death);
   }, [member]);
 
   const computed = useMemo(() => {
@@ -41,10 +45,10 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
         <DialogHeader>
           <DialogTitle>{member.full_name || "Khuyết danh"}</DialogTitle>
           <DialogDescription>
-            Đời thứ {member.generation}
+            Đời thứ {memberGeneration(member)}
             {member.is_huong_hoa ? " · Hương hỏa" : ""}
             {" · "}
-            {member.life_status === "LIVING" ? "Đang sống" : "Đã mất"}
+            {member.status.is_alive ? "Đang sống" : "Đã mất"}
           </DialogDescription>
         </DialogHeader>
 
@@ -55,11 +59,17 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
             </h3>
             <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5">
               <dt className="text-[#6a6258]">Tên húy</dt>
-              <dd className="font-medium">{member.names?.huy || "—"}</dd>
+              <dd className="font-medium">
+                {member.traditional_names.birth || "—"}
+              </dd>
               <dt className="text-[#6a6258]">Tên thụy</dt>
-              <dd className="font-medium">{member.names?.thuy || "—"}</dd>
+              <dd className="font-medium">
+                {member.traditional_names.posthumous || "—"}
+              </dd>
               <dt className="text-[#6a6258]">Tên tự</dt>
-              <dd className="font-medium">{member.names?.tu || "—"}</dd>
+              <dd className="font-medium">
+                {member.traditional_names.courtesy || "—"}
+              </dd>
               <dt className="text-[#6a6258]">Họ tên</dt>
               <dd className="font-medium">{member.full_name || "—"}</dd>
             </dl>
@@ -78,29 +88,37 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
             <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
               Lịch giỗ
             </h3>
-            {member.death_date || storedLunar ? (
+            {member.dates.death || storedLunar ? (
               <ul className="mb-3 space-y-1 text-[#3d372f]">
-                {member.death_date ? (
+                {member.dates.death ? (
                   <li>
                     <span className="text-[#6a6258]">Dương lịch: </span>
-                    {member.death_date}
+                    {member.dates.death}
                   </li>
                 ) : null}
                 {storedLunar ? (
                   <li>
                     <span className="text-[#6a6258]">Âm lịch: </span>
                     {storedLunar.display}
-                    {member.lunar_death_date ? (
-                      <span className="text-[#6a6258]"> ({member.lunar_death_date})</span>
+                    {member.dates.lunar_death ? (
+                      <span className="text-[#6a6258]">
+                        {" "}
+                        ({member.dates.lunar_death})
+                      </span>
                     ) : null}
                   </li>
                 ) : null}
               </ul>
             ) : (
-              <p className="mb-3 text-[#6a6258]">Chưa có ngày mất — dùng form bên dưới để tính.</p>
+              <p className="mb-3 text-[#6a6258]">
+                Chưa có ngày mất — dùng form bên dưới để tính.
+              </p>
             )}
 
-            <label htmlFor="gio-solar" className="mb-1 block text-xs font-semibold text-[#3d372f]">
+            <label
+              htmlFor="gio-solar"
+              className="mb-1 block text-xs font-semibold text-[#3d372f]"
+            >
               Tính ngày giỗ từ dương lịch
             </label>
             <input
@@ -112,7 +130,9 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
             />
             {computed?.lunar_display ? (
               <p className="mt-2 rounded-md bg-[#7a1f1f]/08 px-3 py-2 text-[#1c1410]">
-                <span className="font-semibold text-[#7a1f1f]">lunar_death_date: </span>
+                <span className="font-semibold text-[#7a1f1f]">
+                  lunar_death:{" "}
+                </span>
                 {computed.lunar_death_date}
                 <br />
                 <span className="text-[#5c564e]">{computed.lunar_display}</span>
@@ -130,7 +150,7 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
                   <li key={s.id}>
                     {s.full_name}{" "}
                     <span className="text-[#6a6258]">
-                      ({s.life_status === "LIVING" ? "đang sống" : "đã mất"})
+                      ({s.is_alive === false ? "đã mất" : "đang sống"})
                     </span>
                   </li>
                 ))}

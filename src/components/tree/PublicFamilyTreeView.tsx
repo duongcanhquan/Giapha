@@ -23,7 +23,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
     return `${window.location.origin}/tree/${familyId}`;
   }, [familyId]);
 
-  const theme = family?.theme;
+  const theme = family?.settings.theme;
   const primary = theme?.primary_color ?? "#7a1f1f";
   const surface = theme?.surface_color ?? "#e9eef3";
 
@@ -79,7 +79,8 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
               Dòng họ {tree.clan_name}
             </h1>
             <p className="mt-1 max-w-xl text-sm text-stone-600">
-              {family?.description || "Chế độ chỉ đọc — không thể thêm/sửa/xóa."}
+              {family?.settings.description ||
+                "Chế độ chỉ đọc — không thể thêm/sửa/xóa."}
             </p>
           </div>
 
@@ -112,7 +113,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
             className="h-[calc(100vh-12rem)]"
             onMemberDoubleClick={(id) => {
               const m = tree.members.find((x) => x.id === id) ?? null;
-              if (!m || m.is_placeholder) return;
+              if (!m || m.status.is_placeholder) return;
               setProfileMember(m);
               setProfileOpen(true);
             }}

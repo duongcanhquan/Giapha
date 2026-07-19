@@ -2,7 +2,7 @@ import type { User } from "firebase/auth";
 import { getFamily } from "@/services/familyService";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 
-export type FamilyAccessRole = "owner" | "branch_admin" | null;
+export type FamilyAccessRole = "super_admin" | "owner" | "branch_admin" | null;
 
 export type FamilyAccess = {
   allowed: boolean;
@@ -11,8 +11,8 @@ export type FamilyAccess = {
 };
 
 /**
- * Kiểm tra user có quyền quản trị `familyId`
- * (Family Owner hoặc Branch Admin của đúng family).
+ * Kiểm tra quyền quản trị `familyId`:
+ * Super Admin · Family Owner · Branch Admin.
  */
 export async function checkFamilyAdminAccess(
   familyId: string,
@@ -22,12 +22,19 @@ export async function checkFamilyAdminAccess(
     return { allowed: false, role: null };
   }
 
-  // Demo bypass khi chưa cấu hình Firebase
-  if (!isFirebaseConfigured() && (familyId === "demo" || familyId === "family-demo-nguyen")) {
+  if (
+    !isFirebaseConfigured() &&
+    (familyId === "demo" || familyId === "family-demo-nguyen")
+  ) {
     return { allowed: true, role: "owner" };
   }
 
   try {
+    const token = await user.getIdTokenResult(true);
+    if (token.claims.role === "super_admin") {
+      return { allowed: true, role: "super_admin" };
+    }
+
     const family = await getFamily(familyId);
     if (!family) {
       return { allowed: false, role: null };
@@ -37,13 +44,11 @@ export async function checkFamilyAdminAccess(
       return { allowed: true, role: "owner" };
     }
 
-    const token = await user.getIdTokenResult(true);
-    const role = token.claims.role;
     const claimFamilyId = token.claims.family_id;
     const claimBranchId = token.claims.branch_id;
 
     if (
-      role === "branch_admin" &&
+      token.claims.role === "branch_admin" &&
       typeof claimFamilyId === "string" &&
       claimFamilyId === familyId
     ) {

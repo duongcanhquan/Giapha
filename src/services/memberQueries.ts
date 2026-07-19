@@ -11,8 +11,8 @@ import type { FamilyMember } from "@/types/genealogy";
 const MEMBERS = "family_members";
 
 /**
- * Query kết hợp family_id + branch_id (+ optional path contains)
- * — cần composite indexes trong firestore.indexes.json.
+ * Query kết hợp family_id + tree_logic.branch_id (+ optional path contains).
+ * Indexes: xem firestore.indexes.json.
  */
 export async function queryMembersByFamilyBranch(
   familyId: string,
@@ -21,19 +21,18 @@ export async function queryMembersByFamilyBranch(
 ): Promise<FamilyMember[]> {
   const constraints: QueryConstraint[] = [
     where("family_id", "==", familyId),
-    where("branch_id", "==", branchId),
+    where("tree_logic.branch_id", "==", branchId),
   ];
 
   if (options?.pathContains) {
-    constraints.push(where("path", "array-contains", options.pathContains));
+    constraints.push(
+      where("tree_logic.path", "array-contains", options.pathContains),
+    );
   }
 
   const snap = await getDocs(query(collection(getDb(), MEMBERS), ...constraints));
-  return snap.docs.map((d) => {
-    const data = d.data();
-    return {
-      id: d.id,
-      ...(data as Omit<FamilyMember, "id">),
-    };
-  });
+  return snap.docs.map((d) => ({
+    id: d.id,
+    ...(d.data() as Omit<FamilyMember, "id">),
+  }));
 }

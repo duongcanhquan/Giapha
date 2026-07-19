@@ -81,13 +81,6 @@ async function writeContact(
   );
 }
 
-function publicMemberPayload(member: FamilyMember): Record<string, unknown> {
-  return {
-    ...member,
-    updated_at: nowIso(),
-  };
-}
-
 async function createRelation(params: {
   familyId: string;
   branchId: string;
@@ -103,16 +96,11 @@ async function createRelation(params: {
     source: params.parentId,
     target: params.childId,
     relationship_type: params.relationshipType,
-    tree_logic: { branch_id: params.branchId },
   };
   await setDoc(ref, relation);
   return relation;
 }
 
-/**
- * Thêm thành viên — bắt buộc `family_id`.
- * `path` = path(parent) + [newId] (kể cả qua PlaceholderNode).
- */
 export async function addMember(
   input: AddMemberInput,
 ): Promise<{ member: FamilyMember; relation: FamilyRelation }> {
@@ -128,33 +116,35 @@ export async function addMember(
   const ref = input.id ? memberRef(input.id) : doc(membersCol());
   const id = ref.id;
   const branchId =
-    input.branch_id ??
-    input.tree_logic?.branch_id ??
-    parent.branch_id ??
-    parent.tree_logic.branch_id;
-
-  const path = buildMaterializedPath(parent.path, id);
-  const generation = parent.generation + 1;
+    input.branch_id ?? parent.tree_logic.branch_id;
+  const relationshipType = input.relationship_type ?? "BLOOD";
+  const path = buildMaterializedPath(parent.tree_logic.path, id);
 
   const member: FamilyMember = {
     id,
     family_id: input.family_id,
-    branch_id: branchId,
     full_name: input.full_name,
-    generation,
-    life_status: input.life_status ?? "LIVING",
+    traditional_names: input.traditional_names ?? {},
+    status: {
+      is_alive: input.is_alive ?? true,
+      is_placeholder: false,
+    },
+    dates: {
+      birth: input.dates?.birth ?? null,
+      death: input.dates?.death ?? null,
+      lunar_death: input.dates?.lunar_death ?? null,
+    },
+    tree_logic: {
+      parent_id: input.parent_id,
+      path,
+      branch_id: branchId,
+      relationship_type: relationshipType,
+      position: parent.tree_logic.position,
+    },
+    spouses: input.spouses ?? [],
     gender: input.gender ?? "UNKNOWN",
     is_huong_hoa: input.is_huong_hoa ?? false,
-    is_placeholder: false,
-    spouses: input.spouses ?? [],
-    parent_ids: [input.parent_id],
-    path,
-    tree_logic: {
-      branch_id: branchId,
-      position: input.tree_logic?.position ?? parent.tree_logic.position,
-    },
-    birth_year: input.birth_year ?? null,
-    death_year: input.death_year ?? null,
+    biography: input.biography ?? null,
     notes: input.notes,
     created_at: nowIso(),
     updated_at: nowIso(),
@@ -162,7 +152,7 @@ export async function addMember(
 
   const batch = writeBatch(getDb());
   batch.set(ref, {
-    ...publicMemberPayload(member),
+    ...member,
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
   });
@@ -174,8 +164,7 @@ export async function addMember(
     branch_id: branchId,
     source: input.parent_id,
     target: id,
-    relationship_type: input.relationship_type ?? "BLOOD",
-    tree_logic: { branch_id: branchId },
+    relationship_type: relationshipType,
   };
   batch.set(relationRef, relation);
   await batch.commit();
@@ -204,13 +193,11 @@ export async function updateMember(
   };
 
   delete patch.id;
-  delete patch.path;
   delete patch.family_id;
   delete patch.contact;
-
-  // Giữ branch_id và tree_logic.branch_id đồng bộ nếu cập nhật một trong hai
-  if (typeof patch.branch_id === "string") {
-    patch["tree_logic.branch_id"] = patch.branch_id;
+  if (patch.tree_logic && typeof patch.tree_logic === "object") {
+    const logic = patch.tree_logic as Record<string, unknown>;
+    delete logic.path;
   }
 
   if (Object.keys(publicFields).length > 0) {
@@ -250,39 +237,33 @@ export async function addPlaceholderNode(
 
   const ref = input.id ? memberRef(input.id) : doc(membersCol());
   const id = ref.id;
-  const branchId =
-    input.branch_id ??
-    input.tree_logic?.branch_id ??
-    parent.branch_id ??
-    parent.tree_logic.branch_id;
-  const path = buildMaterializedPath(parent.path, id);
+  const branchId = input.branch_id ?? parent.tree_logic.branch_id;
+  const relationshipType = input.relationship_type ?? "BLOOD";
+  const path = buildMaterializedPath(parent.tree_logic.path, id);
 
   const member: FamilyMember = {
     id,
     family_id: input.family_id,
-    branch_id: branchId,
     full_name: "",
-    generation: input.generation ?? parent.generation + 1,
-    life_status: "DECEASED",
+    traditional_names: {},
+    status: { is_alive: false, is_placeholder: true },
+    dates: { birth: null, death: null, lunar_death: null },
+    tree_logic: {
+      parent_id: input.parent_id,
+      path,
+      branch_id: branchId,
+      relationship_type: relationshipType,
+    },
+    spouses: [],
     gender: "UNKNOWN",
     is_huong_hoa: false,
-    is_placeholder: true,
-    spouses: [],
-    parent_ids: [input.parent_id],
-    path,
-    tree_logic: {
-      branch_id: branchId,
-      position: input.tree_logic?.position,
-    },
-    birth_year: null,
-    death_year: null,
     notes: input.notes ?? "Khuyết danh",
     created_at: nowIso(),
     updated_at: nowIso(),
   };
 
   await setDoc(ref, {
-    ...publicMemberPayload(member),
+    ...member,
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
   });
@@ -292,7 +273,7 @@ export async function addPlaceholderNode(
     branchId,
     parentId: input.parent_id,
     childId: id,
-    relationshipType: input.relationship_type ?? "BLOOD",
+    relationshipType,
   });
 
   return { member, relation };

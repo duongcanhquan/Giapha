@@ -4,6 +4,7 @@ import { useState } from "react";
 import { DashboardPanelSkeleton } from "@/components/ui/skeleton";
 import { useFamilyTree } from "@/hooks/useFamilyTree";
 import { appToast } from "@/lib/toast";
+import { memberGeneration } from "@/types/genealogy";
 
 type MembersManagerProps = {
   familyId: string;
@@ -45,7 +46,7 @@ export function MembersManager({ familyId }: MembersManagerProps) {
             Quản lý Thành viên
           </h1>
           <p className="mt-1 text-sm text-stone-600">
-            {members.length} người · dữ liệu cache SWR (không reload khi chuyển trang).
+            {members.length} người · schema `family_id` + `tree_logic.path`.
           </p>
         </div>
         <button
@@ -53,7 +54,7 @@ export function MembersManager({ familyId }: MembersManagerProps) {
           className="rounded-lg bg-[#7a1f1f] px-3 py-2 text-sm font-semibold text-[#fffdf8]"
           onClick={() => {
             const text =
-              "Dùng addMember / addPlaceholderNode để ghi Firestore. Danh sách dùng cache SWR.";
+              "Dùng addMember / addPlaceholderNode để ghi Firestore (Materialized Path).";
             setMessage(text);
             appToast.info("Thêm thành viên", text);
           }}
@@ -83,15 +84,15 @@ export function MembersManager({ familyId }: MembersManagerProps) {
             {members.map((m) => (
               <tr key={m.id} className="border-b border-stone-100 last:border-0">
                 <td className="px-3 py-2 font-medium">
-                  {m.is_placeholder ? "? Khuyết danh" : m.full_name}
+                  {m.status.is_placeholder ? "? Khuyết danh" : m.full_name}
                 </td>
-                <td className="px-3 py-2">{m.generation}</td>
-                <td className="px-3 py-2">{m.branch_id}</td>
+                <td className="px-3 py-2">{memberGeneration(m)}</td>
+                <td className="px-3 py-2">{m.tree_logic.branch_id}</td>
                 <td className="px-3 py-2">
-                  {m.life_status === "LIVING" ? "Đang sống" : "Đã mất"}
+                  {m.status.is_alive ? "Đang sống" : "Đã mất"}
                 </td>
                 <td className="px-3 py-2 font-mono text-xs text-stone-500">
-                  {m.path.join(" → ")}
+                  {m.tree_logic.path.join(" → ")}
                 </td>
               </tr>
             ))}

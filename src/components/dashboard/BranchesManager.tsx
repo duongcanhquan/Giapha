@@ -25,8 +25,8 @@ export function BranchesManager({ familyId }: BranchesManagerProps) {
     let cancelled = false;
     void getFamily(familyId)
       .then((family) => {
-        if (cancelled || !family?.branches?.length) return;
-        setBranches(family.branches);
+        if (cancelled || !family?.settings.branches?.length) return;
+        setBranches(family.settings.branches);
       })
       .catch(() => {
         /* demo / offline */

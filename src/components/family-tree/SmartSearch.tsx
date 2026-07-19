@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import type { FamilyMember } from "@/types/genealogy";
+import { memberGeneration } from "@/types/genealogy";
 import { searchMembers } from "@/lib/search/member-search";
 
 type SmartSearchProps = {
@@ -15,7 +16,7 @@ export function SmartSearch({ members, onSelect }: SmartSearchProps) {
   const [open, setOpen] = useState(false);
 
   const hits = useMemo(
-    () => searchMembers(members.filter((m) => !m.is_placeholder), query, 8),
+    () => searchMembers(members.filter((m) => !m.status.is_placeholder), query, 8),
     [members, query],
   );
 
@@ -55,7 +56,9 @@ export function SmartSearch({ members, onSelect }: SmartSearchProps) {
                 }}
               >
                 <span>{member.full_name}</span>
-                <span className="ft-smart-search__meta">Đời {member.generation}</span>
+                <span className="ft-smart-search__meta">
+                  Đời {memberGeneration(member)}
+                </span>
               </button>
             </li>
           ))}

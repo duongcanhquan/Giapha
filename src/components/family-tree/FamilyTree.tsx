@@ -28,9 +28,9 @@ import "@xyflow/react/dist/style.css";
 import type {
   FamilyMember,
   FamilyTreeData,
-  LifeStatus,
   PlaceholderUpdatePayload,
 } from "@/types/genealogy";
+import { memberGeneration } from "@/types/genealogy";
 import {
   buildFlowGraph,
   type FamilyFlowEdge,
@@ -307,14 +307,14 @@ function FamilyTreeInner({
     onPlaceholderUpdate?.({
       id: editingId,
       full_name,
-      life_status: (form.get("life_status") as LifeStatus) || "LIVING",
+      is_alive: form.get("life_status") !== "DECEASED",
       gender: (form.get("gender") as PlaceholderUpdatePayload["gender"]) || "UNKNOWN",
     });
     setEditingId(null);
   };
 
   const livingIds = data.members
-    .filter((m) => !m.is_placeholder)
+    .filter((m) => !m.status.is_placeholder)
     .map((m) => m.id);
 
   return (
@@ -385,7 +385,7 @@ function FamilyTreeInner({
             nodeStrokeWidth={2}
             nodeColor={(node) => {
               if (node.type === "placeholder") return "#a8a29a";
-              const status = (node.data as { lifeStatus?: LifeStatus }).lifeStatus;
+              const status = (node.data as { lifeStatus?: string }).lifeStatus;
               return status === "DECEASED" ? "#6b5a3e" : "#2f7d4a";
             }}
           />
@@ -404,7 +404,7 @@ function FamilyTreeInner({
           >
             <h2 id="ft-placeholder-title">Cập nhật khuyết danh</h2>
             <p>
-              Đời thứ {editingMember.generation} · id{" "}
+              Đời thứ {memberGeneration(editingMember)} · id{" "}
               <code>{editingMember.id}</code>
             </p>
             <label htmlFor="full_name">Họ và tên</label>
@@ -419,7 +419,7 @@ function FamilyTreeInner({
             <select
               id="life_status"
               name="life_status"
-              defaultValue={editingMember.life_status}
+              defaultValue={editingMember.status.is_alive ? "LIVING" : "DECEASED"}
             >
               <option value="LIVING">Đang sống</option>
               <option value="DECEASED">Đã mất</option>

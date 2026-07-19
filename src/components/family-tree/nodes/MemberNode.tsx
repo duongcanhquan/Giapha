@@ -3,15 +3,23 @@
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { motion } from "framer-motion";
 import { Flame, Flower2 } from "lucide-react";
-import type { LifeStatus, SpouseInfo } from "@/types/genealogy";
+
+export type NodeLifeStatus = "LIVING" | "DECEASED";
+
+export type NodeSpouse = {
+  id: string;
+  full_name: string;
+  life_status: NodeLifeStatus;
+  is_placeholder?: boolean;
+};
 
 export type MemberNodeData = {
   memberId: string;
   fullName: string;
   generation: number;
-  lifeStatus: LifeStatus;
+  lifeStatus: NodeLifeStatus;
   isHuongHoa: boolean;
-  spouses: SpouseInfo[];
+  spouses: NodeSpouse[];
   path: string[];
   dimmed?: boolean;
   highlighted?: boolean;
@@ -19,7 +27,7 @@ export type MemberNodeData = {
 
 export type MemberFlowNode = Node<MemberNodeData, "member">;
 
-function SpouseChip({ spouse }: { spouse: SpouseInfo }) {
+function SpouseChip({ spouse }: { spouse: NodeSpouse }) {
   const deceased = spouse.life_status === "DECEASED";
   return (
     <div

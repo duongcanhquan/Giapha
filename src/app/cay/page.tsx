@@ -25,8 +25,11 @@ function FamilyTreePageInner() {
           ? {
               ...m,
               full_name: payload.full_name,
-              is_placeholder: false,
-              life_status: payload.life_status ?? m.life_status,
+              status: {
+                ...m.status,
+                is_placeholder: false,
+                is_alive: payload.is_alive ?? m.status.is_alive,
+              },
               gender: payload.gender ?? m.gender,
             }
           : m,
@@ -36,7 +39,7 @@ function FamilyTreePageInner() {
 
   const openProfile = (memberId: string) => {
     const member = data.members.find((m) => m.id === memberId) ?? null;
-    if (!member || member.is_placeholder) return;
+    if (!member || member.status.is_placeholder) return;
     setProfileMember(member);
     setProfileOpen(true);
   };
