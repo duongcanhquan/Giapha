@@ -66,7 +66,7 @@ export const clanStory = {
       id: "ms6",
       era: "Hôm nay",
       title: "Gia phả số",
-      body: "Cây tương tác, tra cứu tên húy/thụy, chia sẻ link trong họ và xuất bản đồ in ấn — hương hỏa bước sang thời đại số.",
+      body: "Đăng nhập là vào đúng sổ nhà mình. Tìm tên húy/thụy trên cây, gửi link cho họ hàng khi cần, xuất bản đồ in ấn — hương hỏa bước sang thời đại số.",
       side: "right",
       icon: "tree",
     },

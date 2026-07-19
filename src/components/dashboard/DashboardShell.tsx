@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SuperAdminBanner } from "@/components/admin/SuperAdminBanner";
+import { CopyShareLinkButton } from "@/components/share/CopyShareLinkButton";
 import { subscribeAuth, signOutUser } from "@/services/authService";
 import { checkFamilyAdminAccess, type FamilyAccess } from "@/services/accessService";
 import { getFamily } from "@/services/familyService";
@@ -27,6 +28,10 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
   const [status, setStatus] = useState<"loading" | "ready" | "denied">("loading");
   const [access, setAccess] = useState<FamilyAccess | null>(null);
   const [family, setFamily] = useState<Family | null>(null);
+  const shareUrl = useMemo(() => {
+    if (typeof window === "undefined") return `/tree/${familyId}`;
+    return `${window.location.origin}/tree/${familyId}`;
+  }, [familyId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -150,15 +155,14 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
                 Cổng Super Admin
               </Link>
             ) : null}
-            <Link
-              href={`/tree/${familyId}`}
-              className="block text-sm font-semibold text-[var(--gp-lacquer)] hover:underline"
-            >
-              Xem cây công khai
-            </Link>
+            <CopyShareLinkButton
+              url={shareUrl}
+              label="Copy link gửi họ hàng"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--gp-lacquer)] hover:underline"
+            />
             <button
               type="button"
-              className="text-sm text-[var(--gp-muted)] hover:underline"
+              className="block text-sm text-[var(--gp-muted)] hover:underline"
               onClick={() => void signOutUser().then(() => router.replace("/"))}
             >
               Đăng xuất
@@ -167,17 +171,16 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)]/90 px-4 py-3 md:hidden">
+          <header className="flex items-center justify-between gap-2 border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)]/90 px-4 py-3 md:hidden">
             <div>
               <p className="gp-eyebrow">Quản trị</p>
               <p className="font-display font-semibold">{family?.name}</p>
             </div>
-            <Link
-              href={`/tree/${familyId}`}
-              className="text-sm font-semibold text-[var(--gp-lacquer)]"
-            >
-              Cây công khai
-            </Link>
+            <CopyShareLinkButton
+              url={shareUrl}
+              label="Copy link"
+              className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--gp-lacquer)]"
+            />
           </header>
 
           <nav className="flex gap-1 overflow-x-auto border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] px-2 py-2 md:hidden">

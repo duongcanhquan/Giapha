@@ -79,7 +79,7 @@ export function AppearanceSettings({ familyId }: AppearanceSettingsProps) {
           Thiết lập Giao diện
         </h1>
         <p className="mt-1 text-sm text-stone-600">
-          Ảnh nền và màu sắc áp dụng cho trang cây công khai `/tree/{familyId}`.
+          Ảnh nền và màu sắc áp dụng khi họ hàng mở link chia sẻ của dòng họ.
         </p>
       </div>
 

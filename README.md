@@ -55,10 +55,10 @@ npm run dev
 
 | Route | Vai trò |
 |-------|---------|
-| `/` | Landing — đăng nhập / đăng ký |
+| `/` | Landing — đăng nhập / đăng ký (không có tra cứu cây chung) |
 | `/login` · `/register` | Vào đúng gia phả nhà mình hoặc tạo mới |
-| `/tree/[familyId]` | Khách — chỉ xem khi có link chia sẻ |
-| `/dashboard/[familyId]` | Admin (Owner / Branch / Super) |
+| `/dashboard/[familyId]` | Admin — sau đăng nhập |
+| `/tree/[familyId]` | Chỉ mở khi có link chủ họ copy gửi |
 
 ## Deploy (Vercel)
 
