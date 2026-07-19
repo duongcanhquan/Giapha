@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
   type FormEvent,
   type Ref,
+  useRef,
 } from "react";
 import {
   Background,
@@ -37,6 +38,16 @@ import {
   type FamilyFlowNode,
 } from "@/lib/genealogy/build-flow";
 import { traceRoute as resolveTraceRoute } from "@/lib/genealogy/highlight-path";
+import {
+  buildChildrenIndex,
+  computeCompactCollapsedIds,
+  countDescendants,
+  expandAncestors,
+  filterVisibleMembers,
+  filterVisibleRelations,
+  lineageNeighborhoodIds,
+  type ViewMode,
+} from "@/lib/genealogy/visible-tree";
 import { MemberNode } from "./nodes/MemberNode";
 import { PlaceholderNode } from "./nodes/PlaceholderNode";
 import { RelationshipEdge } from "./edges/RelationshipEdge";
@@ -74,39 +85,28 @@ const edgeTypes = {
   relationship: RelationshipEdge,
 } satisfies EdgeTypes;
 
+const LARGE_TREE_THRESHOLD = 80;
+
 export type FamilyTreeHandle = {
-  /**
-   * Trace Route: trích `path`, mờ node/edge ngoài path (opacity 0.2),
-   * tô sáng path, fitView/setCenter tới target.
-   */
   traceRoute: (targetId: string) => void;
   /** @deprecated dùng `traceRoute` */
   highlightPath: (targetId: string) => void;
   clearHighlight: () => void;
   fitView: () => void;
-  /** Zoom/Pan tới node (Smart Search) */
   focusMember: (targetId: string) => void;
 };
 
 export type FamilyTreeProps = {
   data: FamilyTreeData;
   className?: string;
-  /** Gọi khi người dùng cập nhật placeholder từ form */
   onPlaceholderUpdate?: (payload: PlaceholderUpdatePayload) => void;
-  /** Double-click node → mở hồ sơ (ProfileModal) */
   onMemberDoubleClick?: (memberId: string) => void;
-  /** Highlight sẵn khi mount (tuỳ chọn) */
   initialHighlightId?: string | null;
   showToolbar?: boolean;
   showMiniMap?: boolean;
   showControls?: boolean;
   showBackground?: boolean;
-  /** Tắt pan/zoom/drag — dùng khi xuất PDF */
   interactive?: boolean;
-  /**
-   * Chế độ khách (public tree): ẩn Thêm/Sửa/Xóa & form placeholder.
-   * Vẫn cho phép pan/zoom/minimap và xem hồ sơ (double-click).
-   */
   readOnly?: boolean;
 };
 
@@ -199,6 +199,62 @@ function FamilyTreeInner({
   const [highlightId, setHighlightId] = useState<string | null>(
     initialHighlightId,
   );
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    data.members.length >= LARGE_TREE_THRESHOLD ? "compact" : "full",
+  );
+  const [branchFilter, setBranchFilter] = useState<string | null>(null);
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
+  const seededForFamily = useRef<string | null>(null);
+
+  const childrenIndex = useMemo(
+    () => buildChildrenIndex(data.members),
+    [data.members],
+  );
+
+  // Seed gom nhánh một lần khi đổi gia phả / lần đầu có dữ liệu
+  useEffect(() => {
+    const familyKey = data.family_id ?? data.clan_name;
+    if (!data.members.length) return;
+    if (seededForFamily.current === familyKey) return;
+    seededForFamily.current = familyKey;
+
+    const large = data.members.length >= LARGE_TREE_THRESHOLD;
+    setViewMode(large ? "compact" : "full");
+    setBranchFilter(null);
+    setHighlightId(initialHighlightId);
+    setCollapsedIds(
+      large
+        ? computeCompactCollapsedIds(data.members, childrenIndex, 3)
+        : new Set(),
+    );
+  }, [
+    data.family_id,
+    data.clan_name,
+    data.members,
+    childrenIndex,
+    initialHighlightId,
+  ]);
+
+  const includeIds = useMemo(() => {
+    if (viewMode !== "lineage" || !highlightId) return null;
+    return lineageNeighborhoodIds(data.members, highlightId, childrenIndex);
+  }, [viewMode, highlightId, data.members, childrenIndex]);
+
+  const visibleData = useMemo((): FamilyTreeData => {
+    const members = filterVisibleMembers(data.members, {
+      collapsedIds,
+      branchId: branchFilter,
+      includeIds,
+    });
+    // Nếu lọc chi làm mất thủy tổ path-connect — vẫn OK vì mỗi nhánh có subtree
+    const visibleIds = new Set(members.map((m) => m.id));
+    const relations = filterVisibleRelations(data.relations, visibleIds);
+    return {
+      ...data,
+      members,
+      relations,
+    };
+  }, [data, collapsedIds, branchFilter, includeIds]);
 
   const fitViewOptions = useMemo(
     () => ({
@@ -209,19 +265,56 @@ function FamilyTreeInner({
     [isMobile],
   );
 
-  const openUpdate = useCallback((memberId: string) => {
-    if (readOnly) return;
-    setEditingId(memberId);
-  }, [readOnly]);
+  const openUpdate = useCallback(
+    (memberId: string) => {
+      if (readOnly) return;
+      setEditingId(memberId);
+    },
+    [readOnly],
+  );
 
-  const baseGraph = useMemo(() => buildFlowGraph(data), [data]);
+  const toggleCollapse = useCallback((memberId: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(memberId)) next.delete(memberId);
+      else next.add(memberId);
+      return next;
+    });
+  }, []);
+
+  const baseGraph = useMemo(
+    () => buildFlowGraph(visibleData),
+    [visibleData],
+  );
+
+  const enrichedNodes = useMemo(() => {
+    return baseGraph.nodes.map((node) => {
+      if (node.type !== "member") return node;
+      const childCount =
+        "childCount" in node.data ? (node.data.childCount as number) : 0;
+      const collapsed = collapsedIds.has(node.id);
+      const hiddenDescendantCount = collapsed
+        ? countDescendants(node.id, childrenIndex)
+        : 0;
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          collapsed,
+          hiddenDescendantCount,
+          onToggleCollapse: childCount > 0 ? toggleCollapse : undefined,
+        },
+      };
+    });
+  }, [baseGraph.nodes, collapsedIds, childrenIndex, toggleCollapse]);
 
   const seeded = useMemo(() => {
     const withHandlers = attachPlaceholderHandler(
-      baseGraph.nodes,
+      enrichedNodes,
       openUpdate,
       readOnly,
     );
+    // Highlight relative to FULL tree path so ancestors stay marked even if filtered
     return applyHighlight(
       withHandlers,
       baseGraph.edges,
@@ -229,7 +322,15 @@ function FamilyTreeInner({
       data.relations,
       highlightId,
     );
-  }, [baseGraph, data.members, data.relations, highlightId, openUpdate, readOnly]);
+  }, [
+    enrichedNodes,
+    baseGraph.edges,
+    data.members,
+    data.relations,
+    highlightId,
+    openUpdate,
+    readOnly,
+  ]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(seeded.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(seeded.edges);
@@ -262,21 +363,56 @@ function FamilyTreeInner({
     [centerOnTarget],
   );
 
-  const traceRoute = useCallback(
+  const revealAndFocus = useCallback(
     (targetId: string) => {
+      const member = data.members.find((m) => m.id === targetId);
+      if (!member) return;
+
+      // Mở đường tổ tiên + bỏ lọc chi nếu cần để thấy người đó
+      setCollapsedIds((prev) => expandAncestors(prev, member.tree_logic.path));
+      if (
+        branchFilter &&
+        member.tree_logic.branch_id !== branchFilter
+      ) {
+        setBranchFilter(null);
+      }
       setHighlightId(targetId);
+      if (viewMode === "lineage") {
+        // keep lineage mode — includeIds updates via highlightId
+      }
+
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           const node = getNode(targetId);
           if (node) {
-            centerOnTarget(targetId);
+            centerOnTarget(targetId, 1.25);
           } else {
-            void fitView({ ...fitViewOptions, duration: 400 });
+            // chờ re-layout sau expand
+            window.setTimeout(() => {
+              const n2 = getNode(targetId);
+              if (n2) centerOnTarget(targetId, 1.25);
+              else void fitView({ ...fitViewOptions, duration: 400 });
+            }, 80);
           }
         });
       });
     },
-    [centerOnTarget, fitView, fitViewOptions, getNode],
+    [
+      data.members,
+      branchFilter,
+      viewMode,
+      getNode,
+      centerOnTarget,
+      fitView,
+      fitViewOptions,
+    ],
+  );
+
+  const traceRoute = useCallback(
+    (targetId: string) => {
+      revealAndFocus(targetId);
+    },
+    [revealAndFocus],
   );
 
   const clearHighlight = useCallback(() => {
@@ -298,14 +434,34 @@ function FamilyTreeInner({
     [traceRoute, clearHighlight, focusMember, fitView, fitViewOptions],
   );
 
-  /** Mobile: khởi động Fit View vừa màn hình */
   useEffect(() => {
     if (!isMobile) return;
     const t = window.setTimeout(() => {
       void fitView({ ...fitViewOptions, duration: 0 });
     }, 80);
     return () => window.clearTimeout(t);
-  }, [isMobile, fitView, fitViewOptions, data.members.length]);
+  }, [isMobile, fitView, fitViewOptions, visibleData.members.length]);
+
+  // Fit lại khi gom/mở nhánh đổi layout
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      if (highlightId) {
+        const node = getNode(highlightId);
+        if (node) centerOnTarget(highlightId, 1.1);
+        else void fitView({ ...fitViewOptions, duration: 280 });
+      }
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [
+    collapsedIds,
+    branchFilter,
+    viewMode,
+    highlightId,
+    getNode,
+    centerOnTarget,
+    fitView,
+    fitViewOptions,
+  ]);
 
   const editingMember = editingId
     ? data.members.find((m) => m.id === editingId)
@@ -322,14 +478,15 @@ function FamilyTreeInner({
       id: editingId,
       full_name,
       is_alive: form.get("life_status") !== "DECEASED",
-      gender: (form.get("gender") as PlaceholderUpdatePayload["gender"]) || "UNKNOWN",
+      gender:
+        (form.get("gender") as PlaceholderUpdatePayload["gender"]) || "UNKNOWN",
     });
     setEditingId(null);
   };
 
-  const livingIds = data.members
-    .filter((m) => !m.status.is_placeholder)
-    .map((m) => m.id);
+  const branches = data.branches ?? [];
+  const visibleCount = visibleData.members.length;
+  const totalCount = data.members.length;
 
   return (
     <div className={["ft-root", className].filter(Boolean).join(" ")}>
@@ -337,30 +494,78 @@ function FamilyTreeInner({
         <div className="ft-toolbar" aria-label="Công cụ cây">
           <SmartSearch
             members={data.members}
-            onSelect={(id) => {
-              focusMember(id);
-              traceRoute(id);
-            }}
+            branches={branches}
+            onSelect={(id) => revealAndFocus(id)}
           />
+
+          <div className="ft-toolbar__modes" role="group" aria-label="Chế độ xem">
+            <button
+              type="button"
+              data-active={viewMode === "compact"}
+              onClick={() => {
+                setViewMode("compact");
+                setCollapsedIds(
+                  computeCompactCollapsedIds(data.members, childrenIndex, 3),
+                );
+              }}
+              title="Thu gọn từ đời 3 — dễ đọc cây dài"
+            >
+              Gom nhánh
+            </button>
+            <button
+              type="button"
+              data-active={viewMode === "full"}
+              onClick={() => {
+                setViewMode("full");
+                setCollapsedIds(new Set());
+              }}
+              title="Hiện toàn bộ node"
+            >
+              Toàn cây
+            </button>
+            <button
+              type="button"
+              data-active={viewMode === "lineage"}
+              disabled={!highlightId}
+              onClick={() => setViewMode("lineage")}
+              title="Chỉ tổ tiên, anh em và con của người đang chọn"
+            >
+              Dòng họ gần
+            </button>
+          </div>
+
+          {branches.length > 0 ? (
+            <div className="ft-toolbar__branches" role="group" aria-label="Lọc chi">
+              <button
+                type="button"
+                data-active={branchFilter === null}
+                onClick={() => setBranchFilter(null)}
+              >
+                Mọi chi
+              </button>
+              {branches.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  data-active={branchFilter === b.id}
+                  onClick={() =>
+                    setBranchFilter((cur) => (cur === b.id ? null : b.id))
+                  }
+                  title={b.description || b.name}
+                >
+                  {b.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
           <button type="button" onClick={() => clearHighlight()}>
             Xoá highlight
           </button>
-          {!isMobile
-            ? livingIds.slice(0, 3).map((id) => {
-                const m = data.members.find((x) => x.id === id);
-                if (!m) return null;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => traceRoute(id)}
-                    title={`Trace: ${m.full_name || id}`}
-                  >
-                    Trace {m.full_name || id}
-                  </button>
-                );
-              })
-            : null}
+
+          <span className="ft-toolbar__count" title="Số người đang hiện / tổng">
+            {visibleCount}/{totalCount}
+          </span>
         </div>
       ) : null}
 
@@ -369,6 +574,10 @@ function FamilyTreeInner({
         edges={edges}
         onNodesChange={interactive ? onNodesChange : undefined}
         onEdgesChange={interactive ? onEdgesChange : undefined}
+        onNodeClick={(_, node) => {
+          if (!interactive) return;
+          revealAndFocus(node.id);
+        }}
         onNodeDoubleClick={(_, node) => {
           onMemberDoubleClick?.(node.id);
         }}
@@ -377,7 +586,7 @@ function FamilyTreeInner({
         fitView
         fitViewOptions={fitViewOptions}
         onlyRenderVisibleElements
-        minZoom={0.15}
+        minZoom={0.08}
         maxZoom={2}
         panOnScroll={interactive}
         panOnDrag={interactive}
@@ -433,7 +642,9 @@ function FamilyTreeInner({
             <select
               id="life_status"
               name="life_status"
-              defaultValue={editingMember.status.is_alive ? "LIVING" : "DECEASED"}
+              defaultValue={
+                editingMember.status.is_alive ? "LIVING" : "DECEASED"
+              }
             >
               <option value="LIVING">Đang sống</option>
               <option value="DECEASED">Đã mất</option>

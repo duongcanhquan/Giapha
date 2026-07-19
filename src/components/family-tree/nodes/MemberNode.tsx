@@ -2,7 +2,7 @@
 
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { motion } from "framer-motion";
-import { Flame, Flower2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Flame, Flower2 } from "lucide-react";
 
 export type NodeLifeStatus = "LIVING" | "DECEASED";
 
@@ -11,6 +11,7 @@ export type NodeSpouse = {
   full_name: string;
   life_status: NodeLifeStatus;
   is_placeholder?: boolean;
+  role?: "DAU" | "RE" | "SPOUSE";
 };
 
 export type MemberNodeData = {
@@ -23,9 +24,20 @@ export type MemberNodeData = {
   path: string[];
   dimmed?: boolean;
   highlighted?: boolean;
+  branchLabel?: string;
+  childCount?: number;
+  hiddenDescendantCount?: number;
+  collapsed?: boolean;
+  onToggleCollapse?: (memberId: string) => void;
 };
 
 export type MemberFlowNode = Node<MemberNodeData, "member">;
+
+function spouseRoleLabel(role?: NodeSpouse["role"]) {
+  if (role === "DAU") return "Dâu";
+  if (role === "RE") return "Rể";
+  return "Phối ngẫu";
+}
 
 function SpouseChip({ spouse }: { spouse: NodeSpouse }) {
   const deceased = spouse.life_status === "DECEASED";
@@ -34,7 +46,7 @@ function SpouseChip({ spouse }: { spouse: NodeSpouse }) {
       className={`ft-spouse ${deceased ? "ft-spouse--deceased" : "ft-spouse--living"}`}
       title={spouse.full_name}
     >
-      <span className="ft-spouse__label">Phối ngẫu</span>
+      <span className="ft-spouse__label">{spouseRoleLabel(spouse.role)}</span>
       <span className="ft-spouse__name">{spouse.full_name}</span>
     </div>
   );
@@ -43,6 +55,9 @@ function SpouseChip({ spouse }: { spouse: NodeSpouse }) {
 export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
   const deceased = data.lifeStatus === "DECEASED";
   const opacity = data.dimmed ? 0.2 : 1;
+  const childCount = data.childCount ?? 0;
+  const hidden = data.hiddenDescendantCount ?? 0;
+  const canCollapse = childCount > 0 && typeof data.onToggleCollapse === "function";
 
   return (
     <motion.div
@@ -51,11 +66,12 @@ export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
         deceased ? "ft-member--deceased" : "ft-member--living",
         data.highlighted ? "ft-member--highlighted" : "",
         data.isHuongHoa ? "ft-member--huong-hoa" : "",
+        data.collapsed ? "ft-member--collapsed" : "",
       ]
         .filter(Boolean)
         .join(" ")}
       animate={{ opacity }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
     >
       <Handle type="target" position={Position.Top} className="ft-handle" />
 
@@ -63,6 +79,11 @@ export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
         <div className="ft-member__main">
           <div className="ft-member__meta">
             <span className="ft-member__gen">Đời thứ {data.generation}</span>
+            {data.branchLabel ? (
+              <span className="ft-member__branch" title={data.branchLabel}>
+                {data.branchLabel}
+              </span>
+            ) : null}
             {data.isHuongHoa ? (
               <span className="ft-member__icon" title="Hương hỏa">
                 <Flame size={14} aria-hidden />
@@ -70,7 +91,10 @@ export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
               </span>
             ) : null}
             {deceased ? (
-              <span className="ft-member__icon ft-member__icon--lotus" title="Đã mất">
+              <span
+                className="ft-member__icon ft-member__icon--lotus"
+                title="Đã mất"
+              >
                 <Flower2 size={14} aria-hidden />
                 <span>Đã mất</span>
               </span>
@@ -85,6 +109,34 @@ export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
               <SpouseChip key={spouse.id} spouse={spouse} />
             ))}
           </div>
+        ) : null}
+
+        {canCollapse ? (
+          <button
+            type="button"
+            className="ft-member__collapse"
+            title={
+              data.collapsed
+                ? `Mở nhánh (${hidden || childCount} người đang ẩn)`
+                : `Gom nhánh (${childCount} con)`
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onToggleCollapse?.(data.memberId);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            {data.collapsed ? (
+              <ChevronRight size={14} aria-hidden />
+            ) : (
+              <ChevronDown size={14} aria-hidden />
+            )}
+            <span>
+              {data.collapsed
+                ? `Mở nhánh · ${hidden || childCount} ẩn`
+                : `Gom · ${childCount} con`}
+            </span>
+          </button>
         ) : null}
       </div>
 

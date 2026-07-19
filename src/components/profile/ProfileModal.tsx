@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { FamilyMember } from "@/types/genealogy";
+import { useEffect, useMemo, useState } from "react";
+import type { FamilyMember, MemberContact, SpouseInfo } from "@/types/genealogy";
 import { memberGeneration } from "@/types/genealogy";
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { computeAnniversary, toLunarDeathDate } from "@/lib/lunar/death-date";
+import { getMemberContact } from "@/services/memberService";
 
 type ProfileModalProps = {
   member: FamilyMember | null;
@@ -18,8 +19,33 @@ type ProfileModalProps = {
   onOpenChange: (open: boolean) => void;
 };
 
+function spouseRoleLabel(role?: SpouseInfo["role"]) {
+  if (role === "DAU") return "Dâu";
+  if (role === "RE") return "Rể";
+  return "Phối ngẫu";
+}
+
 export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) {
   const [solarInput, setSolarInput] = useState("");
+  const [contact, setContact] = useState<MemberContact | null>(null);
+
+  useEffect(() => {
+    if (!open || !member) {
+      setContact(null);
+      return;
+    }
+    let cancelled = false;
+    getMemberContact(member.id)
+      .then((c) => {
+        if (!cancelled) setContact(c);
+      })
+      .catch(() => {
+        if (!cancelled) setContact(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, member]);
 
   const storedLunar = useMemo(() => {
     if (!member) return null;
@@ -38,6 +64,10 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
   }, [solarInput]);
 
   if (!member) return null;
+
+  const hasContact =
+    contact &&
+    (contact.phone || contact.address || contact.email || contact.notes);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -83,6 +113,40 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
               {member.biography || member.notes || "Chưa có tiểu sử."}
             </p>
           </section>
+
+          {hasContact ? (
+            <section>
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
+                Liên hệ / địa chỉ
+              </h3>
+              <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5">
+                {contact.address ? (
+                  <>
+                    <dt className="text-[#6a6258]">Địa chỉ</dt>
+                    <dd className="font-medium">{contact.address}</dd>
+                  </>
+                ) : null}
+                {contact.phone ? (
+                  <>
+                    <dt className="text-[#6a6258]">Điện thoại</dt>
+                    <dd className="font-medium">{contact.phone}</dd>
+                  </>
+                ) : null}
+                {contact.email ? (
+                  <>
+                    <dt className="text-[#6a6258]">Email</dt>
+                    <dd className="font-medium">{contact.email}</dd>
+                  </>
+                ) : null}
+                {contact.notes ? (
+                  <>
+                    <dt className="text-[#6a6258]">Ghi chú</dt>
+                    <dd className="font-medium">{contact.notes}</dd>
+                  </>
+                ) : null}
+              </dl>
+            </section>
+          ) : null}
 
           <section className="rounded-lg border border-[#8a6a3a]/30 bg-[#f7f1e8]/60 p-3">
             <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
@@ -143,15 +207,55 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
           {member.spouses.length > 0 ? (
             <section>
               <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
-                Phối ngẫu
+                Dâu / rể / phối ngẫu
               </h3>
-              <ul className="space-y-1">
+              <ul className="space-y-3">
                 {member.spouses.map((s) => (
-                  <li key={s.id}>
-                    {s.full_name}{" "}
-                    <span className="text-[#6a6258]">
-                      ({s.is_alive === false ? "đã mất" : "đang sống"})
-                    </span>
+                  <li
+                    key={s.id}
+                    className="rounded-md border border-[#8a6a3a]/20 bg-white/70 px-3 py-2"
+                  >
+                    <p className="font-medium text-[#1c1410]">
+                      <span className="mr-2 text-xs font-bold uppercase tracking-wide text-[#7a1f1f]">
+                        {spouseRoleLabel(s.role)}
+                      </span>
+                      {s.full_name}
+                      <span className="ml-2 text-[#6a6258] font-normal">
+                        ({s.is_alive === false ? "đã mất" : "đang sống"})
+                      </span>
+                    </p>
+                    <dl className="mt-1.5 grid grid-cols-[5rem_1fr] gap-x-2 gap-y-0.5 text-xs text-[#3d372f]">
+                      {s.maiden_name ? (
+                        <>
+                          <dt className="text-[#6a6258]">Họ gốc</dt>
+                          <dd>{s.maiden_name}</dd>
+                        </>
+                      ) : null}
+                      {s.birth ? (
+                        <>
+                          <dt className="text-[#6a6258]">Sinh</dt>
+                          <dd>{s.birth}</dd>
+                        </>
+                      ) : null}
+                      {s.death ? (
+                        <>
+                          <dt className="text-[#6a6258]">Mất</dt>
+                          <dd>{s.death}</dd>
+                        </>
+                      ) : null}
+                      {s.hometown ? (
+                        <>
+                          <dt className="text-[#6a6258]">Quê quán</dt>
+                          <dd>{s.hometown}</dd>
+                        </>
+                      ) : null}
+                      {s.notes ? (
+                        <>
+                          <dt className="text-[#6a6258]">Ghi chú</dt>
+                          <dd>{s.notes}</dd>
+                        </>
+                      ) : null}
+                    </dl>
                   </li>
                 ))}
               </ul>

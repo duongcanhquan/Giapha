@@ -96,11 +96,22 @@ export interface MemberTreeLogic {
   };
 }
 
+/** Dâu vào họ / rể lấy con gái / phối ngẫu chung */
+export type SpouseRole = "DAU" | "RE" | "SPOUSE";
+
 export interface SpouseInfo {
   id: string;
   full_name: string;
   is_alive?: boolean;
   is_placeholder?: boolean;
+  /** DAU = vợ vào họ; RE = chồng của con gái họ Dương */
+  role?: SpouseRole;
+  /** Họ gốc trước khi lấy chồng (với dâu) */
+  maiden_name?: string | null;
+  birth?: string | null;
+  death?: string | null;
+  hometown?: string | null;
+  notes?: string | null;
 }
 
 /**
@@ -152,6 +163,8 @@ export interface FamilyTreeData {
   clan_name: string;
   members: FamilyMember[];
   relations: FamilyRelation[];
+  /** Catalog nhánh từ families.settings.branches */
+  branches?: FamilyBranch[];
 }
 
 /* ─── service inputs ────────────────────────────────────────── */

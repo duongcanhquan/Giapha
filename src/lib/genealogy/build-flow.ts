@@ -14,6 +14,7 @@ import type { RelationshipEdgeData } from "@/components/family-tree/edges/Relati
 const BASE_NODE_WIDTH = 200;
 const BASE_NODE_HEIGHT = 88;
 const SPOUSE_ROW_HEIGHT = 44;
+const COLLAPSE_ROW_HEIGHT = 32;
 const PLACEHOLDER_HEIGHT = 96;
 
 export type FamilyFlowNode = Node<MemberNodeData | PlaceholderNodeData>;
@@ -23,14 +24,18 @@ export function memberNodeType(member: FamilyMember): "member" | "placeholder" {
   return member.status.is_placeholder ? "placeholder" : "member";
 }
 
-function estimateNodeSize(member: FamilyMember): { width: number; height: number } {
+function estimateNodeSize(
+  member: FamilyMember,
+  childCount: number,
+): { width: number; height: number } {
   if (member.status.is_placeholder) {
     return { width: 168, height: PLACEHOLDER_HEIGHT };
   }
   const spouseCount = member.spouses.length;
+  const collapseExtra = childCount > 0 ? COLLAPSE_ROW_HEIGHT : 0;
   return {
     width: BASE_NODE_WIDTH,
-    height: BASE_NODE_HEIGHT + spouseCount * SPOUSE_ROW_HEIGHT,
+    height: BASE_NODE_HEIGHT + spouseCount * SPOUSE_ROW_HEIGHT + collapseExtra,
   };
 }
 
@@ -121,13 +126,27 @@ export function buildFlowGraph(data: FamilyTreeData): {
   edges: FamilyFlowEdge[];
 } {
   const sizeById = new Map<string, { width: number; height: number }>();
+  const childCountById = new Map<string, number>();
+  for (const m of data.members) {
+    const pid = m.tree_logic.parent_id;
+    if (!pid) continue;
+    childCountById.set(pid, (childCountById.get(pid) ?? 0) + 1);
+  }
+
+  const branchNameById = new Map(
+    (data.branches ?? []).map((b) => [b.id, b.name]),
+  );
 
   const rawNodes: FamilyFlowNode[] = data.members.map((member) => {
-    const size = estimateNodeSize(member);
+    const childCount = childCountById.get(member.id) ?? 0;
+    const size = estimateNodeSize(member, childCount);
     sizeById.set(member.id, size);
     const type = memberNodeType(member);
     const generation = memberGeneration(member);
     const path = member.tree_logic.path;
+    const branchLabel =
+      branchNameById.get(member.tree_logic.branch_id) ??
+      member.tree_logic.branch_id;
 
     if (type === "placeholder") {
       return {
@@ -157,8 +176,11 @@ export function buildFlowGraph(data: FamilyTreeData): {
           full_name: s.full_name,
           life_status: s.is_alive === false ? "DECEASED" : "LIVING",
           is_placeholder: s.is_placeholder,
+          role: s.role,
         })),
         path,
+        branchLabel,
+        childCount,
       } satisfies MemberNodeData,
     };
   });

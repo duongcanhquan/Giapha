@@ -75,10 +75,16 @@ function mapMember(id: string, data: Record<string, unknown>): FamilyMember {
       position: treeLogicRaw.position as FamilyMember["tree_logic"]["position"],
     },
     spouses: ((data.spouses as FamilyMember["spouses"]) ?? []).map((s) => ({
-      id: s.id,
-      full_name: s.full_name,
+      id: String(s.id),
+      full_name: String(s.full_name ?? ""),
       is_alive: s.is_alive,
       is_placeholder: s.is_placeholder,
+      role: s.role,
+      maiden_name: s.maiden_name ?? null,
+      birth: s.birth ?? null,
+      death: s.death ?? null,
+      hometown: s.hometown ?? null,
+      notes: s.notes ?? null,
     })),
     gender: (data.gender as FamilyMember["gender"]) ?? "UNKNOWN",
     is_huong_hoa: Boolean(data.is_huong_hoa),
@@ -110,6 +116,7 @@ function emptyTree(familyId: string): {
       clan_name: "Chưa có dữ liệu",
       members: [],
       relations: [],
+      branches: [],
     },
   };
 }
@@ -150,6 +157,7 @@ export async function fetchFamilyTree(
         clan_name: family?.name ?? "Gia tộc",
         members,
         relations,
+        branches: family?.settings.branches ?? [],
       },
     };
   } catch (error) {

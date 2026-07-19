@@ -1,44 +1,24 @@
 "use client";
 
 import { useMemo, useState, type KeyboardEvent } from "react";
-import { Search } from "lucide-react";
-import type { FamilyMember } from "@/types/genealogy";
-import { memberGeneration } from "@/types/genealogy";
-import { searchMembers } from "@/lib/search/member-search";
+import { GitBranch, Search, Users } from "lucide-react";
+import type { FamilyBranch, FamilyMember } from "@/types/genealogy";
+import { searchMembers, type MemberSearchHit } from "@/lib/search/member-search";
 
 type SmartSearchProps = {
   members: FamilyMember[];
+  branches?: FamilyBranch[];
   onSelect: (memberId: string) => void;
 };
 
-function akaLine(member: FamilyMember): string | null {
-  const parts = [
-    member.traditional_names.birth
-      ? `húy ${member.traditional_names.birth}`
-      : null,
-    member.traditional_names.courtesy
-      ? `tự ${member.traditional_names.courtesy}`
-      : null,
-    member.traditional_names.posthumous
-      ? `thụy ${member.traditional_names.posthumous}`
-      : null,
-  ].filter(Boolean);
-  return parts.length ? parts.join(" · ") : null;
-}
-
-export function SmartSearch({ members, onSelect }: SmartSearchProps) {
+export function SmartSearch({ members, branches, onSelect }: SmartSearchProps) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
 
   const hits = useMemo(
-    () =>
-      searchMembers(
-        members.filter((m) => !m.status.is_placeholder),
-        query,
-        8,
-      ),
-    [members, query],
+    () => searchMembers(members, query, 14, branches),
+    [members, query, branches],
   );
 
   const selectAt = (index: number) => {
@@ -73,7 +53,7 @@ export function SmartSearch({ members, onSelect }: SmartSearchProps) {
         <input
           type="search"
           value={query}
-          placeholder="Tra cứu tên, tên húy, thụy…"
+          placeholder="Tìm tên, húy, thụy, dâu/rể, nhánh…"
           autoComplete="off"
           onChange={(e) => {
             setQuery(e.target.value);
@@ -91,39 +71,81 @@ export function SmartSearch({ members, onSelect }: SmartSearchProps) {
           aria-expanded={open && query.trim().length > 0}
           aria-controls="ft-smart-search-list"
         />
-        <span className="ft-smart-search__hint">↵ zoom</span>
+        <span className="ft-smart-search__hint">↵ mở nhánh</span>
       </label>
       {open && query.trim() && hits.length > 0 ? (
-        <ul id="ft-smart-search-list" className="ft-smart-search__list" role="listbox">
-          {hits.map(({ member }, index) => {
-            const aka = akaLine(member);
-            return (
-              <li key={member.id}>
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={index === active}
-                  data-active={index === active}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onMouseEnter={() => setActive(index)}
-                  onClick={() => selectAt(index)}
-                >
-                  <span className="ft-smart-search__name">{member.full_name}</span>
-                  <span className="ft-smart-search__meta">
-                    Đời {memberGeneration(member)}
-                  </span>
-                  {aka ? <span className="ft-smart-search__aka">{aka}</span> : null}
-                </button>
-              </li>
-            );
-          })}
+        <ul
+          id="ft-smart-search-list"
+          className="ft-smart-search__list"
+          role="listbox"
+        >
+          {hits.map((hit, index) => (
+            <SearchHitRow
+              key={hit.member.id}
+              hit={hit}
+              active={index === active}
+              onHover={() => setActive(index)}
+              onPick={() => selectAt(index)}
+            />
+          ))}
         </ul>
       ) : null}
       {open && query.trim() && hits.length === 0 ? (
         <p className="ft-smart-search__empty">
-          Không thấy khớp — thử bỏ dấu hoặc tên húy
+          Không thấy khớp — thử bỏ dấu, tên húy, hoặc tên dâu/rể
         </p>
       ) : null}
     </div>
+  );
+}
+
+function SearchHitRow({
+  hit,
+  active,
+  onHover,
+  onPick,
+}: {
+  hit: MemberSearchHit;
+  active: boolean;
+  onHover: () => void;
+  onPick: () => void;
+}) {
+  const { member, generation, branchName, lineage, aka, childCount } = hit;
+  const status = member.status.is_alive ? "đang sống" : "đã mất";
+
+  return (
+    <li>
+      <button
+        type="button"
+        role="option"
+        aria-selected={active}
+        data-active={active}
+        onMouseDown={(e) => e.preventDefault()}
+        onMouseEnter={onHover}
+        onClick={onPick}
+      >
+        <span className="ft-smart-search__name">{member.full_name}</span>
+        <span className="ft-smart-search__meta">Đời {generation}</span>
+        <span className="ft-smart-search__context">
+          <span className="ft-smart-search__chip">
+            <GitBranch size={11} aria-hidden />
+            {branchName}
+          </span>
+          <span className="ft-smart-search__chip ft-smart-search__chip--muted">
+            {status}
+          </span>
+          {childCount > 0 ? (
+            <span className="ft-smart-search__chip ft-smart-search__chip--muted">
+              <Users size={11} aria-hidden />
+              {childCount} con
+            </span>
+          ) : null}
+        </span>
+        {lineage ? (
+          <span className="ft-smart-search__lineage">{lineage}</span>
+        ) : null}
+        {aka ? <span className="ft-smart-search__aka">{aka}</span> : null}
+      </button>
+    </li>
   );
 }
