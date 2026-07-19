@@ -14,7 +14,65 @@ export type Gender = "MALE" | "FEMALE" | "UNKNOWN";
  * - branch_admin + family_id + branch_id: trưởng nhánh
  * - family owner: `families.owner_id == auth.uid` (không cần claim)
  */
-export type AuthRole = "super_admin" | "branch_admin" | "member";
+export type AuthRole = "super_admin" | "branch_admin" | "editor" | "member";
+
+/** Vai trò nhân sự trong một dòng họ (Firestore `families/{id}/staff/{uid}`) */
+export type FamilyStaffRole = "truong_ho" | "truong_chi" | "editor";
+
+export type RegistrationStatus = "pending" | "approved" | "rejected";
+
+/**
+ * Đăng ký tạo gia phả — chờ Super Admin duyệt.
+ * Collection: `family_registrations`
+ */
+export interface FamilyRegistration {
+  id: string;
+  applicant_uid: string;
+  full_name: string;
+  /** Họ dòng họ (vd. Nguyễn) */
+  family_surname: string;
+  email: string;
+  phone: string;
+  address: string;
+  /** Tên gia phả đề xuất */
+  family_name: string;
+  description?: string;
+  status: RegistrationStatus;
+  /** Chuỗi chuẩn hoá để lọc trùng */
+  norm_email: string;
+  norm_phone: string;
+  norm_surname: string;
+  norm_family_name: string;
+  created_at?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  reject_reason?: string | null;
+  /** Sau khi duyệt — id families đã tạo */
+  family_id?: string | null;
+  duplicate_hints?: string[];
+}
+
+export type SubmitFamilyRegistrationInput = {
+  full_name: string;
+  family_surname: string;
+  email: string;
+  phone: string;
+  address: string;
+  family_name: string;
+  description?: string;
+  password: string;
+};
+
+export interface FamilyStaffMember {
+  uid: string;
+  family_id: string;
+  email: string;
+  display_name: string;
+  role: FamilyStaffRole;
+  branch_id?: string | null;
+  created_at?: string | null;
+  created_by?: string | null;
+}
 
 /* ─── families ──────────────────────────────────────────────── */
 

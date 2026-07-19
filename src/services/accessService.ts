@@ -1,8 +1,15 @@
 import type { User } from "firebase/auth";
 import { getFamily } from "@/services/familyService";
+import { getFamilyStaffMember } from "@/services/staffService";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 
-export type FamilyAccessRole = "super_admin" | "owner" | "branch_admin" | null;
+export type FamilyAccessRole =
+  | "super_admin"
+  | "owner"
+  | "truong_ho"
+  | "branch_admin"
+  | "editor"
+  | null;
 
 export type FamilyAccess = {
   allowed: boolean;
@@ -28,7 +35,6 @@ export async function checkSuperAdminAccess(
 ): Promise<boolean> {
   if (!user) return false;
   if (!isFirebaseConfigured()) {
-    // Demo: cho phép xem UI super-admin khi chưa cấu hình Firebase
     return true;
   }
   try {
@@ -41,7 +47,7 @@ export async function checkSuperAdminAccess(
 
 /**
  * Kiểm tra quyền quản trị `familyId`:
- * Super Admin · Family Owner · Branch Admin.
+ * Super Admin · Owner · Trưởng họ · Trưởng chi · Editor.
  */
 export async function checkFamilyAdminAccess(
   familyId: string,
@@ -68,6 +74,23 @@ export async function checkFamilyAdminAccess(
 
     if (family.owner_id === user.uid) {
       return { allowed: true, role: "owner" };
+    }
+
+    const staff = await getFamilyStaffMember(familyId, user.uid);
+    if (staff) {
+      if (staff.role === "truong_ho") {
+        return { allowed: true, role: "truong_ho" };
+      }
+      if (staff.role === "truong_chi") {
+        return {
+          allowed: true,
+          role: "branch_admin",
+          branchId: staff.branch_id ?? null,
+        };
+      }
+      if (staff.role === "editor") {
+        return { allowed: true, role: "editor" };
+      }
     }
 
     const claimFamilyId = token.claims.family_id;

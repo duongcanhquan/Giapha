@@ -40,6 +40,22 @@
         { "fieldPath": "family_id", "order": "ASCENDING" },
         { "fieldPath": "relationship_type", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "family_registrations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "applicant_uid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "family_registrations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "norm_email", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

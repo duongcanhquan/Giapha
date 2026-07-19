@@ -19,6 +19,7 @@ const NAV = [
   { href: "", label: "Tổng quan" },
   { href: "/members", label: "Thành viên" },
   { href: "/branches", label: "Nhánh" },
+  { href: "/staff", label: "Nhân sự" },
   { href: "/appearance", label: "Giao diện" },
 ] as const;
 
@@ -120,8 +121,12 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
             {isSuperAdmin
               ? "Super Admin"
               : access?.role === "owner"
-                ? "Chủ dòng họ"
-                : "Trưởng nhánh"}
+                ? "Admin gia phả"
+                : access?.role === "truong_ho"
+                  ? "Trưởng họ"
+                  : access?.role === "editor"
+                    ? "Người cập nhật"
+                    : "Trưởng chi"}
           </p>
 
           <nav className="mt-7 flex flex-col gap-1">
