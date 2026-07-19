@@ -11,6 +11,35 @@ export type FamilyAccess = {
 };
 
 /**
+ * Super Admin: custom claim `role=super_admin`
+ * hoặc tài khoản bootstrap `duongcanhquan` (email chứa chuỗi này).
+ */
+export function isSuperAdminIdentity(user: User | null, claimsRole?: unknown): boolean {
+  if (!user) return false;
+  if (claimsRole === "super_admin") return true;
+  const email = (user.email ?? "").toLowerCase();
+  const name = (user.displayName ?? "").toLowerCase();
+  return email.includes("duongcanhquan") || name.includes("duongcanhquan");
+}
+
+/** Gate route `/super-admin` */
+export async function checkSuperAdminAccess(
+  user: User | null,
+): Promise<boolean> {
+  if (!user) return false;
+  if (!isFirebaseConfigured()) {
+    // Demo: cho phép xem UI super-admin khi chưa cấu hình Firebase
+    return true;
+  }
+  try {
+    const token = await user.getIdTokenResult(true);
+    return isSuperAdminIdentity(user, token.claims.role);
+  } catch {
+    return isSuperAdminIdentity(user);
+  }
+}
+
+/**
  * Kiểm tra quyền quản trị `familyId`:
  * Super Admin · Family Owner · Branch Admin.
  */
@@ -31,7 +60,7 @@ export async function checkFamilyAdminAccess(
 
   try {
     const token = await user.getIdTokenResult(true);
-    if (token.claims.role === "super_admin") {
+    if (isSuperAdminIdentity(user, token.claims.role)) {
       return { allowed: true, role: "super_admin" };
     }
 

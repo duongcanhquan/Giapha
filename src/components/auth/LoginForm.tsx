@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { signInWithEmail } from "@/services/authService";
+import { checkSuperAdminAccess } from "@/services/accessService";
+import { getCurrentUser, signInWithEmail } from "@/services/authService";
 import { listOwnedFamilies } from "@/services/familyService";
 
 export function LoginForm() {
@@ -21,6 +22,11 @@ export function LoginForm() {
 
     try {
       await signInWithEmail(email, password);
+      const user = getCurrentUser();
+      if (user && (await checkSuperAdminAccess(user))) {
+        router.replace("/super-admin");
+        return;
+      }
       const owned = await listOwnedFamilies();
       if (owned.length === 0) {
         router.replace("/onboarding/create-family");
@@ -89,6 +95,12 @@ export function LoginForm() {
         Chưa có tài khoản?{" "}
         <Link href="/register" className="font-semibold text-[#7a1f1f] hover:underline">
           Đăng ký
+        </Link>
+      </p>
+      <p className="text-center text-xs text-stone-500">
+        Super Admin:{" "}
+        <Link href="/super-admin" className="font-semibold text-[#b91c1c] hover:underline">
+          /super-admin
         </Link>
       </p>
     </form>

@@ -1,10 +1,12 @@
-import { MembersManager } from "@/components/dashboard/MembersManager";
+import { FamilyAdminWorkspace } from "@/components/dashboard/FamilyAdminWorkspace";
 
 type PageProps = {
   params: Promise<{ familyId: string }>;
 };
 
 export default async function MembersPage({ params }: PageProps) {
-  const { familyId } = await params;
-  return <MembersManager familyId={decodeURIComponent(familyId)} />;
+  const { familyId: raw } = await params;
+  const familyId = decodeURIComponent(raw);
+
+  return <FamilyAdminWorkspace familyId={familyId} tableOnly />;
 }

@@ -1,11 +1,15 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
   deleteField,
+  where,
   writeBatch,
   type DocumentReference,
 } from "firebase/firestore";
@@ -285,4 +289,41 @@ export async function getMemberContact(
   const snap = await getDoc(contactRef(memberId));
   if (!snap.exists()) return null;
   return snap.data() as MemberContact;
+}
+
+/**
+ * Xoá thành viên + quan hệ liên quan.
+ * Không cho xoá nếu còn con (edge `source == memberId`).
+ */
+export async function deleteMember(memberId: string): Promise<void> {
+  const snap = await getDoc(memberRef(memberId));
+  if (!snap.exists()) {
+    throw new Error(`Không tìm thấy thành viên id="${memberId}".`);
+  }
+
+  const childEdges = await getDocs(
+    query(relationsCol(), where("source", "==", memberId)),
+  );
+  if (!childEdges.empty) {
+    throw new Error(
+      "Không thể xoá: thành viên còn con cháu trên cây. Hãy xoá/chuyển nhánh các đời sau trước.",
+    );
+  }
+
+  const inbound = await getDocs(
+    query(relationsCol(), where("target", "==", memberId)),
+  );
+
+  const batch = writeBatch(getDb());
+  for (const edge of inbound.docs) {
+    batch.delete(edge.ref);
+  }
+  batch.delete(memberRef(memberId));
+  await batch.commit();
+
+  try {
+    await deleteDoc(contactRef(memberId));
+  } catch {
+    // contact có thể chưa tồn tại
+  }
 }

@@ -200,4 +200,12 @@ export async function listOwnedFamilies(uid?: string): Promise<Family[]> {
   );
 }
 
+/** Super Admin — liệt kê toàn bộ collection `families` */
+export async function listAllFamilies(): Promise<Family[]> {
+  const snap = await getDocs(familiesCol());
+  return snap.docs
+    .map((d) => mapFamily(d.id, d.data() as Record<string, unknown>))
+    .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+}
+
 export { DEFAULT_BRANCH };

@@ -15,7 +15,7 @@ export function CopyShareLinkButton({
   url,
   className,
   style,
-  label = "Copy Link Chia Sẻ",
+  label = "Copy Link Chia sẻ",
 }: CopyShareLinkButtonProps) {
   const [copied, setCopied] = useState(false);
 
