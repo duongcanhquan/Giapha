@@ -7,8 +7,6 @@ import { SuperAdminBanner } from "@/components/admin/SuperAdminBanner";
 import { subscribeAuth, signOutUser } from "@/services/authService";
 import { checkFamilyAdminAccess, type FamilyAccess } from "@/services/accessService";
 import { getFamily } from "@/services/familyService";
-import { isFirebaseConfigured } from "@/lib/firebase/client";
-import { sampleFamilyTree } from "@/data/sample-family";
 import type { Family } from "@/types/family";
 
 type DashboardShellProps = {
@@ -36,36 +34,7 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
     const unsub = subscribeAuth((user) => {
       void (async () => {
         if (!user) {
-          if (
-            !isFirebaseConfigured() &&
-            (familyId === "demo" || familyId === sampleFamilyTree.family_id)
-          ) {
-            if (cancelled) return;
-            setAccess({ allowed: true, role: "owner" });
-            setFamily({
-              id: familyId,
-              name: sampleFamilyTree.clan_name,
-              owner_id: "demo",
-              settings: {
-                description: "Demo dashboard",
-                theme: {
-                  primary_color: "#7a1f1f",
-                  accent_color: "#b8952d",
-                  surface_color: "#e4e8e5",
-                },
-                branches: [
-                  {
-                    id: "branch-main",
-                    name: "Chi chính",
-                    description: "Nhánh hương hỏa",
-                  },
-                ],
-              },
-            });
-            setStatus("ready");
-            return;
-          }
-          router.replace("/");
+          router.replace("/login");
           return;
         }
 

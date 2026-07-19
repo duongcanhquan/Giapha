@@ -88,7 +88,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
             </h1>
             <p className="gp-lede mt-1.5 max-w-xl text-sm">
               {family?.settings.description ||
-                "Tra cứu nhanh bằng thanh tìm kiếm trên cây — gõ tên để phóng tới đúng người."}
+                "Bản xem công khai — tra cứu tên trên cây. Muốn quản trị? Đăng nhập bằng tài khoản chủ dòng họ."}
             </p>
           </div>
 

@@ -79,7 +79,7 @@ export function CreateFamilyForm() {
           name="name"
           required
           className="mt-1 w-full rounded-lg border border-[#8a6a3a]/40 px-3 py-2 font-normal"
-          placeholder="Ví dụ: Nguyễn, Trần, Lê…"
+          placeholder="Tên dòng họ nhà bạn"
         />
       </label>
 

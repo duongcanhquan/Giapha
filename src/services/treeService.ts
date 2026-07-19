@@ -1,7 +1,6 @@
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { getDb, isFirebaseConfigured } from "@/lib/firebase/client";
 import { getFamily } from "@/services/familyService";
-import { sampleFamilyTree } from "@/data/sample-family";
 import type { Family, FamilyMember, FamilyRelation, FamilyTreeData } from "@/types/genealogy";
 
 const MEMBERS = "family_members";
@@ -16,7 +15,6 @@ function mapMember(id: string, data: Record<string, unknown>): FamilyMember {
     (data.names as Record<string, unknown> | undefined) ??
     {};
 
-  // Legacy flat fields → schema mới
   const branchId = String(
     treeLogicRaw.branch_id ?? data.branch_id ?? "branch-main",
   );
@@ -79,13 +77,10 @@ function mapMember(id: string, data: Record<string, unknown>): FamilyMember {
     spouses: ((data.spouses as FamilyMember["spouses"]) ?? []).map((s) => ({
       id: s.id,
       full_name: s.full_name,
-      is_alive:
-        "is_alive" in s
-          ? Boolean(s.is_alive)
-          : (s as { life_status?: string }).life_status !== "DECEASED",
+      is_alive: s.is_alive,
       is_placeholder: s.is_placeholder,
     })),
-    gender: data.gender as FamilyMember["gender"],
+    gender: (data.gender as FamilyMember["gender"]) ?? "UNKNOWN",
     is_huong_hoa: Boolean(data.is_huong_hoa),
     biography: (data.biography as string) ?? null,
     notes: data.notes as string | undefined,
@@ -104,11 +99,26 @@ function mapRelation(id: string, data: Record<string, unknown>): FamilyRelation 
   };
 }
 
+function emptyTree(familyId: string): {
+  family: Family | null;
+  tree: FamilyTreeData;
+} {
+  return {
+    family: null,
+    tree: {
+      family_id: familyId,
+      clan_name: "Chưa có dữ liệu",
+      members: [],
+      relations: [],
+    },
+  };
+}
+
 export async function fetchFamilyTree(
   familyId: string,
 ): Promise<{ family: Family | null; tree: FamilyTreeData }> {
   if (!isFirebaseConfigured()) {
-    return demoTree(familyId);
+    return emptyTree(familyId);
   }
 
   try {
@@ -130,7 +140,7 @@ export async function fetchFamilyTree(
     );
 
     if (!family && members.length === 0) {
-      return demoTree(familyId);
+      return emptyTree(familyId);
     }
 
     return {
@@ -143,49 +153,7 @@ export async function fetchFamilyTree(
       },
     };
   } catch (error) {
-    console.warn("fetchFamilyTree fallback demo:", error);
-    return demoTree(familyId);
+    console.warn("fetchFamilyTree:", error);
+    return emptyTree(familyId);
   }
-}
-
-function demoTree(familyId: string): {
-  family: Family | null;
-  tree: FamilyTreeData;
-} {
-  const isDemo = familyId === sampleFamilyTree.family_id || familyId === "demo";
-  if (!isDemo) {
-    return {
-      family: null,
-      tree: {
-        family_id: familyId,
-        clan_name: "Chưa có dữ liệu",
-        members: [],
-        relations: [],
-      },
-    };
-  }
-
-  return {
-    family: {
-      id: sampleFamilyTree.family_id!,
-      name: sampleFamilyTree.clan_name,
-      owner_id: "demo-owner",
-      created_at: null,
-      settings: {
-        description: "Bản demo công khai",
-        default_branch_id: "branch-main",
-        theme: {
-          primary_color: "#7a1f1f",
-          accent_color: "#c9a227",
-          surface_color: "#e9eef3",
-          background_image:
-            "https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=2400&q=80",
-        },
-        branches: [
-          { id: "branch-main", name: "Chi chính", description: "Nhánh hương hỏa" },
-        ],
-      },
-    },
-    tree: { ...sampleFamilyTree, family_id: sampleFamilyTree.family_id },
-  };
 }

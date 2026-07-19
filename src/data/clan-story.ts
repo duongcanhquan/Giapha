@@ -6,45 +6,45 @@ export type ClanMilestone = {
   side: "left" | "right";
 };
 
+/** Nội dung landing — văn hoá hương hỏa chung, không gắn dòng họ mẫu */
 export const clanStory = {
-  clanName: "Nguyễn",
-  hallName: "Nhà thờ họ Nguyễn",
-  tagline: "Gìn giữ hương hỏa — kể lại gốc rễ cho thế hệ sau.",
-  heroCaption: "Từ Thủy tổ đến cháu chất, mỗi đời là một mạch nối.",
+  tagline:
+    "Gìn giữ hương hỏa — mỗi gia đình một gia phả riêng, chỉ người trong nhà mới vào được.",
+  heroCaption: "Đăng nhập để về đúng nhà mình. Chưa có? Đăng ký để mở sổ gia phả.",
   milestones: [
     {
       id: "ms1",
-      year: "1880",
-      title: "Thủy tổ dựng nghiệp",
-      body: "Nguyễn Văn Tổ khai mở chi họ tại làng quê Bắc Bộ, dựng bàn thờ tổ và đặt lệ cúng giỗ đầu năm.",
+      year: "Gốc rễ",
+      title: "Thờ phụng tổ tiên",
+      body: "Bàn thờ, ngày giỗ âm lịch và tên húy — tên thụy là mạch nối các đời. Giapha giúp lưu giữ trang trọng trên nền số.",
       side: "left",
     },
     {
       id: "ms2",
-      year: "1910",
-      title: "Mở rộng chi nhánh",
-      body: "Đời thứ hai giữ hương hỏa, mở mang đất đai và nối thêm các nhánh phụ trong cùng làng xã.",
+      year: "Riêng tư",
+      title: "Gia phả của từng nhà",
+      body: "Không dùng bản demo chung. Ai đăng nhập sẽ vào đúng dòng họ mình quản trị; khách xem qua link chia sẻ riêng.",
       side: "right",
     },
     {
       id: "ms3",
-      year: "1955",
-      title: "Giữ lửa qua biến cố",
-      body: "Gia tộc vượt qua thời kỳ biến động; sổ gia phả được chép lại, tên húy và tên thụy được lưu cẩn thận.",
+      year: "Tra cứu",
+      title: "Tìm người trong nháy mắt",
+      body: "Gõ tên, tên húy hay thụy — cây phóng tới đúng người. Phù hợp khi họp họ, cúng giỗ hay dạy con cháu về nguồn cội.",
       side: "left",
     },
     {
       id: "ms4",
-      year: "1988",
-      title: "Trùng tu nhà thờ họ",
-      body: "Con cháu góp sức trùng tu nhà thờ, dựng lại nghi thức giỗ tổ và ngày họp mặt dòng họ.",
+      year: "Chia sẻ",
+      title: "Copy link gửi trong họ",
+      body: "Chủ dòng họ copy link cây công khai và gửi Zalo / Facebook. Người nhận chỉ xem; không sửa được sổ của bạn.",
       side: "right",
     },
     {
       id: "ms5",
-      year: "Nay",
-      title: "Gia phả số",
-      body: "Cây gia phả tương tác giúp thế hệ trẻ tìm đường về nguồn — từ Thủy tổ đến từng người.",
+      year: "In ấn",
+      title: "Xuất infographic A0",
+      body: "Khi cần treo nhà thờ họ hoặc họp mặt lớn, xuất bản đồ quan hệ khổ lớn để in offline.",
       side: "left",
     },
   ] satisfies ClanMilestone[],

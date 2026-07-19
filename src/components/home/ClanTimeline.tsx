@@ -26,7 +26,7 @@ export function ClanTimeline({ milestones }: ClanTimelineProps) {
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.55 }}
         >
-          Cột mốc dòng họ
+          Giữ mạch hương hỏa
         </motion.h2>
         <motion.p
           className="gp-lede mx-auto mt-3 max-w-xl text-center text-sm md:text-base"
@@ -35,7 +35,8 @@ export function ClanTimeline({ milestones }: ClanTimelineProps) {
           viewport={{ once: true }}
           transition={{ delay: 0.1, duration: 0.5 }}
         >
-          Những bước chân đã dựng nên nhà thờ và giữ mạch hương hỏa đến hôm nay.
+          Từ bàn thờ tổ tiên đến sổ gia phả số — mỗi nhà một không gian riêng, tra cứu
+          và chia sẻ trong họ hàng.
         </motion.p>
 
         <div className="relative mt-14">
