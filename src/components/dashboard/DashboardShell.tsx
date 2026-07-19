@@ -111,7 +111,7 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-60 shrink-0 border-r border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-5 md:block">
           <Link href="/" className="font-display text-sm font-semibold text-[var(--gp-lacquer)]">
-            Giapha
+            Gia phả
           </Link>
           <p className="gp-eyebrow mt-5">Quản trị dòng họ</p>
           <p className="gp-title mt-1 text-lg">{family?.name ?? "…"}</p>

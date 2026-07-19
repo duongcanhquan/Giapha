@@ -38,7 +38,7 @@ export function RegisterForm() {
       className="gp-panel mx-auto w-full max-w-md space-y-4 p-7"
     >
       <div>
-        <p className="gp-eyebrow">Giapha</p>
+        <p className="gp-eyebrow">Gia phả</p>
         <h1 className="gp-title mt-2 text-2xl">Đăng ký</h1>
         <p className="gp-lede mt-1 text-sm">
           Tạo tài khoản để mở gia phả linh thiêng cho dòng họ của bạn.

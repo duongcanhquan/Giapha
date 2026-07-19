@@ -6,7 +6,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen flex-col px-4 py-12">
       <div className="mb-8 text-center">
         <Link href="/" className="font-display text-lg font-semibold text-[var(--gp-lacquer)]">
-          Giapha
+          Gia phả
         </Link>
       </div>
       <LoginForm />

@@ -79,7 +79,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
           <div>
             <p className="gp-eyebrow">
               <Link href="/" className="hover:underline">
-                Giapha
+                Gia phả
               </Link>
               {" · "}Chế độ chỉ xem
             </p>

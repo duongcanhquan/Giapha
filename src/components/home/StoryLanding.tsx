@@ -22,7 +22,7 @@ export function StoryLanding() {
     <div className="min-h-screen bg-[var(--gp-paper)] text-[var(--gp-ink)]">
       <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-5 py-5 md:px-10">
         <p className="font-display text-base font-semibold tracking-[0.14em] text-[var(--gp-seal-ink)] md:text-lg">
-          GIA PHẢ
+          Gia phả
         </p>
         <nav className="flex items-center gap-5 text-sm font-medium text-[var(--gp-seal-ink)]/90">
           <a href="#cot-moc" className="hidden hover:text-white sm:inline">
