@@ -58,3 +58,19 @@ npm run dev
 | `/tree/[familyId]` | Khách — read-only + share link |
 | `/dashboard/[familyId]` | Admin (Owner / Branch / Super) |
 | `/tree/family-demo-nguyen` | Demo không Firebase |
+
+## Deploy (Vercel)
+
+Project GitHub: `duongcanhquan/Giapha` → team project **giapha** (`apcs-projects-f1bac39d`).
+
+- Production alias: `https://giapha-apcs-projects-f1bac39d.vercel.app`
+- `vercel.json` pin framework Next.js tại root repo
+
+### Lỗi `404: NOT_FOUND` (Code: NOT_FOUND)
+
+Thường **không phải lỗi Next.js**, mà do:
+
+1. **Deployment Protection (Vercel Authentication)** đang bật → khách chưa login Vercel bị chặn / thấy NOT_FOUND.  
+   Sửa: Vercel → Project **giapha** → **Settings → Deployment Protection** → tắt *Vercel Authentication* cho **Production** (và Preview nếu cần public).
+2. Mở URL deployment cũ / hash đã hết hạn.
+3. Domain `giapha.vercel.app` đang trỏ project **cũ** (ANS Team login) — không phải repo này. Gắn domain vào project mới tại **Settings → Domains**.
