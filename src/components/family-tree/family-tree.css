@@ -1,0 +1,365 @@
+.ft-root {
+  --ft-ink: #1c1410;
+  --ft-lacquer: #7a1f1f;
+  --ft-gold: #c9a227;
+  --ft-path-stroke: #d4a017;
+  --ft-edge-stroke: #8a6a3a;
+  --ft-living-border: #2f7d4a;
+  --ft-living-glow: rgba(47, 125, 74, 0.45);
+  --ft-deceased-bg: linear-gradient(145deg, #6b5a3e 0%, #4a4030 55%, #3a3428 100%);
+  --ft-deceased-border: #a8842e;
+  --ft-paper: #e9eef3;
+  --ft-card: #fffdf8;
+  --ft-muted: #6a6258;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(201, 162, 39, 0.12), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 100%, rgba(122, 31, 31, 0.1), transparent 50%),
+    var(--ft-paper);
+  font-family: var(--font-be-vietnam), "Be Vietnam Pro", sans-serif;
+  color: var(--ft-ink);
+}
+
+.ft-root .react-flow__minimap {
+  background: rgba(255, 253, 248, 0.92);
+  border: 1px solid rgba(138, 106, 58, 0.35);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ft-root .react-flow__controls {
+  border: 1px solid rgba(138, 106, 58, 0.35);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.ft-root .react-flow__controls-button {
+  background: #fffdf8;
+  border-bottom-color: rgba(138, 106, 58, 0.25);
+  fill: var(--ft-ink);
+}
+
+.ft-handle {
+  width: 8px !important;
+  height: 8px !important;
+  background: var(--ft-gold) !important;
+  border: 1px solid #fffdf8 !important;
+}
+
+/* —— Member —— */
+.ft-member {
+  min-width: 168px;
+  max-width: 320px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--ft-card);
+  border: 2px solid transparent;
+  box-shadow: 0 1px 0 rgba(28, 20, 16, 0.06);
+}
+
+.ft-member--living {
+  border-color: var(--ft-living-border);
+  box-shadow: 0 0 0 3px var(--ft-living-glow);
+}
+
+.ft-member--deceased {
+  background: var(--ft-deceased-bg);
+  border-color: var(--ft-deceased-border);
+  color: #f3e8c8;
+}
+
+.ft-member--highlighted {
+  border-color: var(--ft-lacquer);
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.55);
+}
+
+.ft-member__row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.ft-member__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ft-member__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.ft-member__gen {
+  color: var(--ft-muted);
+  font-weight: 600;
+}
+
+.ft-member--deceased .ft-member__gen {
+  color: rgba(243, 232, 200, 0.75);
+}
+
+.ft-member__icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--ft-lacquer);
+  font-weight: 600;
+}
+
+.ft-member--deceased .ft-member__icon {
+  color: var(--ft-gold);
+}
+
+.ft-member__icon--lotus {
+  color: #c4a35a;
+}
+
+.ft-member--deceased .ft-member__icon--lotus {
+  color: #e8d48a;
+}
+
+.ft-member__name {
+  margin: 0;
+  font-family: var(--font-literata), Literata, Georgia, serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ft-member__spouses {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 8px;
+  border-left: 1px dashed rgba(138, 106, 58, 0.45);
+}
+
+.ft-member--deceased .ft-member__spouses {
+  border-left-color: rgba(232, 212, 138, 0.35);
+}
+
+.ft-spouse {
+  min-width: 96px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(233, 238, 243, 0.7);
+}
+
+.ft-spouse--deceased {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.ft-spouse--living {
+  border: 1px solid rgba(47, 125, 74, 0.35);
+}
+
+.ft-spouse__label {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ft-muted);
+}
+
+.ft-member--deceased .ft-spouse__label {
+  color: rgba(243, 232, 200, 0.65);
+}
+
+.ft-spouse__name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* —— Placeholder —— */
+.ft-placeholder {
+  min-width: 148px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 2px dashed rgba(106, 98, 88, 0.75);
+  background: rgba(255, 253, 248, 0.55);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.ft-placeholder:hover,
+.ft-placeholder:focus-visible {
+  border-color: var(--ft-lacquer);
+  background: rgba(255, 253, 248, 0.85);
+  outline: none;
+}
+
+.ft-placeholder--highlighted {
+  border-color: var(--ft-gold);
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.4);
+}
+
+.ft-placeholder__gen {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ft-muted);
+  margin-bottom: 4px;
+}
+
+.ft-placeholder__label {
+  margin: 0;
+  font-family: var(--font-literata), Literata, Georgia, serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ft-ink);
+}
+
+.ft-placeholder__hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--ft-muted);
+}
+
+/* —— Edge label —— */
+.ft-edge-label {
+  position: absolute;
+  pointer-events: none;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ft-lacquer);
+  background: rgba(255, 253, 248, 0.92);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(122, 31, 31, 0.25);
+}
+
+@keyframes ft-dash {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+.ft-edge--adopted {
+  animation: ft-dash 1.2s linear infinite;
+}
+
+/* —— Toolbar / modal —— */
+.ft-toolbar {
+  position: absolute;
+  z-index: 5;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+}
+
+.ft-toolbar button {
+  border: 1px solid rgba(138, 106, 58, 0.4);
+  background: rgba(255, 253, 248, 0.95);
+  color: var(--ft-ink);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.ft-toolbar button:hover {
+  border-color: var(--ft-lacquer);
+  color: var(--ft-lacquer);
+}
+
+.ft-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: rgba(28, 20, 16, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.ft-modal {
+  width: min(360px, 100%);
+  background: #fffdf8;
+  border-radius: 14px;
+  padding: 18px 18px 14px;
+  border: 1px solid rgba(138, 106, 58, 0.35);
+  box-shadow: 0 16px 40px rgba(28, 20, 16, 0.2);
+}
+
+.ft-modal h2 {
+  margin: 0 0 4px;
+  font-family: var(--font-literata), Literata, Georgia, serif;
+  font-size: 18px;
+}
+
+.ft-modal p {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--ft-muted);
+}
+
+.ft-modal label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.ft-modal input,
+.ft-modal select {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(138, 106, 58, 0.4);
+  background: #fff;
+  font: inherit;
+}
+
+.ft-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ft-modal__actions button {
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.ft-modal__actions .ft-btn-ghost {
+  background: transparent;
+  border-color: rgba(138, 106, 58, 0.35);
+  color: var(--ft-ink);
+}
+
+.ft-modal__actions .ft-btn-primary {
+  background: var(--ft-lacquer);
+  color: #fffdf8;
+}
