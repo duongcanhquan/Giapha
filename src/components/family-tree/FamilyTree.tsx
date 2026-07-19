@@ -638,6 +638,15 @@ function FamilyTreeInner({
             Xoá highlight
           </button>
 
+          <div className="ft-life-legend" aria-label="Chú thích sống / mất">
+            <span className="ft-life-legend__item ft-life-legend__item--living">
+              <i /> Còn sống
+            </span>
+            <span className="ft-life-legend__item ft-life-legend__item--deceased">
+              <i /> Đã mất
+            </span>
+          </div>
+
           <span className="ft-toolbar__count" title="Số người đang hiện / tổng">
             {visibleCount}/{totalCount}
           </span>
@@ -709,7 +718,7 @@ function FamilyTreeInner({
             nodeColor={(node) => {
               if (node.type === "placeholder") return "#a8a29a";
               const status = (node.data as { lifeStatus?: string }).lifeStatus;
-              return status === "DECEASED" ? "#6b5a3e" : "#2f7d4a";
+              return status === "DECEASED" ? "#5a4a35" : "#1f7a45";
             }}
           />
         ) : null}

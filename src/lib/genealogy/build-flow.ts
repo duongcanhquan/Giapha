@@ -12,7 +12,7 @@ import type { RelationshipEdgeData } from "@/components/family-tree/edges/Relati
 
 /** Kích thước ước lượng cho dagre (tránh overlap) */
 const BASE_NODE_WIDTH = 200;
-const BASE_NODE_HEIGHT = 88;
+const BASE_NODE_HEIGHT = 108;
 const SPOUSE_ROW_HEIGHT = 44;
 const COLLAPSE_ROW_HEIGHT = 32;
 const PLACEHOLDER_HEIGHT = 96;

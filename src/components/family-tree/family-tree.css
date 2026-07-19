@@ -58,24 +58,48 @@
 
 /* —— Member —— */
 .ft-member {
-  min-width: 168px;
+  position: relative;
+  min-width: 188px;
   max-width: 320px;
-  padding: 10px 12px;
+  padding: 10px 12px 10px 16px;
   border-radius: 12px;
   background: var(--ft-card);
   border: 2px solid transparent;
   box-shadow: 0 1px 0 rgba(28, 20, 16, 0.06);
+  overflow: hidden;
+}
+
+.ft-member__lifebar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 7px;
 }
 
 .ft-member--living {
-  border-color: var(--ft-living-border);
-  box-shadow: 0 0 0 3px var(--ft-living-glow);
+  border-color: #1f7a45;
+  background: linear-gradient(160deg, #f4fff8 0%, #eaf7ef 55%, #f7f4ec 100%);
+  box-shadow:
+    0 0 0 3px rgba(31, 122, 69, 0.22),
+    0 4px 14px rgba(31, 122, 69, 0.12);
+}
+
+.ft-member--living .ft-member__lifebar {
+  background: linear-gradient(180deg, #2f9e57, #1f7a45);
 }
 
 .ft-member--deceased {
-  background: var(--ft-deceased-bg);
-  border-color: var(--ft-deceased-border);
+  background: linear-gradient(155deg, #4a4338 0%, #322c24 50%, #231f1a 100%);
+  border-color: #8a7350;
   color: #f3e8c8;
+  box-shadow:
+    0 0 0 2px rgba(138, 115, 80, 0.35),
+    0 4px 14px rgba(28, 20, 16, 0.28);
+}
+
+.ft-member--deceased .ft-member__lifebar {
+  background: linear-gradient(180deg, #b39a6a, #6e5a3c);
 }
 
 .ft-member--highlighted {
@@ -87,7 +111,7 @@
 }
 
 .ft-member--dimmed {
-  filter: grayscale(0.35);
+  filter: grayscale(0.28);
   pointer-events: auto;
 }
 
@@ -113,11 +137,11 @@
 
 .ft-member__gen {
   color: var(--ft-muted);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .ft-member--deceased .ft-member__gen {
-  color: rgba(243, 232, 200, 0.75);
+  color: rgba(243, 232, 200, 0.78);
 }
 
 .ft-member__icon {
@@ -125,30 +149,47 @@
   align-items: center;
   gap: 3px;
   color: var(--ft-lacquer);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .ft-member--deceased .ft-member__icon {
   color: var(--ft-gold);
 }
 
-.ft-member__icon--lotus {
-  color: #c4a35a;
-}
-
-.ft-member--deceased .ft-member__icon--lotus {
-  color: #e8d48a;
-}
-
 .ft-member__name {
   margin: 0;
   font-family: var(--font-literata), Literata, Georgia, serif;
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ft-member__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+}
+
+.ft-member__status--living {
+  color: #14532d;
+  background: rgba(34, 132, 72, 0.16);
+  border: 1px solid rgba(34, 132, 72, 0.4);
+}
+
+.ft-member__status--deceased {
+  color: #f5e6c0;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(232, 212, 138, 0.42);
 }
 
 .ft-member__spouses {
@@ -171,11 +212,13 @@
 }
 
 .ft-spouse--deceased {
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(232, 212, 138, 0.28);
 }
 
 .ft-spouse--living {
-  border: 1px solid rgba(47, 125, 74, 0.35);
+  background: rgba(232, 248, 238, 0.95);
+  border: 1px solid rgba(47, 125, 74, 0.4);
 }
 
 .ft-spouse__label {
@@ -184,18 +227,19 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ft-muted);
+  font-weight: 700;
 }
 
 .ft-member--deceased .ft-spouse__label {
-  color: rgba(243, 232, 200, 0.65);
+  color: rgba(243, 232, 200, 0.7);
 }
 
 .ft-spouse__name {
   display: block;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 650;
   line-height: 1.2;
-  max-width: 120px;
+  max-width: 140px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -356,6 +400,50 @@
   border: 1px solid rgba(125, 101, 64, 0.28);
   border-radius: 999px;
   padding: 5px 10px;
+}
+
+.ft-life-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 101, 64, 0.28);
+  background: rgba(255, 253, 248, 0.95);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ft-life-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ft-ink);
+}
+
+.ft-life-legend__item i {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.ft-life-legend__item--living i {
+  background: #1f7a45;
+  box-shadow: 0 0 0 2px rgba(31, 122, 69, 0.25);
+}
+
+.ft-life-legend__item--deceased i {
+  background: #5a4a35;
+  box-shadow: 0 0 0 2px rgba(138, 115, 80, 0.35);
+}
+
+.ft-life-legend__item--deceased {
+  color: #5a4a35;
+}
+
+.ft-life-legend__item--living {
+  color: #14532d;
 }
 
 .ft-member__branch {
