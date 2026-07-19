@@ -1,4 +1,4 @@
-# Giapha
+# Gia phả
 
 Nền tảng SaaS cây gia phả tiếng Việt — multi-tenant, Next.js App Router, Tailwind, Firebase.
 

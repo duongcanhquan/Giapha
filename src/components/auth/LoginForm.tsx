@@ -46,7 +46,7 @@ export function LoginForm() {
       className="gp-panel mx-auto w-full max-w-md space-y-4 p-7"
     >
       <div>
-        <p className="gp-eyebrow">Giapha</p>
+        <p className="gp-eyebrow">Gia phả</p>
         <h1 className="gp-title mt-2 text-2xl">Đăng nhập</h1>
         <p className="gp-lede mt-1 text-sm">Vào quản trị gia phả của dòng họ bạn.</p>
       </div>

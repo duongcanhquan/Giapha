@@ -10,7 +10,7 @@ export default function CreateFamilyPage() {
           className="text-sm font-semibold tracking-wide text-[#7a1f1f]"
           style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
         >
-          Giapha
+          Gia phả
         </Link>
       </div>
       <CreateFamilyForm />

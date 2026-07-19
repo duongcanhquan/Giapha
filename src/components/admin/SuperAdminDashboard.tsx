@@ -104,7 +104,7 @@ export function SuperAdminDashboard() {
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--gp-gold)]/20 px-4 py-5 md:px-8">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gp-gold-bright)]/90">
-            Giapha · Ấn son nền tảng
+            Gia phả · Ấn son nền tảng
           </p>
           <h1 className="font-display mt-1 text-2xl font-semibold">
             Super Admin

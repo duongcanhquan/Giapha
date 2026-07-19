@@ -56,7 +56,7 @@ export function ClanTimeline({ milestones }: ClanTimelineProps) {
           </h2>
           <p className="gp-lede mx-auto mt-3 max-w-2xl text-sm md:text-base">
             Ví dụ hành trình hương hỏa điển hình — Thủy tổ, lập nghiệp, mở chi, giữ lửa —
-            để bạn hình dung cách kể chuyện dòng họ trên Giapha.
+            để bạn hình dung cách kể chuyện dòng họ trên Gia phả.
           </p>
         </motion.div>
 

@@ -17,9 +17,9 @@ const literata = Literata({
 });
 
 export const metadata: Metadata = {
-  title: "Giapha — Gia phả linh thiêng, tra cứu thông minh",
+  title: "Gia phả — Gìn giữ hương hoả gia tộc",
   description:
-    "Nền tảng gia phả số: cây dòng họ tương tác, tìm kiếm mờ thông minh, lịch giỗ âm lịch và xuất infographic in ấn.",
+    "Nền tảng Gia phả số: cây dòng họ tương tác, lịch giỗ âm lịch và xuất infographic in ấn.",
 };
 
 export default function RootLayout({
