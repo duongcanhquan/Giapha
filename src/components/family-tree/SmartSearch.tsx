@@ -71,7 +71,7 @@ export function SmartSearch({ members, branches, onSelect }: SmartSearchProps) {
           aria-expanded={open && query.trim().length > 0}
           aria-controls="ft-smart-search-list"
         />
-        <span className="ft-smart-search__hint">↵ mở nhánh</span>
+        <span className="ft-smart-search__hint">↵ zoom path</span>
       </label>
       {open && query.trim() && hits.length > 0 ? (
         <ul

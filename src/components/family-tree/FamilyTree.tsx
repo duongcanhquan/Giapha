@@ -113,8 +113,9 @@ export type FamilyTreeProps = {
   readOnly?: boolean;
   /** Xuất PDF: luôn mở toàn cây */
   forceExpanded?: boolean;
-  /** Lọc chi khi mount (từ infographic) */
+  /** Lọc chi khi mount / điều khiển từ ngoài (không remount) */
   initialBranchFilter?: string | null;
+  branchFilterControlled?: string | null;
 };
 
 function applyHighlight(
@@ -201,9 +202,10 @@ function FamilyTreeInner({
   readOnly = false,
   forceExpanded = false,
   initialBranchFilter = null,
+  branchFilterControlled,
   treeRef,
 }: InnerProps) {
-  const { fitView, setCenter, getNode } = useReactFlow();
+  const { fitView, getNode } = useReactFlow();
   const isMobile = useIsMobileViewport();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(
@@ -224,6 +226,8 @@ function FamilyTreeInner({
   );
   const seededForFamily = useRef<string | null>(null);
   const clickTimerRef = useRef<number | null>(null);
+  const overviewDoneRef = useRef(false);
+  const pendingFitPathRef = useRef<string | null>(null);
 
   const childrenIndex = useMemo(
     () => buildChildrenIndex(data.members),
@@ -269,6 +273,12 @@ function FamilyTreeInner({
     };
   }, []);
 
+  // Nhận lọc chi từ Infographic mà không remount cây (tránh mất/nhảy UI)
+  useEffect(() => {
+    if (branchFilterControlled === undefined) return;
+    setBranchFilter(branchFilterControlled);
+  }, [branchFilterControlled]);
+
   const includeIds = useMemo(() => {
     if (viewMode !== "lineage" || !highlightId) return null;
     return lineageNeighborhoodIds(data.members, highlightId, childrenIndex);
@@ -292,8 +302,9 @@ function FamilyTreeInner({
 
   const fitViewOptions = useMemo(
     () => ({
-      padding: isMobile ? 0.35 : 0.2,
-      maxZoom: isMobile ? 0.85 : 1.2,
+      padding: isMobile ? 0.28 : 0.2,
+      maxZoom: isMobile ? 0.42 : 0.48,
+      minZoom: 0.06,
       duration: isMobile ? 0 : 200,
     }),
     [isMobile],
@@ -382,27 +393,65 @@ function FamilyTreeInner({
     setEdges(seeded.edges);
   }, [seeded, setNodes, setEdges]);
 
-  const centerOnTarget = useCallback(
-    (targetId: string, zoom = 1.15) => {
-      const node = getNode(targetId);
-      if (!node) return;
-      const width = node.measured?.width ?? 180;
-      const height = node.measured?.height ?? 80;
-      setCenter(node.position.x + width / 2, node.position.y + height / 2, {
-        zoom: isMobile ? Math.min(zoom, 1.05) : zoom,
-        duration: 480,
+  const fitOverview = useCallback(
+    (animated = false) => {
+      void fitView({
+        padding: isMobile ? 0.28 : 0.2,
+        maxZoom: isMobile ? 0.42 : 0.48,
+        minZoom: 0.06,
+        duration: animated ? 420 : 0,
       });
     },
-    [getNode, setCenter, isMobile],
+    [fitView, isMobile],
+  );
+
+  const fitToPath = useCallback(
+    (targetId: string) => {
+      const member = data.members.find((m) => m.id === targetId);
+      if (!member) {
+        fitOverview(true);
+        return;
+      }
+      const pathIds = [...member.tree_logic.path];
+      for (const m of data.members) {
+        if (m.tree_logic.parent_id === targetId) pathIds.push(m.id);
+      }
+      const visiblePath = pathIds.filter((id) => Boolean(getNode(id)));
+      if (visiblePath.length === 0) {
+        window.setTimeout(() => {
+          const retry = pathIds.filter((id) => Boolean(getNode(id)));
+          if (retry.length === 0) {
+            fitOverview(true);
+            return;
+          }
+          void fitView({
+            nodes: retry.map((id) => ({ id })),
+            padding: isMobile ? 0.35 : 0.28,
+            maxZoom: isMobile ? 0.95 : 1.05,
+            minZoom: 0.1,
+            duration: 520,
+          });
+        }, 140);
+        return;
+      }
+      void fitView({
+        nodes: visiblePath.map((id) => ({ id })),
+        padding: isMobile ? 0.35 : 0.28,
+        maxZoom: isMobile ? 0.95 : 1.05,
+        minZoom: 0.1,
+        duration: 520,
+      });
+    },
+    [data.members, getNode, fitView, fitOverview, isMobile],
   );
 
   const focusMember = useCallback(
     (targetId: string) => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => centerOnTarget(targetId, 1.25));
+        requestAnimationFrame(() => fitToPath(targetId));
       });
     },
-    [centerOnTarget],
+    [fitToPath],
   );
 
   const revealAndFocus = useCallback(
@@ -410,44 +459,26 @@ function FamilyTreeInner({
       const member = data.members.find((m) => m.id === targetId);
       if (!member) return;
 
-      // Mở đường tổ tiên + bỏ lọc chi nếu cần để thấy người đó
-      setCollapsedIds((prev) => expandAncestors(prev, member.tree_logic.path));
-      if (
-        branchFilter &&
-        member.tree_logic.branch_id !== branchFilter
-      ) {
+      // Mở đúng tổ tiên trên path + xổ chính người được tìm (thấy con trực tiếp)
+      setCollapsedIds((prev) => {
+        const next = expandAncestors(prev, member.tree_logic.path);
+        next.delete(targetId);
+        return next;
+      });
+      if (branchFilter && member.tree_logic.branch_id !== branchFilter) {
         setBranchFilter(null);
       }
       setHighlightId(targetId);
-      if (viewMode === "lineage") {
-        // keep lineage mode — includeIds updates via highlightId
-      }
+      pendingFitPathRef.current = targetId;
 
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const node = getNode(targetId);
-          if (node) {
-            centerOnTarget(targetId, 1.25);
-          } else {
-            // chờ re-layout sau expand
-            window.setTimeout(() => {
-              const n2 = getNode(targetId);
-              if (n2) centerOnTarget(targetId, 1.25);
-              else void fitView({ ...fitViewOptions, duration: 400 });
-            }, 80);
-          }
-        });
-      });
+      // Đợi layout ổn định rồi khung đúng đường huyết thống
+      window.setTimeout(() => {
+        if (pendingFitPathRef.current !== targetId) return;
+        fitToPath(targetId);
+        pendingFitPathRef.current = null;
+      }, 160);
     },
-    [
-      data.members,
-      branchFilter,
-      viewMode,
-      getNode,
-      centerOnTarget,
-      fitView,
-      fitViewOptions,
-    ],
+    [data.members, branchFilter, fitToPath],
   );
 
   const traceRoute = useCallback(
@@ -459,8 +490,9 @@ function FamilyTreeInner({
 
   const clearHighlight = useCallback(() => {
     setHighlightId(null);
-    void fitView({ ...fitViewOptions, duration: 400 });
-  }, [fitView, fitViewOptions]);
+    pendingFitPathRef.current = null;
+    fitOverview(true);
+  }, [fitOverview]);
 
   useImperativeHandle(
     treeRef,
@@ -469,41 +501,37 @@ function FamilyTreeInner({
       highlightPath: traceRoute,
       clearHighlight,
       focusMember,
-      fitView: () => {
-        void fitView({ ...fitViewOptions, duration: 400 });
-      },
+      fitView: () => fitOverview(true),
     }),
-    [traceRoute, clearHighlight, focusMember, fitView, fitViewOptions],
+    [traceRoute, clearHighlight, focusMember, fitOverview],
   );
 
+  // Lần đầu: thu nhỏ toàn cây (overview). Không auto-zoom từng người.
   useEffect(() => {
-    if (!isMobile) return;
+    if (forceExpanded) return;
+    if (!nodes.length) return;
+    if (highlightId) return;
     const t = window.setTimeout(() => {
-      void fitView({ ...fitViewOptions, duration: 0 });
+      fitOverview(!overviewDoneRef.current);
+      overviewDoneRef.current = true;
+    }, 100);
+    return () => window.clearTimeout(t);
+    // Chỉ khi số node visible đổi lớn (gom/mở), không chase mọi frame
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes.length, forceExpanded]);
+
+  // Sau khi expand path cho tìm kiếm: fit lại khi nodes cập nhật
+  useEffect(() => {
+    const pending = pendingFitPathRef.current;
+    if (!pending || !highlightId) return;
+    if (pending !== highlightId) return;
+    const t = window.setTimeout(() => {
+      if (pendingFitPathRef.current !== pending) return;
+      fitToPath(pending);
+      pendingFitPathRef.current = null;
     }, 80);
     return () => window.clearTimeout(t);
-  }, [isMobile, fitView, fitViewOptions, visibleData.members.length]);
-
-  // Fit lại khi gom/mở nhánh đổi layout
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      if (highlightId) {
-        const node = getNode(highlightId);
-        if (node) centerOnTarget(highlightId, 1.1);
-        else void fitView({ ...fitViewOptions, duration: 280 });
-      }
-    }, 60);
-    return () => window.clearTimeout(t);
-  }, [
-    collapsedIds,
-    branchFilter,
-    viewMode,
-    highlightId,
-    getNode,
-    centerOnTarget,
-    fitView,
-    fitViewOptions,
-  ]);
+  }, [nodes, highlightId, fitToPath]);
 
   const editingMember = editingId
     ? data.members.find((m) => m.id === editingId)

@@ -1,7 +1,6 @@
 "use client";
 
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { motion } from "framer-motion";
 import { ChevronDown, ChevronRight, Flame, Flower2 } from "lucide-react";
 
 export type NodeLifeStatus = "LIVING" | "DECEASED";
@@ -54,24 +53,24 @@ function SpouseChip({ spouse }: { spouse: NodeSpouse }) {
 
 export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
   const deceased = data.lifeStatus === "DECEASED";
-  const opacity = data.dimmed ? 0.2 : 1;
+  const opacity = data.dimmed ? 0.14 : 1;
   const childCount = data.childCount ?? 0;
   const hidden = data.hiddenDescendantCount ?? 0;
   const canCollapse = childCount > 0 && typeof data.onToggleCollapse === "function";
 
   return (
-    <motion.div
+    <div
       className={[
         "ft-member",
         deceased ? "ft-member--deceased" : "ft-member--living",
         data.highlighted ? "ft-member--highlighted" : "",
         data.isHuongHoa ? "ft-member--huong-hoa" : "",
         data.collapsed ? "ft-member--collapsed" : "",
+        data.dimmed ? "ft-member--dimmed" : "",
       ]
         .filter(Boolean)
         .join(" ")}
-      animate={{ opacity }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
+      style={{ opacity }}
     >
       <Handle type="target" position={Position.Top} className="ft-handle" />
 
@@ -141,6 +140,6 @@ export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
       </div>
 
       <Handle type="source" position={Position.Bottom} className="ft-handle" />
-    </motion.div>
+    </div>
   );
 }

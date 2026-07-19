@@ -82,7 +82,13 @@
   border-color: var(--ft-path-stroke);
   box-shadow:
     0 0 0 2px var(--ft-path-gold),
-    0 0 0 5px rgba(185, 28, 28, 0.2);
+    0 0 0 6px rgba(185, 28, 28, 0.28);
+  z-index: 2;
+}
+
+.ft-member--dimmed {
+  filter: grayscale(0.35);
+  pointer-events: auto;
 }
 
 .ft-member__stack {

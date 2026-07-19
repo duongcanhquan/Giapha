@@ -14,7 +14,7 @@ export type PathHighlightResult = {
 };
 
 /**
- * Trace Route: nhận `target_id`, trích `path`, trả về tập highlight / dim.
+ * Trace Route: path Thủy tổ → target (+ con trực tiếp của target để dễ đọc).
  */
 export function traceRoute(
   targetId: string,
@@ -23,10 +23,25 @@ export function traceRoute(
 ): PathHighlightResult {
   const pathNodeIds = extractPathIds(members, targetId);
   const pathSet = new Set(pathNodeIds);
+
+  // Thêm con trực tiếp của người được tìm — vẫn “đúng cây”, không lan ra nhánh khác
+  for (const m of members) {
+    if (m.tree_logic.parent_id === targetId) {
+      pathSet.add(m.id);
+    }
+  }
+
+  const highlightNodes = [...pathSet];
   const pathEdgeIds = edgeIdsOnPath(relations, pathNodeIds);
+  // Cạnh cha→con trực tiếp của target
+  for (const rel of relations) {
+    if (rel.source === targetId && pathSet.has(rel.target)) {
+      pathEdgeIds.add(rel.id);
+    }
+  }
 
   return {
-    pathNodeIds,
+    pathNodeIds: highlightNodes,
     pathEdgeIds,
     isNodeDimmed: (id) => !pathSet.has(id),
     isEdgeDimmed: (edgeId) => !pathEdgeIds.has(edgeId),

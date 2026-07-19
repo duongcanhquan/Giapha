@@ -101,6 +101,110 @@ body {
   box-shadow: var(--gp-shadow-soft);
 }
 
+/* Infographic ổn định — không dùng filter/opacity hover làm mất khung */
+.clan-infographic {
+  isolation: isolate;
+  position: relative;
+  z-index: 1;
+  background: #f7f4ec;
+  overflow: visible;
+}
+
+.clan-infographic__head {
+  border-bottom: 1px solid var(--gp-scroll-edge);
+  background: #f3eee4;
+  padding: 1rem 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .clan-infographic__head {
+    padding: 1.15rem 1.5rem;
+  }
+}
+
+.clan-infographic__stats {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .clan-infographic__stats {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .clan-infographic__stats {
+    grid-template-columns: repeat(4, 1fr);
+    padding: 1.25rem;
+  }
+}
+
+.clan-infographic__card {
+  border: 1px solid var(--gp-scroll-edge);
+  border-radius: 0.75rem;
+  background: #fffdf8;
+  padding: 0.75rem 1rem;
+}
+
+.clan-infographic__body {
+  display: grid;
+  gap: 1rem;
+  border-top: 1px solid var(--gp-scroll-edge);
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .clan-infographic__body {
+    grid-template-columns: 1fr 1fr;
+    padding: 1.25rem;
+  }
+}
+
+.clan-infographic__section-title {
+  margin-bottom: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gp-lacquer);
+}
+
+.clan-infographic__row {
+  width: 100%;
+  text-align: left;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.clan-infographic__row:hover {
+  background: #f0ebe1;
+  border-color: rgba(122, 31, 31, 0.12);
+}
+
+.clan-infographic__row:focus-visible {
+  outline: 2px solid rgba(122, 31, 31, 0.35);
+  outline-offset: 1px;
+}
+
+.clan-infographic__bar {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(122, 31, 31, 0.1);
+}
+
+.clan-infographic__bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--gp-lacquer);
+}
+
 .gp-panel-inset {
   background: rgba(247, 244, 236, 0.72);
   border: 1px solid var(--gp-scroll-edge);

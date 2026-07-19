@@ -21,7 +21,8 @@ export function ClanOverviewInfographic({
     const deceased = named.filter((m) => !m.status.is_alive);
     const placeholders = tree.members.filter((m) => m.status.is_placeholder);
     const daughtersInLaw = named.reduce(
-      (n, m) => n + m.spouses.filter((s) => s.role === "DAU" || !s.role).length,
+      (n, m) =>
+        n + m.spouses.filter((s) => s.role === "DAU" || !s.role).length,
       0,
     );
     const sonsInLaw = named.reduce(
@@ -64,13 +65,14 @@ export function ClanOverviewInfographic({
     };
   }, [tree]);
 
-  const branchRows = (tree.branches?.length
-    ? tree.branches
-    : [...stats.byBranch.keys()].map((id) => ({
-        id,
-        name: id,
-        description: "",
-      }))
+  const branchRows = (
+    tree.branches?.length
+      ? tree.branches
+      : [...stats.byBranch.keys()].map((id) => ({
+          id,
+          name: id,
+          description: "",
+        }))
   ).map((b) => ({
     ...b,
     count: stats.byBranch.get(b.id) ?? 0,
@@ -78,24 +80,37 @@ export function ClanOverviewInfographic({
 
   return (
     <section
-      className="gp-panel overflow-hidden"
+      className="clan-infographic gp-panel"
       aria-label="Infographic tổng quan dòng họ"
     >
-      <div className="border-b border-[var(--gp-scroll-edge)] bg-[color-mix(in_srgb,var(--gp-scroll)_70%,transparent)] px-5 py-4 md:px-6">
+      <div className="clan-infographic__head">
         <p className="gp-eyebrow">Infographic · sau đăng nhập</p>
         <h2 className="gp-title mt-1 text-xl md:text-2xl">
           Tổng quan dòng họ {tree.clan_name}
         </h2>
         <p className="gp-lede mt-1 max-w-2xl text-sm">
-          Số liệu đọc nhanh trước khi vào cây. Bấm chi để lọc; bấm hương hỏa để
-          nhảy tới người đó.
+          Số liệu ổn định — bấm chi để lọc cây, bấm hương hỏa để zoom đúng
+          đường huyết thống (không mất khung khi rê chuột).
         </p>
       </div>
 
-      <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4 md:p-5">
-        <StatCard label="Thành viên trên cây" value={stats.total} hint={`${stats.named} có tên`} />
-        <StatCard label="Đang sống" value={stats.living} hint={`${stats.deceased} đã mất`} accent="living" />
-        <StatCard label="Số đời" value={stats.maxGen} hint={`${stats.branchCount} chi nhánh`} />
+      <div className="clan-infographic__stats">
+        <StatCard
+          label="Thành viên trên cây"
+          value={stats.total}
+          hint={`${stats.named} có tên`}
+        />
+        <StatCard
+          label="Đang sống"
+          value={stats.living}
+          hint={`${stats.deceased} đã mất`}
+          accent="living"
+        />
+        <StatCard
+          label="Số đời"
+          value={stats.maxGen}
+          hint={`${stats.branchCount} chi nhánh`}
+        />
         <StatCard
           label="Dâu / rể"
           value={stats.daughtersInLaw + stats.sonsInLaw}
@@ -103,11 +118,9 @@ export function ClanOverviewInfographic({
         />
       </div>
 
-      <div className="grid gap-4 border-t border-[var(--gp-scroll-edge)] p-4 md:grid-cols-2 md:p-5">
+      <div className="clan-infographic__body">
         <div>
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[var(--gp-lacquer)]">
-            Phân bố theo chi
-          </h3>
+          <h3 className="clan-infographic__section-title">Phân bố theo chi</h3>
           <ul className="space-y-2">
             {branchRows.map((b) => {
               const pct =
@@ -116,22 +129,24 @@ export function ClanOverviewInfographic({
                 <li key={b.id}>
                   <button
                     type="button"
-                    className="group w-full text-left"
+                    className="clan-infographic__row"
                     onClick={() => onFilterBranch?.(b.id)}
                     title={`Lọc cây theo ${b.name}`}
                   >
                     <div className="mb-1 flex items-baseline justify-between gap-2 text-sm">
-                      <span className="font-semibold text-[var(--gp-ink)] group-hover:text-[var(--gp-lacquer)]">
+                      <span className="font-semibold text-[var(--gp-ink)]">
                         {b.name}
                       </span>
                       <span className="text-xs font-bold text-[var(--gp-muted)]">
                         {b.count} · {pct}%
                       </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-[color-mix(in_srgb,var(--gp-lacquer)_12%,transparent)]">
+                    <div className="clan-infographic__bar">
                       <div
-                        className="h-full rounded-full bg-[var(--gp-lacquer)] transition-all"
-                        style={{ width: `${Math.max(pct, b.count ? 4 : 0)}%` }}
+                        className="clan-infographic__bar-fill"
+                        style={{
+                          width: `${Math.max(pct, b.count ? 4 : 0)}%`,
+                        }}
                       />
                     </div>
                   </button>
@@ -151,9 +166,7 @@ export function ClanOverviewInfographic({
         </div>
 
         <div>
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[var(--gp-lacquer)]">
-            Chuỗi hương hỏa
-          </h3>
+          <h3 className="clan-infographic__section-title">Chuỗi hương hỏa</h3>
           {stats.founder ? (
             <p className="mb-3 text-sm text-[var(--gp-ink-soft)]">
               Thủy tổ{" "}
@@ -179,12 +192,12 @@ export function ClanOverviewInfographic({
               ) : null}
             </p>
           ) : null}
-          <ol className="max-h-48 space-y-1.5 overflow-auto pr-1 text-sm">
+          <ol className="max-h-48 space-y-1 overflow-auto pr-1 text-sm">
             {stats.huongHoa.map((m) => (
               <li key={m.id}>
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-[color-mix(in_srgb,var(--gp-lacquer)_8%,transparent)]"
+                  className="clan-infographic__row flex items-center gap-2"
                   onClick={() => onFocusMember?.(m.id)}
                 >
                   <span className="w-12 shrink-0 text-xs font-bold text-[var(--gp-muted)]">
@@ -220,14 +233,16 @@ function StatCard({
   accent?: "living";
 }) {
   return (
-    <div className="rounded-xl border border-[var(--gp-scroll-edge)] bg-[color-mix(in_srgb,var(--gp-scroll)_55%,white)] px-4 py-3">
+    <div className="clan-infographic__card">
       <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--gp-muted)]">
         {label}
       </p>
       <p
         className={[
-          "mt-1 font-[family-name:var(--font-literata)] text-3xl font-semibold tabular-nums",
-          accent === "living" ? "text-[var(--gp-living,#2d6b48)]" : "text-[var(--gp-lacquer)]",
+          "gp-title mt-1 text-3xl tabular-nums",
+          accent === "living"
+            ? "text-[var(--gp-living,#2d6b48)]"
+            : "text-[var(--gp-lacquer)]",
         ].join(" ")}
       >
         {value}

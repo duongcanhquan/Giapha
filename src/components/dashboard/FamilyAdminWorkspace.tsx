@@ -28,10 +28,7 @@ export function FamilyAdminWorkspace({
   const [defaultParentId, setDefaultParentId] = useState<string | null>(null);
   const [profileMember, setProfileMember] = useState<FamilyMember | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [branchFilterToken, setBranchFilterToken] = useState(0);
-  const [pendingBranchFilter, setPendingBranchFilter] = useState<string | null>(
-    null,
-  );
+  const [treeBranchFilter, setTreeBranchFilter] = useState<string | null>(null);
 
   const openCreate = useCallback((parentId?: string | null) => {
     setFormMode("create");
@@ -63,9 +60,10 @@ export function FamilyAdminWorkspace({
   }, [mutate]);
 
   const focusOnTree = useCallback((memberId: string) => {
-    const el = document.getElementById("clan-tree-canvas");
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-    window.setTimeout(() => treeRef.current?.traceRoute(memberId), 120);
+    document
+      .getElementById("clan-tree-canvas")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => treeRef.current?.traceRoute(memberId), 180);
   }, []);
 
   if (isLoading && !tree) {
@@ -98,8 +96,7 @@ export function FamilyAdminWorkspace({
               focusOnTree(id);
             }}
             onFilterBranch={(branchId) => {
-              setPendingBranchFilter(branchId);
-              setBranchFilterToken((n) => n + 1);
+              setTreeBranchFilter(branchId);
               document
                 .getElementById("clan-tree-canvas")
                 ?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -114,8 +111,8 @@ export function FamilyAdminWorkspace({
                   Dòng họ {tree.clan_name}
                 </h1>
                 <p className="gp-lede mt-1.5 max-w-xl text-sm">
-                  Click để xem hồ sơ · Double-click để sửa · Nút trên node để
-                  gom/xổ nhánh. Tìm kiếm hiện chi và cha–ông–cố.
+                  Cây mở thu nhỏ toàn cảnh — zoom dần để đọc. Tìm tên → mờ phần
+                  khác, sáng đúng đường huyết thống tới người đó.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -135,12 +132,11 @@ export function FamilyAdminWorkspace({
             </div>
 
             <FamilyTree
-              key={`${familyId}-br-${branchFilterToken}`}
               ref={treeRef}
               data={tree}
               showToolbar
               className="h-[min(72vh,680px)]"
-              initialBranchFilter={pendingBranchFilter}
+              branchFilterControlled={treeBranchFilter}
               onMemberOpen={openProfile}
               onMemberDoubleClick={(id) => {
                 const m = tree.members.find((x) => x.id === id);
