@@ -80,25 +80,16 @@ export function MembersManager({
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2
-            className="text-xl font-semibold md:text-2xl"
-            style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
-          >
-            Quản lý Thành viên
-          </h2>
-          <p className="mt-1 text-sm text-stone-600">
-            {members.length} người · bảng DataGrid thêm / sửa / xoá.
+          <h2 className="gp-title text-xl md:text-2xl">Quản lý Thành viên</h2>
+          <p className="gp-lede mt-1 text-sm">
+            {members.length} người · double-click hàng để sửa nhanh.
           </p>
         </div>
         {!hideHeaderActions ? (
           <div className="flex flex-wrap gap-2">
             {exportSlot}
             {onCreate ? (
-              <button
-                type="button"
-                className="rounded-lg bg-[#7a1f1f] px-3 py-2 text-sm font-semibold text-[#fffdf8]"
-                onClick={onCreate}
-              >
+              <button type="button" className="gp-btn gp-btn-primary" onClick={onCreate}>
                 + Thêm thành viên
               </button>
             ) : null}
@@ -106,50 +97,42 @@ export function MembersManager({
         ) : null}
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-stone-300/60 bg-[#fffdf8]">
-        <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-stone-200 text-xs uppercase tracking-wide text-stone-500">
+      <div className="gp-table-wrap">
+        <table className="gp-table">
+          <thead>
             <tr>
-              <th className="px-3 py-2 font-semibold">Tên</th>
-              <th className="px-3 py-2 font-semibold">Đời</th>
-              <th className="px-3 py-2 font-semibold">Nhánh</th>
-              <th className="px-3 py-2 font-semibold">Trạng thái</th>
-              <th className="px-3 py-2 font-semibold">Placeholder</th>
-              <th className="px-3 py-2 font-semibold">Ngày mất / giỗ</th>
-              <th className="px-3 py-2 font-semibold">Thao tác</th>
+              <th>Tên</th>
+              <th>Đời</th>
+              <th>Nhánh</th>
+              <th>Trạng thái</th>
+              <th>Placeholder</th>
+              <th>Ngày mất / giỗ</th>
+              <th>Thao tác</th>
             </tr>
           </thead>
           <tbody>
             {members.map((m) => (
-              <tr
-                key={m.id}
-                className="border-b border-stone-100 last:border-0 hover:bg-stone-50/80"
-                onDoubleClick={() => onEdit?.(m)}
-              >
-                <td className="px-3 py-2 font-medium">
+              <tr key={m.id} onDoubleClick={() => onEdit?.(m)} className="cursor-pointer">
+                <td className="font-display font-semibold">
                   {m.status.is_placeholder ? "? Khuyết danh" : m.full_name}
                 </td>
-                <td className="px-3 py-2">{memberGeneration(m)}</td>
-                <td className="px-3 py-2">{m.tree_logic.branch_id}</td>
-                <td className="px-3 py-2">
-                  {m.status.is_alive ? "Đang sống" : "Đã mất"}
-                </td>
-                <td className="px-3 py-2">
-                  {m.status.is_placeholder ? "Có" : "—"}
-                </td>
-                <td className="px-3 py-2 text-xs text-stone-600">
+                <td>{memberGeneration(m)}</td>
+                <td>{m.tree_logic.branch_id}</td>
+                <td>{m.status.is_alive ? "Đang sống" : "Đã mất"}</td>
+                <td>{m.status.is_placeholder ? "Có" : "—"}</td>
+                <td className="text-xs text-[var(--gp-muted)]">
                   {m.dates.death || "—"}
                   {m.dates.lunar_death ? (
-                    <span className="block text-stone-500">
+                    <span className="block text-[var(--gp-muted-soft)]">
                       Âm: {m.dates.lunar_death}
                     </span>
                   ) : null}
                 </td>
-                <td className="px-3 py-2">
+                <td onDoubleClick={(e) => e.stopPropagation()}>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="text-xs font-semibold text-[#7a1f1f] hover:underline"
+                      className="text-xs font-semibold text-[var(--gp-lacquer)] hover:underline"
                       onClick={() => onEdit?.(m)}
                     >
                       Sửa
@@ -157,7 +140,7 @@ export function MembersManager({
                     <button
                       type="button"
                       disabled={busyId === m.id}
-                      className="text-xs font-semibold text-stone-600 hover:underline disabled:opacity-50"
+                      className="text-xs font-semibold text-[var(--gp-muted)] hover:underline disabled:opacity-50"
                       onClick={() => void handleDelete(m)}
                     >
                       {busyId === m.id ? "…" : "Xoá"}
@@ -168,7 +151,7 @@ export function MembersManager({
             ))}
             {members.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-stone-500">
+                <td colSpan={7} className="py-8 text-center text-[var(--gp-muted)]">
                   Chưa có thành viên — nhấn Thêm thành viên để bắt đầu.
                 </td>
               </tr>

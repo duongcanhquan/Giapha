@@ -68,23 +68,19 @@ export function FamilyAdminWorkspace({
         <section className="space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1
-                className="text-2xl font-semibold"
-                style={{
-                  fontFamily: "var(--font-literata), Literata, Georgia, serif",
-                }}
-              >
-                Quản trị dòng họ {tree.clan_name}
+              <p className="gp-eyebrow">Quản trị hương hỏa</p>
+              <h1 className="gp-title mt-1 text-2xl md:text-3xl">
+                Dòng họ {tree.clan_name}
               </h1>
-              <p className="mt-1 text-sm text-stone-600">
-                Double-click một người trên cây để mở form cập nhật. Dùng bảng bên
-                dưới để thêm / sửa / xoá.
+              <p className="gp-lede mt-1.5 max-w-xl text-sm">
+                Tra cứu trên cây, double-click để cập nhật. Bảng bên dưới hỗ trợ thêm /
+                sửa / xoá nhanh.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="rounded-lg bg-[#7a1f1f] px-3 py-2 text-sm font-semibold text-[#fffdf8]"
+                className="gp-btn gp-btn-primary"
                 onClick={() => openCreate()}
               >
                 + Thêm thành viên
@@ -92,7 +88,7 @@ export function FamilyAdminWorkspace({
               <ExportTreeButton
                 data={tree}
                 label="Xuất Infographic"
-                className="rounded-lg border border-stone-400/50 bg-white px-3 py-2 text-sm font-semibold text-[#1c1410] disabled:opacity-60"
+                className="gp-btn gp-btn-ghost disabled:opacity-60"
               />
             </div>
           </div>
@@ -125,7 +121,7 @@ export function FamilyAdminWorkspace({
             <ExportTreeButton
               data={tree}
               label="Xuất Infographic"
-              className="rounded-lg border border-stone-400/50 bg-white px-3 py-2 text-sm font-semibold text-[#1c1410] disabled:opacity-60"
+              className="gp-btn gp-btn-ghost disabled:opacity-60"
             />
           ) : null
         }

@@ -93,7 +93,7 @@ export function SuperAdminDashboard() {
 
   if (status === "loading") {
     return (
-      <main className="grid min-h-screen place-items-center text-sm text-white/70">
+      <main className="grid min-h-screen place-items-center bg-[var(--gp-lacquer-deep)] text-sm text-[var(--gp-seal-ink)]/70">
         Đang xác thực Super Admin…
       </main>
     );
@@ -101,14 +101,16 @@ export function SuperAdminDashboard() {
 
   if (status === "denied") {
     return (
-      <main className="grid min-h-screen place-items-center px-4 text-center">
-        <div>
-          <h1 className="text-xl font-semibold text-red-300">Không có quyền Super Admin</h1>
-          <p className="mt-2 text-sm text-white/70">
-            Chỉ tài khoản <code className="text-red-200">duongcanhquan</code> / claim{" "}
-            <code className="text-red-200">super_admin</code> được vào đây.
+      <main className="grid min-h-screen place-items-center bg-[var(--gp-lacquer-deep)] px-4 text-center">
+        <div className="max-w-md">
+          <h1 className="font-display text-xl font-semibold text-[var(--gp-gold-bright)]">
+            Không có quyền Super Admin
+          </h1>
+          <p className="mt-2 text-sm text-[var(--gp-seal-ink)]/75">
+            Chỉ tài khoản <code className="text-[var(--gp-gold-bright)]">duongcanhquan</code>{" "}
+            / claim <code className="text-[var(--gp-gold-bright)]">super_admin</code>.
           </p>
-          <Link href="/" className="mt-4 inline-block text-sm font-semibold underline">
+          <Link href="/" className="gp-btn gp-btn-outline-light mt-5">
             Về trang chủ
           </Link>
         </div>
@@ -117,32 +119,28 @@ export function SuperAdminDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-[linear-gradient(165deg,#2a1212_0%,#1a0a0a_45%,#120808_100%)] text-[var(--gp-seal-ink)]">
       <SuperAdminBanner />
 
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-4 md:px-8">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--gp-gold)]/20 px-4 py-5 md:px-8">
         <div>
-          <p className="text-xs uppercase tracking-[0.16em] text-red-300/90">Giapha Platform</p>
-          <h1
-            className="mt-1 text-2xl font-semibold"
-            style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
-          >
-            Super Admin Dashboard
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gp-gold-bright)]/90">
+            Giapha · Ấn son nền tảng
+          </p>
+          <h1 className="font-display mt-1 text-2xl font-semibold">
+            Super Admin
           </h1>
-          <p className="mt-1 text-sm text-white/65">
+          <p className="mt-1 text-sm text-[var(--gp-seal-ink)]/65">
             {email ?? "—"} · {families.length} dòng họ
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/"
-            className="rounded-lg border border-white/25 px-3 py-2 text-sm font-semibold hover:bg-white/10"
-          >
+          <Link href="/" className="gp-btn gp-btn-outline-light">
             Trang chủ
           </Link>
           <button
             type="button"
-            className="rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/15"
+            className="gp-btn border border-[var(--gp-gold)]/30 bg-white/5 hover:bg-white/10"
             onClick={() => void signOutUser().then(() => router.replace("/login"))}
           >
             Đăng xuất
@@ -152,14 +150,14 @@ export function SuperAdminDashboard() {
 
       <main className="flex-1 px-4 py-6 md:px-8">
         {error ? (
-          <p className="mb-4 rounded-lg border border-red-400/40 bg-red-950/50 px-3 py-2 text-sm text-red-100">
+          <p className="mb-4 rounded-[var(--gp-radius)] border border-red-300/40 bg-red-950/40 px-3 py-2 text-sm text-red-100">
             {error}
           </p>
         ) : null}
 
-        <div className="overflow-x-auto rounded-xl border border-white/15 bg-[#2a1010]">
+        <div className="overflow-x-auto rounded-[var(--gp-radius-lg)] border border-[var(--gp-gold)]/25 bg-[#2a1212]/80 shadow-[var(--gp-shadow-lift)]">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-white/10 text-xs uppercase tracking-wide text-white/50">
+            <thead className="border-b border-[var(--gp-gold)]/20 text-xs uppercase tracking-[0.12em] text-[var(--gp-seal-ink)]/50">
               <tr>
                 <th className="px-4 py-3 font-semibold">Tên dòng họ</th>
                 <th className="px-4 py-3 font-semibold">family_id</th>
@@ -171,28 +169,30 @@ export function SuperAdminDashboard() {
               {families.map((family) => (
                 <tr
                   key={family.id}
-                  className="border-b border-white/5 last:border-0 hover:bg-white/5"
+                  className="border-b border-white/5 last:border-0 transition hover:bg-[var(--gp-gold)]/5"
                 >
-                  <td className="px-4 py-3 font-medium">{family.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-white/60">
+                  <td className="px-4 py-3 font-display font-semibold">
+                    {family.name}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-[var(--gp-seal-ink)]/55">
                     {family.id}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-white/60">
+                  <td className="px-4 py-3 font-mono text-xs text-[var(--gp-seal-ink)]/55">
                     {family.owner_id}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
                       <Link
                         href={`/dashboard/${encodeURIComponent(family.id)}`}
-                        className="rounded-md bg-[#b91c1c] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#dc2626]"
+                        className="rounded-[var(--gp-radius-sm)] bg-[var(--gp-seal)] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[var(--gp-lacquer)]"
                       >
                         Quản lý
                       </Link>
                       <Link
                         href={`/tree/${encodeURIComponent(family.id)}`}
-                        className="rounded-md border border-white/25 px-2.5 py-1 text-xs font-semibold hover:bg-white/10"
+                        className="rounded-[var(--gp-radius-sm)] border border-white/25 px-2.5 py-1 text-xs font-semibold hover:bg-white/10"
                       >
-                        Xem công khai
+                        Tra cứu công khai
                       </Link>
                     </div>
                   </td>

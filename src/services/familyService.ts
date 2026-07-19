@@ -99,8 +99,8 @@ export async function createFamily(input: CreateFamilyInput): Promise<Family> {
   ];
   const defaultTheme: FamilyTheme = {
     primary_color: "#7a1f1f",
-    accent_color: "#c9a227",
-    surface_color: "#e9eef3",
+    accent_color: "#b8952d",
+    surface_color: "#e4e8e5",
     background_image: null,
   };
 

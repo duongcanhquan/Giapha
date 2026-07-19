@@ -16,27 +16,24 @@ export function StoryLanding() {
     target: heroRef,
     offset: ["start start", "end start"],
   });
-  const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "18%"]);
-  const overlayOpacity = useTransform(scrollYProgress, [0, 1], [0.45, 0.7]);
+  const imageY = useTransform(scrollYProgress, [0, 1], ["0%", "16%"]);
+  const overlayOpacity = useTransform(scrollYProgress, [0, 1], [0.42, 0.72]);
 
   return (
-    <div className="story-root min-h-screen bg-[#dfe6ec] text-[#1c1410]">
-      <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-5 py-4 md:px-10">
-        <p
-          className="text-sm font-semibold tracking-wide text-[#fffdf8]"
-          style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
-        >
+    <div className="min-h-screen bg-[var(--gp-paper)] text-[var(--gp-ink)]">
+      <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-5 py-5 md:px-10">
+        <p className="font-display text-base font-semibold tracking-[0.08em] text-[var(--gp-seal-ink)] md:text-lg">
           Giapha
         </p>
-        <nav className="flex gap-4 text-sm font-medium text-[#fffdf8]/90">
-          <a href="#timeline" className="hover:text-white">
+        <nav className="flex items-center gap-5 text-sm font-medium text-[var(--gp-seal-ink)]/90">
+          <a href="#timeline" className="hidden hover:text-white sm:inline">
             Cột mốc
           </a>
           <Link href="/tree/family-demo-nguyen" className="hover:text-white">
-            Cây công khai
+            Tra cứu cây
           </Link>
-          <Link href="/register" className="hover:text-white">
-            Đăng ký
+          <Link href="/login" className="hover:text-white">
+            Đăng nhập
           </Link>
         </nav>
       </header>
@@ -49,58 +46,50 @@ export function StoryLanding() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={HALL_IMAGE}
-            alt="Nhà thờ họ uy nghiêm"
+            alt="Không gian nhà thờ họ uy nghiêm"
             className="h-[120%] w-full object-cover"
           />
         </motion.div>
         <motion.div
-          className="absolute inset-0 bg-gradient-to-t from-[#120e0c] via-[#120e0c]/55 to-[#120e0c]/25"
+          className="absolute inset-0 bg-gradient-to-t from-[#120e0c] via-[#120e0c]/55 to-[#120e0c]/2"
           style={{ opacity: overlayOpacity }}
         />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#120e0c]/35 to-transparent"
+        />
 
-        <div className="relative z-10 w-full px-5 pb-16 pt-32 md:px-10 md:pb-24">
-          <motion.p
-            className="text-xs font-semibold uppercase tracking-[0.22em] text-[#e8d48a]"
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            {clanStory.hallName}
-          </motion.p>
+        <div className="relative z-10 w-full px-5 pb-16 pt-36 md:px-10 md:pb-24">
           <motion.h1
-            className="mt-3 max-w-3xl text-5xl font-semibold leading-[1.05] text-[#fffdf8] md:text-7xl"
-            style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
+            className="font-display max-w-4xl text-5xl font-semibold leading-[1.02] text-[var(--gp-seal-ink)] md:text-7xl"
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.08 }}
+            transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
           >
-            Dòng họ {clanStory.clanName}
+            Giapha
           </motion.h1>
           <motion.p
-            className="mt-4 max-w-xl text-base text-[#f0e6d4]/90 md:text-lg"
-            initial={{ opacity: 0, y: 20 }}
+            className="mt-4 max-w-xl text-base text-[#f0e6d4]/92 md:text-lg"
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.65, delay: 0.18 }}
+            transition={{ duration: 0.65, delay: 0.1 }}
           >
-            {clanStory.tagline}
+            Gia phả số linh thiêng — tra cứu thông minh, giữ hương hỏa cho thế hệ sau.
           </motion.p>
           <motion.div
-            className="mt-8 flex flex-wrap gap-3"
-            initial={{ opacity: 0, y: 16 }}
+            className="mt-9 flex flex-wrap gap-3"
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.28 }}
+            transition={{ duration: 0.55, delay: 0.22 }}
           >
-            <Link
-              href="/register"
-              className="inline-flex items-center bg-[#7a1f1f] px-5 py-3 text-sm font-semibold text-[#fffdf8] transition hover:bg-[#5e1717]"
-            >
+            <Link href="/register" className="gp-btn gp-btn-primary">
               Tạo gia phả của bạn
             </Link>
             <Link
               href="/tree/family-demo-nguyen"
-              className="inline-flex items-center border border-[#fffdf8]/45 px-5 py-3 text-sm font-semibold text-[#fffdf8] transition hover:bg-[#fffdf8]/10"
+              className="gp-btn gp-btn-outline-light"
             >
-              Xem bản demo
+              Xem bản demo dòng họ {clanStory.clanName}
             </Link>
           </motion.div>
         </div>
@@ -110,23 +99,21 @@ export function StoryLanding() {
         <ClanTimeline milestones={clanStory.milestones} />
       </div>
 
-      <section className="border-t border-[#8a6a3a]/25 px-5 py-16 md:px-10">
+      <section className="border-t border-[var(--gp-scroll-edge)] px-5 py-16 md:px-10">
         <div className="mx-auto flex max-w-4xl flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
-            <h2
-              className="text-2xl font-semibold text-[#1c1410]"
-              style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
-            >
+            <p className="gp-eyebrow">Dòng họ {clanStory.clanName}</p>
+            <h2 className="gp-title mt-2 text-2xl md:text-3xl">
               {clanStory.heroCaption}
             </h2>
-            <p className="mt-2 max-w-lg text-sm text-[#5c564e]">
-              Double-click một người trên cây để xem tên húy, thụy, tiểu sử và lịch
-              giỗ âm lịch.
+            <p className="gp-lede mt-2 max-w-lg text-sm">
+              Gõ tên húy, thụy hoặc họ tên — cây phóng to tới đúng người. Double-click
+              để xem tiểu sử và ngày giỗ âm lịch.
             </p>
           </div>
           <Link
             href="/tree/family-demo-nguyen"
-            className="inline-flex shrink-0 bg-[#1c1410] px-5 py-3 text-sm font-semibold text-[#fffdf8]"
+            className="gp-btn gp-btn-secondary shrink-0"
           >
             Vào cây công khai
           </Link>

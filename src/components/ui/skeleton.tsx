@@ -13,7 +13,7 @@ export function Skeleton({ className }: SkeletonProps) {
     <motion.div
       aria-hidden
       className={cn(
-        "relative overflow-hidden rounded-md bg-stone-200/80",
+        "relative overflow-hidden rounded-md bg-[var(--gp-mist)]/90",
         className,
       )}
       initial={{ opacity: 0.7 }}
@@ -31,7 +31,7 @@ export function Skeleton({ className }: SkeletonProps) {
 
 export function TreePageSkeleton() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#e9eef3]" role="status" aria-label="Đang tải">
+    <div className="flex min-h-screen flex-col bg-[var(--gp-paper)]" role="status" aria-label="Đang tải">
       <Skeleton className="h-28 w-full rounded-none md:h-36" />
       <div className="space-y-3 px-4 py-4 md:px-6">
         <Skeleton className="h-3 w-32" />
@@ -42,7 +42,7 @@ export function TreePageSkeleton() {
           <Skeleton className="h-9 w-28" />
         </div>
       </div>
-      <div className="relative mx-3 mb-4 flex-1 overflow-hidden rounded-2xl border border-stone-300/40 bg-[#fffdf8] md:mx-4">
+      <div className="relative mx-3 mb-4 flex-1 overflow-hidden rounded-2xl border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] md:mx-4">
         <div className="absolute inset-0 grid place-items-center gap-6 p-8">
           <div className="flex w-full max-w-3xl flex-col items-center gap-10">
             <Skeleton className="h-16 w-44" />

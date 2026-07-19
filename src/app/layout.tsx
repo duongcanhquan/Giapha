@@ -17,9 +17,9 @@ const literata = Literata({
 });
 
 export const metadata: Metadata = {
-  title: "Giapha — Dòng họ & cây gia phả",
+  title: "Giapha — Gia phả linh thiêng, tra cứu thông minh",
   description:
-    "Landing kể chuyện dòng họ, cây gia phả tương tác, lịch giỗ âm lịch và xuất PDF in ấn.",
+    "Nền tảng gia phả số: cây dòng họ tương tác, tìm kiếm mờ thông minh, lịch giỗ âm lịch và xuất infographic in ấn.",
 };
 
 export default function RootLayout({
@@ -32,7 +32,7 @@ export default function RootLayout({
       lang="vi"
       className={`${beVietnam.variable} ${literata.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#e9eef3] text-[#1c1410]">
+      <body className="flex min-h-full flex-col bg-background text-foreground">
         <SwrProvider>
           {children}
           <AppToaster />

@@ -11,9 +11,16 @@ export function ClanTimeline({ milestones }: ClanTimelineProps) {
   return (
     <section className="relative px-5 py-20 md:px-10 md:py-28">
       <div className="mx-auto max-w-4xl">
+        <motion.p
+          className="gp-eyebrow text-center"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+        >
+          Hương hỏa
+        </motion.p>
         <motion.h2
-          className="text-center text-3xl font-semibold text-[#1c1410] md:text-4xl"
-          style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
+          className="gp-title mt-3 text-center text-3xl md:text-4xl"
           initial={{ opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.4 }}
@@ -22,7 +29,7 @@ export function ClanTimeline({ milestones }: ClanTimelineProps) {
           Cột mốc dòng họ
         </motion.h2>
         <motion.p
-          className="mx-auto mt-3 max-w-xl text-center text-sm text-[#5c564e] md:text-base"
+          className="gp-lede mx-auto mt-3 max-w-xl text-center text-sm md:text-base"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -34,7 +41,7 @@ export function ClanTimeline({ milestones }: ClanTimelineProps) {
         <div className="relative mt-14">
           <div
             aria-hidden
-            className="absolute left-4 top-0 h-full w-px bg-gradient-to-b from-[#7a1f1f]/10 via-[#c9a227]/70 to-[#7a1f1f]/10 md:left-1/2 md:-translate-x-1/2"
+            className="absolute left-4 top-0 h-full w-px bg-gradient-to-b from-[var(--gp-lacquer)]/10 via-[var(--gp-gold)]/70 to-[var(--gp-lacquer)]/10 md:left-1/2 md:-translate-x-1/2"
           />
 
           <ol className="space-y-10 md:space-y-14">
@@ -46,7 +53,7 @@ export function ClanTimeline({ milestones }: ClanTimelineProps) {
                   className="relative grid md:grid-cols-2 md:gap-10"
                   initial={{
                     opacity: 0,
-                    x: fromLeft ? -64 : 64,
+                    x: fromLeft ? -48 : 48,
                   }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true, amount: 0.35 }}
@@ -62,24 +69,15 @@ export function ClanTimeline({ milestones }: ClanTimelineProps) {
                       fromLeft ? "md:pr-10 md:text-right" : "md:col-start-2 md:pl-10",
                     ].join(" ")}
                   >
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#7a1f1f]">
-                      {item.year}
-                    </p>
-                    <h3
-                      className="mt-1 text-xl font-semibold text-[#1c1410]"
-                      style={{
-                        fontFamily: "var(--font-literata), Literata, Georgia, serif",
-                      }}
-                    >
-                      {item.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-[#5c564e] md:text-[15px]">
+                    <p className="gp-eyebrow">{item.year}</p>
+                    <h3 className="gp-title mt-1 text-xl">{item.title}</h3>
+                    <p className="gp-lede mt-2 text-sm leading-relaxed md:text-[15px]">
                       {item.body}
                     </p>
                   </div>
                   <span
                     aria-hidden
-                    className="absolute left-4 top-1.5 h-3 w-3 -translate-x-1/2 rounded-full border-2 border-[#fffdf8] bg-[#c9a227] shadow-[0_0_0_3px_rgba(122,31,31,0.25)] md:left-1/2"
+                    className="gp-seal-dot absolute left-[0.7rem] top-1.5 md:left-1/2 md:-translate-x-1/2"
                   />
                 </motion.li>
               );

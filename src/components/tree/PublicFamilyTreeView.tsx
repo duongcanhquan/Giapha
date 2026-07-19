@@ -24,8 +24,8 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
   }, [familyId]);
 
   const theme = family?.settings.theme;
-  const primary = theme?.primary_color ?? "#7a1f1f";
-  const surface = theme?.surface_color ?? "#e9eef3";
+  const primary = theme?.primary_color ?? "var(--gp-lacquer)";
+  const surface = theme?.surface_color ?? "var(--gp-paper)";
 
   if (isLoading && !tree) {
     return <TreePageSkeleton />;
@@ -34,11 +34,12 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
   if (error || !tree) {
     return (
       <main className="grid min-h-screen place-items-center px-4 text-center">
-        <div>
-          <p className="text-[#7a1f1f]">
+        <div className="gp-panel max-w-md p-8">
+          <p className="gp-eyebrow">Không tìm thấy</p>
+          <p className="mt-3 text-[var(--gp-lacquer)]">
             {error?.message ?? "Không tìm thấy dòng họ."}
           </p>
-          <Link href="/" className="mt-3 inline-block text-sm font-semibold underline">
+          <Link href="/" className="gp-btn gp-btn-ghost mt-5">
             Về trang chủ
           </Link>
         </div>
@@ -49,7 +50,12 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
   return (
     <main
       className="flex min-h-screen flex-col"
-      style={{ background: surface, ["--ft-lacquer" as string]: primary }}
+      style={{
+        background: surface,
+        ["--ft-lacquer" as string]:
+          theme?.primary_color ?? "var(--gp-lacquer)",
+        ["--gp-lacquer" as string]: theme?.primary_color ?? "var(--gp-lacquer)",
+      }}
     >
       {theme?.background_image ? (
         <div
@@ -58,51 +64,50 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
           role="img"
           aria-label="Ảnh nền dòng họ"
         />
-      ) : null}
+      ) : (
+        <div
+          aria-hidden
+          className="h-2 w-full"
+          style={{
+            background: `linear-gradient(90deg, ${primary}, var(--gp-gold), ${primary})`,
+          }}
+        />
+      )}
 
-      <header className="border-b border-stone-300/50 px-4 py-4 md:px-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <header className="border-b border-[var(--gp-scroll-edge)] bg-[color-mix(in_srgb,var(--gp-scroll)_88%,transparent)] px-4 py-5 backdrop-blur-sm md:px-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p
-              className="text-xs font-semibold uppercase tracking-[0.14em]"
-              style={{ color: primary }}
-            >
+            <p className="gp-eyebrow">
               <Link href="/" className="hover:underline">
                 Giapha
               </Link>
-              {" · "}Xem công khai
+              {" · "}Chế độ chỉ xem
             </p>
-            <h1
-              className="mt-1 text-2xl font-semibold text-[#1c1410]"
-              style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
-            >
+            <h1 className="gp-title mt-2 text-2xl md:text-3xl">
               Dòng họ {tree.clan_name}
             </h1>
-            <p className="mt-1 max-w-xl text-sm text-stone-600">
+            <p className="gp-lede mt-1.5 max-w-xl text-sm">
               {family?.settings.description ||
-                "Chế độ chỉ đọc — không thể thêm/sửa/xóa."}
+                "Tra cứu nhanh bằng thanh tìm kiếm trên cây — gõ tên để phóng tới đúng người."}
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <CopyShareLinkButton
               url={shareUrl}
-              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#fffdf8]"
+              className="gp-btn gp-btn-primary"
               style={{ background: primary }}
             />
-            <Link
-              href={`/dashboard/${familyId}`}
-              className="inline-flex items-center rounded-lg border border-stone-400/50 bg-white px-3 py-2 text-sm font-semibold text-[#1c1410]"
-            >
+            <Link href={`/dashboard/${familyId}`} className="gp-btn gp-btn-ghost">
               Quản trị
             </Link>
           </div>
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 p-3 md:p-4">
+      <div className="min-h-0 flex-1 p-3 md:p-5">
         {tree.members.length === 0 ? (
-          <div className="grid h-[60vh] place-items-center text-sm text-stone-500">
+          <div className="gp-panel grid h-[60vh] place-items-center text-sm text-[var(--gp-muted)]">
             Dòng họ chưa có thành viên công khai.
           </div>
         ) : (
@@ -110,7 +115,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
             data={tree}
             readOnly
             showToolbar
-            className="h-[calc(100vh-12rem)]"
+            className="h-[calc(100vh-11rem)]"
             onMemberDoubleClick={(id) => {
               const m = tree.members.find((x) => x.id === id) ?? null;
               if (!m || m.status.is_placeholder) return;

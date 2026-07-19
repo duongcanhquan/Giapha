@@ -36,7 +36,6 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
     const unsub = subscribeAuth((user) => {
       void (async () => {
         if (!user) {
-          // Demo mode: allow viewing dashboard UI without auth
           if (
             !isFirebaseConfigured() &&
             (familyId === "demo" || familyId === sampleFamilyTree.family_id)
@@ -51,8 +50,8 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
                 description: "Demo dashboard",
                 theme: {
                   primary_color: "#7a1f1f",
-                  accent_color: "#c9a227",
-                  surface_color: "#e9eef3",
+                  accent_color: "#b8952d",
+                  surface_color: "#e4e8e5",
                 },
                 branches: [
                   {
@@ -114,7 +113,7 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
 
   if (status === "loading") {
     return (
-      <main className="grid min-h-screen place-items-center text-sm text-stone-500">
+      <main className="grid min-h-screen place-items-center text-sm text-[var(--gp-muted)]">
         Đang kiểm tra quyền quản trị…
       </main>
     );
@@ -122,63 +121,49 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
 
   if (status === "denied") {
     return (
-      <main className="grid min-h-screen place-items-center text-sm text-[#7a1f1f]">
-        Bạn không có quyền truy cập dashboard này.
+      <main className="grid min-h-screen place-items-center text-sm text-[var(--gp-lacquer)]">
+        Bạn không có quyền truy cập khu vực quản trị này.
       </main>
     );
   }
 
   const base = `/dashboard/${familyId}`;
-
   const isSuperAdmin = access?.role === "super_admin";
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#e9eef3] text-[#1c1410]">
+    <div className="flex min-h-screen flex-col bg-[var(--gp-paper)] text-[var(--gp-ink)]">
       {isSuperAdmin ? <SuperAdminBanner familyName={family?.name} /> : null}
 
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-56 shrink-0 border-r border-stone-300/60 bg-[#fffdf8] p-4 md:block">
-          <Link
-            href="/"
-            className="text-sm font-semibold text-[#7a1f1f]"
-            style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
-          >
+        <aside className="hidden w-60 shrink-0 border-r border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-5 md:block">
+          <Link href="/" className="font-display text-sm font-semibold text-[var(--gp-lacquer)]">
             Giapha
           </Link>
-          <p className="mt-3 text-xs uppercase tracking-[0.14em] text-stone-500">
-            Dashboard
-          </p>
-          <p
-            className="mt-1 text-lg font-semibold"
-            style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
-          >
-            {family?.name ?? "…"}
-          </p>
-          <p className="mt-1 text-xs text-stone-500">
+          <p className="gp-eyebrow mt-5">Quản trị dòng họ</p>
+          <p className="gp-title mt-1 text-lg">{family?.name ?? "…"}</p>
+          <p className="mt-1 text-xs text-[var(--gp-muted)]">
             Vai trò:{" "}
             {isSuperAdmin
               ? "Super Admin"
               : access?.role === "owner"
-                ? "Family Owner"
-                : "Branch Admin"}
+                ? "Chủ dòng họ"
+                : "Trưởng nhánh"}
           </p>
 
-          <nav className="mt-6 flex flex-col gap-1">
+          <nav className="mt-7 flex flex-col gap-1">
             {NAV.map((item) => {
               const href = `${base}${item.href}`;
               const active =
-                item.href === ""
-                  ? pathname === base
-                  : pathname.startsWith(href);
+                item.href === "" ? pathname === base : pathname.startsWith(href);
               return (
                 <Link
                   key={item.href || "home"}
                   href={href}
                   className={[
-                    "rounded-lg px-3 py-2 text-sm font-semibold",
+                    "rounded-[var(--gp-radius-sm)] px-3 py-2 text-sm font-semibold transition",
                     active
-                      ? "bg-[#7a1f1f] text-[#fffdf8]"
-                      : "text-[#1c1410] hover:bg-stone-200/60",
+                      ? "bg-[var(--gp-lacquer)] text-[var(--gp-seal-ink)]"
+                      : "text-[var(--gp-ink)] hover:bg-[var(--gp-lacquer-soft)]",
                   ].join(" ")}
                 >
                   {item.label}
@@ -187,24 +172,24 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
             })}
           </nav>
 
-          <div className="mt-8 space-y-2 border-t border-stone-200 pt-4">
+          <div className="mt-8 space-y-2 border-t border-[var(--gp-scroll-edge)] pt-4">
             {isSuperAdmin ? (
               <Link
                 href="/super-admin"
-                className="block text-sm font-semibold text-[#b91c1c] hover:underline"
+                className="block text-sm font-semibold text-[var(--gp-seal)] hover:underline"
               >
-                Super Admin
+                Cổng Super Admin
               </Link>
             ) : null}
             <Link
               href={`/tree/${familyId}`}
-              className="block text-sm font-semibold text-[#7a1f1f] hover:underline"
+              className="block text-sm font-semibold text-[var(--gp-lacquer)] hover:underline"
             >
               Xem cây công khai
             </Link>
             <button
               type="button"
-              className="text-sm text-stone-600 hover:underline"
+              className="text-sm text-[var(--gp-muted)] hover:underline"
               onClick={() => void signOutUser().then(() => router.replace("/"))}
             >
               Đăng xuất
@@ -213,32 +198,33 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-stone-300/60 bg-[#fffdf8]/80 px-4 py-3 md:hidden">
+          <header className="flex items-center justify-between border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)]/90 px-4 py-3 md:hidden">
             <div>
-              <p className="text-xs text-stone-500">Dashboard</p>
-              <p className="font-semibold">{family?.name}</p>
+              <p className="gp-eyebrow">Quản trị</p>
+              <p className="font-display font-semibold">{family?.name}</p>
             </div>
-            <Link href={`/tree/${familyId}`} className="text-sm font-semibold text-[#7a1f1f]">
+            <Link
+              href={`/tree/${familyId}`}
+              className="text-sm font-semibold text-[var(--gp-lacquer)]"
+            >
               Cây công khai
             </Link>
           </header>
 
-          <nav className="flex gap-1 overflow-x-auto border-b border-stone-300/50 bg-[#fffdf8] px-2 py-2 md:hidden">
+          <nav className="flex gap-1 overflow-x-auto border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] px-2 py-2 md:hidden">
             {NAV.map((item) => {
               const href = `${base}${item.href}`;
               const active =
-                item.href === ""
-                  ? pathname === base
-                  : pathname.startsWith(href);
+                item.href === "" ? pathname === base : pathname.startsWith(href);
               return (
                 <Link
                   key={item.href || "home-m"}
                   href={href}
                   className={[
-                    "whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold",
+                    "whitespace-nowrap rounded-[var(--gp-radius-sm)] px-3 py-1.5 text-xs font-semibold",
                     active
-                      ? "bg-[#7a1f1f] text-[#fffdf8]"
-                      : "text-[#1c1410]",
+                      ? "bg-[var(--gp-lacquer)] text-[var(--gp-seal-ink)]"
+                      : "text-[var(--gp-ink)]",
                   ].join(" ")}
                 >
                   {item.label}
@@ -247,7 +233,7 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
             })}
           </nav>
 
-          <main className="flex-1 p-4 md:p-6">{children}</main>
+          <main className="flex-1 p-4 md:p-7">{children}</main>
         </div>
       </div>
     </div>

@@ -35,13 +35,13 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 grid w-[min(520px,calc(100%-2rem))] max-h-[min(90vh,720px)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border border-[#8a6a3a]/35 bg-[#fffdf8] p-6 shadow-xl data-[state=open]:animate-[fade-in_160ms_ease-out]",
+          "fixed left-1/2 top-1/2 z-50 grid w-[min(520px,calc(100%-2rem))] max-h-[min(90vh,720px)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-6 shadow-[var(--gp-shadow-lift)] data-[state=open]:animate-[fade-in_160ms_ease-out]",
           className,
         )}
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[#7a1f1f]/40">
+        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-md opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[var(--gp-lacquer)]/40">
           <X className="h-4 w-4" />
           <span className="sr-only">Đóng</span>
         </DialogPrimitive.Close>
@@ -75,10 +75,9 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       className={cn(
-        "text-xl font-semibold leading-none tracking-tight text-[#1c1410]",
+        "font-display text-xl font-semibold leading-none tracking-tight text-[var(--gp-ink)]",
         className,
       )}
-      style={{ fontFamily: "var(--font-literata), Literata, Georgia, serif" }}
       {...props}
     />
   );
@@ -90,7 +89,7 @@ function DialogDescription({
 }: React.ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
-      className={cn("text-sm text-[#6a6258]", className)}
+      className={cn("text-sm text-[var(--gp-muted)]", className)}
       {...props}
     />
   );
