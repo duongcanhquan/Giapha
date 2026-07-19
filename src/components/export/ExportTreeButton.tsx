@@ -72,7 +72,7 @@ export function ExportTreeButton({
       pdf.addImage(img, "PNG", 0, 0, A0_WIDTH_MM, A0_HEIGHT_MM, undefined, "FAST");
       const name =
         fileName ??
-        `giapha-${data.clan_name.toLowerCase()}-a0-${new Date().toISOString().slice(0, 10)}.pdf`;
+        `gia-pha-${data.clan_name.toLowerCase()}-a0-${new Date().toISOString().slice(0, 10)}.pdf`;
       pdf.save(name);
     } catch (error) {
       console.error(error);

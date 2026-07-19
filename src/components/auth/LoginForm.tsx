@@ -89,12 +89,6 @@ export function LoginForm() {
           Đăng ký
         </Link>
       </p>
-      <p className="text-center text-xs text-[var(--gp-muted-soft)]">
-        Super Admin:{" "}
-        <Link href="/super-admin" className="font-semibold text-[var(--gp-seal)] hover:underline">
-          /super-admin
-        </Link>
-      </p>
     </form>
   );
 }
