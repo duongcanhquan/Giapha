@@ -15,12 +15,25 @@ export type MemberSearchHit = {
   lineage: string | null;
   aka: string | null;
   childCount: number;
+  /** VD: "Cưới Nguyễn Thị Lan (dâu)" */
+  marriage: string | null;
 };
 
 type SearchableMember = FamilyMember & {
   _search: string;
   _branch: string;
 };
+
+function marriageLine(member: FamilyMember): string | null {
+  if (!member.spouses.length) return null;
+  return member.spouses
+    .map((s) => {
+      const role =
+        s.role === "DAU" ? "dâu" : s.role === "RE" ? "rể" : "phối ngẫu";
+      return `Cưới ${s.full_name} (${role})`;
+    })
+    .join(" · ");
+}
 
 function akaLine(member: FamilyMember): string | null {
   const parts = [
@@ -135,6 +148,7 @@ export function searchMembers(
         branchName: branchNameOf(member, branches),
         lineage: formatLineageLabel(member, nameById, 3),
         aka: akaLine(member),
+        marriage: marriageLine(member),
         childCount: childCountByParent.get(member.id) ?? 0,
       };
     });

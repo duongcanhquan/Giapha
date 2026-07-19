@@ -19,7 +19,8 @@ export type MemberNodeData = {
   generation: number;
   lifeStatus: NodeLifeStatus;
   isHuongHoa: boolean;
-  spouses: NodeSpouse[];
+  /** Số dâu/rể (node riêng cạnh thẻ) — chỉ để gợi ý */
+  spouseCount?: number;
   path: string[];
   dimmed?: boolean;
   highlighted?: boolean;
@@ -32,32 +33,12 @@ export type MemberNodeData = {
 
 export type MemberFlowNode = Node<MemberNodeData, "member">;
 
-function spouseRoleLabel(role?: NodeSpouse["role"]) {
-  if (role === "DAU") return "Dâu";
-  if (role === "RE") return "Rể";
-  return "Phối ngẫu";
-}
-
-function SpouseChip({ spouse }: { spouse: NodeSpouse }) {
-  const deceased = spouse.life_status === "DECEASED";
-  return (
-    <div
-      className={`ft-spouse ${deceased ? "ft-spouse--deceased" : "ft-spouse--living"}`}
-      title={`${spouse.full_name} · ${deceased ? "đã mất" : "đang sống"}`}
-    >
-      <span className="ft-spouse__label">
-        {spouseRoleLabel(spouse.role)} · {deceased ? "đã mất" : "còn sống"}
-      </span>
-      <span className="ft-spouse__name">{spouse.full_name}</span>
-    </div>
-  );
-}
-
 export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
   const deceased = data.lifeStatus === "DECEASED";
   const opacity = data.dimmed ? 0.18 : 1;
   const childCount = data.childCount ?? 0;
   const hidden = data.hiddenDescendantCount ?? 0;
+  const spouseCount = data.spouseCount ?? 0;
   const canCollapse =
     childCount > 0 && typeof data.onToggleCollapse === "function";
 
@@ -114,15 +95,13 @@ export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
               </>
             )}
           </span>
-        </div>
 
-        {data.spouses.length > 0 ? (
-          <div className="ft-member__spouses" aria-label="Vợ/chồng">
-            {data.spouses.map((spouse) => (
-              <SpouseChip key={spouse.id} spouse={spouse} />
-            ))}
-          </div>
-        ) : null}
+          {spouseCount > 0 ? (
+            <span className="ft-member__spouse-hint">
+              {spouseCount} dâu/rể →
+            </span>
+          ) : null}
+        </div>
 
         {canCollapse ? (
           <button
@@ -153,6 +132,12 @@ export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
         ) : null}
       </div>
 
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="spouse"
+        className="ft-handle"
+      />
       <Handle type="source" position={Position.Bottom} className="ft-handle" />
     </div>
   );

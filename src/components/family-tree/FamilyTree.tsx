@@ -34,6 +34,7 @@ import type {
 import { memberGeneration } from "@/types/genealogy";
 import {
   buildFlowGraph,
+  parseSpouseNodeId,
   type FamilyFlowEdge,
   type FamilyFlowNode,
 } from "@/lib/genealogy/build-flow";
@@ -50,6 +51,7 @@ import {
 } from "@/lib/genealogy/visible-tree";
 import { MemberNode } from "./nodes/MemberNode";
 import { PlaceholderNode } from "./nodes/PlaceholderNode";
+import { SpouseNode, type SpouseNodeData } from "./nodes/SpouseNode";
 import { RelationshipEdge } from "./edges/RelationshipEdge";
 import { SmartSearch } from "./SmartSearch";
 import "./family-tree.css";
@@ -79,6 +81,7 @@ function useIsMobileViewport(): boolean {
 const nodeTypes = {
   member: MemberNode,
   placeholder: PlaceholderNode,
+  spouse: SpouseNode,
 } satisfies NodeTypes;
 
 const edgeTypes = {
@@ -133,31 +136,60 @@ function applyHighlight(
       })),
       edges: edges.map((e) => ({
         ...e,
-        animated: e.data?.relationshipType === "ADOPTED",
+        animated:
+          e.data?.relationshipType === "ADOPTED" || e.data?.kind === "MOTHER",
         data: { ...e.data!, dimmed: false, highlighted: false },
       })),
     };
   }
 
-  const route = resolveTraceRoute(targetId, members, relations);
+  const spouseParsed = parseSpouseNodeId(targetId);
+  const bloodTarget = spouseParsed?.partnerId ?? targetId;
+  const route = resolveTraceRoute(bloodTarget, members, relations);
+
+  const hlNodes = new Set(route.pathNodeIds);
+  if (spouseParsed) hlNodes.add(targetId);
+
+  for (const n of nodes) {
+    if (n.type !== "spouse") continue;
+    const d = n.data as SpouseNodeData;
+    if (hlNodes.has(d.partnerId)) hlNodes.add(n.id);
+  }
+
+  const hlEdges = new Set(route.pathEdgeIds);
+  for (const e of edges) {
+    if (hlNodes.has(e.source) && hlNodes.has(e.target)) {
+      if (
+        e.data?.kind === "MARRIAGE" ||
+        e.data?.kind === "MOTHER" ||
+        e.data?.kind === "BLOOD" ||
+        e.data?.kind === "ADOPTED"
+      ) {
+        hlEdges.add(e.id);
+      }
+    }
+  }
 
   return {
     nodes: nodes.map((n) => ({
       ...n,
       data: {
         ...n.data,
-        dimmed: route.isNodeDimmed(n.id),
-        highlighted: route.isNodeHighlighted(n.id),
+        dimmed: !hlNodes.has(n.id),
+        highlighted: hlNodes.has(n.id),
       },
     })),
     edges: edges.map((e) => {
-      const highlighted = route.isEdgeHighlighted(e.id);
+      const highlighted = hlEdges.has(e.id);
       return {
         ...e,
-        animated: e.data?.relationshipType === "ADOPTED" || highlighted,
+        animated:
+          e.data?.relationshipType === "ADOPTED" ||
+          e.data?.kind === "MOTHER" ||
+          highlighted,
         data: {
           ...e.data!,
-          dimmed: route.isEdgeDimmed(e.id),
+          dimmed: !highlighted,
           highlighted,
         },
       };
@@ -456,30 +488,48 @@ function FamilyTreeInner({
   );
 
   const revealAndFocus = useCallback(
-    (targetId: string) => {
-      const member = data.members.find((m) => m.id === targetId);
+    (rawTargetId: string) => {
+      const spouseHit = parseSpouseNodeId(rawTargetId);
+      const bloodId = spouseHit?.partnerId ?? rawTargetId;
+      const member = data.members.find((m) => m.id === bloodId);
       if (!member) return;
+
+      // Highlight cả node dâu/rể nếu click trực tiếp vào họ
+      const highlightKey = spouseHit ? rawTargetId : bloodId;
 
       // Mở đúng tổ tiên trên path + xổ chính người được tìm (thấy con trực tiếp)
       setCollapsedIds((prev) => {
         const next = expandAncestors(prev, member.tree_logic.path);
-        next.delete(targetId);
+        next.delete(bloodId);
         return next;
       });
       if (branchFilter && member.tree_logic.branch_id !== branchFilter) {
         setBranchFilter(null);
       }
-      setHighlightId(targetId);
-      pendingFitPathRef.current = targetId;
+      setHighlightId(highlightKey);
+      pendingFitPathRef.current = bloodId;
 
-      // Đợi layout ổn định rồi khung đúng đường huyết thống
       window.setTimeout(() => {
-        if (pendingFitPathRef.current !== targetId) return;
-        fitToPath(targetId);
+        if (pendingFitPathRef.current !== bloodId) return;
+        fitToPath(bloodId);
         pendingFitPathRef.current = null;
       }, 160);
     },
     [data.members, branchFilter, fitToPath],
+  );
+
+  const openNode = useCallback(
+    (nodeId: string, mode: "view" | "edit") => {
+      const spouseHit = parseSpouseNodeId(nodeId);
+      const bloodId = spouseHit?.partnerId ?? nodeId;
+      revealAndFocus(nodeId);
+      if (mode === "edit" && !spouseHit && !readOnly && onMemberDoubleClick) {
+        onMemberDoubleClick(bloodId);
+        return;
+      }
+      onMemberOpen?.(bloodId);
+    },
+    [revealAndFocus, readOnly, onMemberDoubleClick, onMemberOpen],
   );
 
   const traceRoute = useCallback(
@@ -638,12 +688,18 @@ function FamilyTreeInner({
             Xoá highlight
           </button>
 
-          <div className="ft-life-legend" aria-label="Chú thích sống / mất">
+          <div className="ft-life-legend" aria-label="Chú thích sống / mất / dâu rể">
             <span className="ft-life-legend__item ft-life-legend__item--living">
               <i /> Còn sống
             </span>
             <span className="ft-life-legend__item ft-life-legend__item--deceased">
               <i /> Đã mất
+            </span>
+            <span className="ft-life-legend__item ft-life-legend__item--dau">
+              <i /> Con dâu
+            </span>
+            <span className="ft-life-legend__item ft-life-legend__item--re">
+              <i /> Con rể
             </span>
           </div>
 
@@ -664,11 +720,9 @@ function FamilyTreeInner({
           if (clickTimerRef.current != null) {
             window.clearTimeout(clickTimerRef.current);
           }
-          // Trì hoãn để phân biệt double-click (sửa) vs click (xem info)
           clickTimerRef.current = window.setTimeout(() => {
             clickTimerRef.current = null;
-            revealAndFocus(node.id);
-            onMemberOpen?.(node.id);
+            openNode(node.id, "view");
           }, 220);
         }}
         onNodeDoubleClick={(_, node) => {
@@ -676,13 +730,7 @@ function FamilyTreeInner({
             window.clearTimeout(clickTimerRef.current);
             clickTimerRef.current = null;
           }
-          revealAndFocus(node.id);
-          if (readOnly) {
-            onMemberOpen?.(node.id);
-            return;
-          }
-          if (onMemberDoubleClick) onMemberDoubleClick(node.id);
-          else onMemberOpen?.(node.id);
+          openNode(node.id, readOnly ? "view" : "edit");
         }}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -722,6 +770,10 @@ function FamilyTreeInner({
             nodeStrokeWidth={2}
             nodeColor={(node) => {
               if (node.type === "placeholder") return "#a8a29a";
+              if (node.type === "spouse") {
+                const role = (node.data as SpouseNodeData).role;
+                return role === "RE" ? "#6b7f9a" : "#9a6b8a";
+              }
               const status = (node.data as { lifeStatus?: string }).lifeStatus;
               return status === "DECEASED" ? "#6b6460" : "#3d7a58";
             }}

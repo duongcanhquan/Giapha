@@ -20,8 +20,8 @@ type ProfileModalProps = {
 };
 
 function spouseRoleLabel(role?: SpouseInfo["role"]) {
-  if (role === "DAU") return "Dâu";
-  if (role === "RE") return "Rể";
+  if (role === "DAU") return "Con dâu";
+  if (role === "RE") return "Con rể";
   return "Phối ngẫu";
 }
 
@@ -207,8 +207,12 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
           {member.spouses.length > 0 ? (
             <section>
               <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
-                Dâu / rể / phối ngẫu
+                Hôn nhân · Dâu / rể ({member.spouses.length})
               </h3>
+              <p className="mb-2 text-xs text-[#5c564e]">
+                Người khác họ lấy vào dòng tộc — hiện cạnh thẻ trên cây với cạnh
+                «Cưới» / «Mẹ → con».
+              </p>
               <ul className="space-y-3">
                 {member.spouses.map((s) => (
                   <li
@@ -223,6 +227,13 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
                       <span className="ml-2 text-[#6a6258] font-normal">
                         ({s.is_alive === false ? "đã mất" : "đang sống"})
                       </span>
+                    </p>
+                    <p className="mt-1 text-xs text-[#5c564e]">
+                      {s.role === "DAU"
+                        ? `Vợ của ${member.full_name}`
+                        : s.role === "RE"
+                          ? `Chồng của ${member.full_name}`
+                          : `Phối ngẫu của ${member.full_name}`}
                     </p>
                     <dl className="mt-1.5 grid grid-cols-[5rem_1fr] gap-x-2 gap-y-0.5 text-xs text-[#3d372f]">
                       {s.maiden_name ? (

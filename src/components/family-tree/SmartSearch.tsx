@@ -110,7 +110,8 @@ function SearchHitRow({
   onHover: () => void;
   onPick: () => void;
 }) {
-  const { member, generation, branchName, lineage, aka, childCount } = hit;
+  const { member, generation, branchName, lineage, aka, childCount, marriage } =
+    hit;
   const status = member.status.is_alive ? "đang sống" : "đã mất";
 
   return (
@@ -143,6 +144,9 @@ function SearchHitRow({
         </span>
         {lineage ? (
           <span className="ft-smart-search__lineage">{lineage}</span>
+        ) : null}
+        {marriage ? (
+          <span className="ft-smart-search__aka">{marriage}</span>
         ) : null}
         {aka ? <span className="ft-smart-search__aka">{aka}</span> : null}
       </button>

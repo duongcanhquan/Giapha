@@ -453,6 +453,140 @@
   color: #2b5c40;
 }
 
+.ft-life-legend__item--dau i {
+  background: #9a6b8a;
+  box-shadow: 0 0 0 2px rgba(154, 107, 138, 0.25);
+}
+
+.ft-life-legend__item--re i {
+  background: #6b7f9a;
+  box-shadow: 0 0 0 2px rgba(107, 127, 154, 0.25);
+}
+
+.ft-life-legend__item--dau {
+  color: #6d4a62;
+}
+
+.ft-life-legend__item--re {
+  color: #45586e;
+}
+
+.ft-member__spouse-hint {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #6d4a62;
+}
+
+.ft-member--deceased .ft-member__spouse-hint {
+  color: #7a736c;
+}
+
+/* —— Spouse (dâu / rể) node —— */
+.ft-spouse-node {
+  position: relative;
+  width: 168px;
+  min-height: 118px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1.5px dashed transparent;
+  background: #fffdf9;
+  box-shadow: 0 2px 8px rgba(28, 20, 16, 0.06);
+}
+
+.ft-spouse-node--dau {
+  border-color: #b889a8;
+  background: linear-gradient(165deg, #fdf8fb 0%, #f7eef4 100%);
+}
+
+.ft-spouse-node--re {
+  border-color: #8aa0b8;
+  background: linear-gradient(165deg, #f7f9fc 0%, #eef2f7 100%);
+}
+
+.ft-spouse-node--living.ft-spouse-node--dau {
+  box-shadow:
+    0 0 0 1px rgba(154, 107, 138, 0.18),
+    0 3px 10px rgba(154, 107, 138, 0.08);
+}
+
+.ft-spouse-node--living.ft-spouse-node--re {
+  box-shadow:
+    0 0 0 1px rgba(107, 127, 154, 0.18),
+    0 3px 10px rgba(107, 127, 154, 0.08);
+}
+
+.ft-spouse-node--deceased {
+  filter: saturate(0.85);
+  background: linear-gradient(165deg, #f3f0ed 0%, #e8e4df 100%) !important;
+  border-style: solid;
+  border-color: #9a9088 !important;
+}
+
+.ft-spouse-node--highlighted {
+  box-shadow:
+    0 0 0 2px rgba(212, 175, 55, 0.55),
+    0 0 0 5px rgba(185, 28, 28, 0.16);
+  z-index: 2;
+}
+
+.ft-spouse-node__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6d4a62;
+  margin-bottom: 4px;
+}
+
+.ft-spouse-node--re .ft-spouse-node__badge {
+  color: #45586e;
+}
+
+.ft-spouse-node__name {
+  margin: 0;
+  font-family: var(--font-literata), Literata, Georgia, serif;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--ft-ink);
+}
+
+.ft-spouse-node__meta,
+.ft-spouse-node__relation,
+.ft-spouse-node__gen {
+  margin: 3px 0 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ft-muted);
+  line-height: 1.3;
+}
+
+.ft-spouse-node__relation {
+  color: #6d4a62;
+}
+
+.ft-spouse-node--re .ft-spouse-node__relation {
+  color: #45586e;
+}
+
+.ft-edge-label--marriage {
+  color: #7a5a12;
+  border-color: rgba(184, 149, 45, 0.45);
+  background: rgba(255, 250, 235, 0.95);
+}
+
+.ft-edge-label--mother {
+  color: #6d4a62;
+  border-color: rgba(154, 107, 138, 0.4);
+  background: rgba(253, 248, 251, 0.95);
+}
+
 .ft-member__branch {
   max-width: 9rem;
   overflow: hidden;
