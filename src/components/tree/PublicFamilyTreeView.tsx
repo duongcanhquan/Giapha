@@ -122,8 +122,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
           </div>
         ) : (
           <section
-            className="clan-tree-stage"
-            style={{ height: "100%", minHeight: 0 }}
+            className="clan-tree-stage min-h-0 flex-1"
             aria-label="Cây hương hỏa công khai"
           >
             <FamilyTree

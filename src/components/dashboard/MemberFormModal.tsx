@@ -125,6 +125,14 @@ function MemberFormBody({
   const [saving, setSaving] = useState(false);
   const [lunarHint, setLunarHint] = useState<string | null>(initialLunarHint);
 
+  const parentChoices = lockedBranchId
+    ? members.filter(
+        (m) =>
+          m.tree_logic.branch_id === lockedBranchId ||
+          m.id === form.parent_id,
+      )
+    : members;
+
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -294,7 +302,7 @@ function MemberFormBody({
               className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
             >
               <option value="">— Chọn —</option>
-              {members.map((m) => (
+              {parentChoices.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.status.is_placeholder
                     ? `? Khuyết danh (${m.id})`

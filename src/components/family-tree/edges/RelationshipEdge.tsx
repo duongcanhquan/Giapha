@@ -8,7 +8,6 @@ import {
   type Edge,
   type EdgeProps,
 } from "@xyflow/react";
-import { motion } from "framer-motion";
 import type { RelationshipType } from "@/types/genealogy";
 
 export type EdgeKind = "BLOOD" | "ADOPTED" | "MARRIAGE" | "MOTHER";
@@ -34,7 +33,9 @@ export function RelationshipEdge({
   data,
   markerEnd,
 }: EdgeProps<RelationshipFlowEdge>) {
-  const kind = data?.kind ?? (data?.relationshipType === "ADOPTED" ? "ADOPTED" : "BLOOD");
+  const kind =
+    data?.kind ??
+    (data?.relationshipType === "ADOPTED" ? "ADOPTED" : "BLOOD");
   const isMarriage = kind === "MARRIAGE";
   const isMother = kind === "MOTHER";
   const isAdopted = kind === "ADOPTED";
@@ -63,31 +64,28 @@ export function RelationshipEdge({
   const highlighted = Boolean(data?.highlighted);
 
   let stroke = "var(--ft-edge-stroke)";
-  let strokeWidth = 1.8;
+  let strokeWidth = 1.6;
   if (highlighted) {
     stroke = "var(--ft-path-stroke)";
-    strokeWidth = 3.2;
+    strokeWidth = 3;
   } else if (isMarriage) {
     stroke = "var(--ft-gold)";
-    strokeWidth = 2.2;
+    strokeWidth = 2;
   } else if (isMother) {
     stroke = "#8b6b8a";
-    strokeWidth = 1.6;
+    strokeWidth = 1.4;
   } else if (isAdopted) {
-    strokeWidth = 2.2;
+    strokeWidth = 2;
   }
 
-  const opacity = dimmed ? 0.15 : isMother && !highlighted ? 0.72 : 1;
+  const opacity = dimmed ? 0.12 : isMother && !highlighted ? 0.65 : 1;
   const label = data?.label ?? (isAdopted ? "Con nuôi" : null);
   const showLabel =
     Boolean(label) && (highlighted || isMarriage || isMother || isAdopted);
 
   return (
     <>
-      <motion.g
-        animate={{ opacity }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-      >
+      <g style={{ opacity, transition: "opacity 0.2s ease" }}>
         <BaseEdge
           id={id}
           path={edgePath}
@@ -96,14 +94,13 @@ export function RelationshipEdge({
             stroke,
             strokeWidth,
             strokeDasharray:
-              isAdopted || isMother || highlighted
+              isAdopted || isMother
                 ? isMother
                   ? "5 5"
                   : "8 6"
-                : isMarriage
-                  ? "2 0"
+                : highlighted
+                  ? "8 6"
                   : undefined,
-            transition: "stroke 0.35s ease, stroke-width 0.35s ease",
           }}
           className={
             isAdopted || highlighted
@@ -115,10 +112,10 @@ export function RelationshipEdge({
                   : undefined
           }
         />
-      </motion.g>
+      </g>
       {showLabel && label ? (
         <EdgeLabelRenderer>
-          <motion.div
+          <div
             className={[
               "ft-edge-label",
               isMarriage ? "ft-edge-label--marriage" : "",
@@ -127,13 +124,12 @@ export function RelationshipEdge({
               .filter(Boolean)
               .join(" ")}
             style={{
+              opacity,
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
-            animate={{ opacity }}
-            transition={{ duration: 0.35, ease: "easeOut" }}
           >
             {label}
-          </motion.div>
+          </div>
         </EdgeLabelRenderer>
       ) : null}
     </>

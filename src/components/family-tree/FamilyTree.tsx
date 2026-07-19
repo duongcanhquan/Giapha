@@ -119,7 +119,13 @@ export type FamilyTreeProps = {
   /** Lọc chi khi mount / điều khiển từ ngoài (không remount) */
   initialBranchFilter?: string | null;
   branchFilterControlled?: string | null;
+  /** Khoá lọc chi (trưởng nhánh) — không cho «Mọi chi» */
+  branchFilterLocked?: boolean;
 };
+
+function bloodMemberId(nodeOrMemberId: string): string {
+  return parseSpouseNodeId(nodeOrMemberId)?.partnerId ?? nodeOrMemberId;
+}
 
 function applyHighlight(
   nodes: FamilyFlowNode[],
@@ -235,6 +241,7 @@ function FamilyTreeInner({
   forceExpanded = false,
   initialBranchFilter = null,
   branchFilterControlled,
+  branchFilterLocked = false,
   treeRef,
 }: InnerProps) {
   const { fitView, getNode } = useReactFlow();
@@ -256,10 +263,28 @@ function FamilyTreeInner({
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() =>
     forceExpanded ? new Set() : new Set(),
   );
+  const [toolbarOpen, setToolbarOpen] = useState(false);
   const seededForFamily = useRef<string | null>(null);
   const clickTimerRef = useRef<number | null>(null);
   const overviewDoneRef = useRef(false);
   const pendingFitPathRef = useRef<string | null>(null);
+  const fitTimersRef = useRef<number[]>([]);
+
+  const clearFitTimers = useCallback(() => {
+    for (const id of fitTimersRef.current) window.clearTimeout(id);
+    fitTimersRef.current = [];
+  }, []);
+
+  const scheduleFit = useCallback(
+    (fn: () => void, ms: number) => {
+      const id = window.setTimeout(() => {
+        fitTimersRef.current = fitTimersRef.current.filter((t) => t !== id);
+        fn();
+      }, ms);
+      fitTimersRef.current.push(id);
+    },
+    [],
+  );
 
   const childrenIndex = useMemo(
     () => buildChildrenIndex(data.members),
@@ -302,8 +327,9 @@ function FamilyTreeInner({
       if (clickTimerRef.current != null) {
         window.clearTimeout(clickTimerRef.current);
       }
+      clearFitTimers();
     };
-  }, []);
+  }, [clearFitTimers]);
 
   // Nhận lọc chi từ Infographic mà không remount cây (tránh mất/nhảy UI)
   useEffect(() => {
@@ -311,10 +337,29 @@ function FamilyTreeInner({
     setBranchFilter(branchFilterControlled);
   }, [branchFilterControlled]);
 
+  const setBranchFilterSafe = useCallback(
+    (next: string | null | ((cur: string | null) => string | null)) => {
+      setBranchFilter((cur) => {
+        const resolved = typeof next === "function" ? next(cur) : next;
+        if (branchFilterLocked && !resolved) {
+          return branchFilterControlled ?? cur;
+        }
+        return resolved;
+      });
+    },
+    [branchFilterLocked, branchFilterControlled],
+  );
+
   const includeIds = useMemo(() => {
     if (viewMode !== "lineage" || !highlightId) return null;
-    return lineageNeighborhoodIds(data.members, highlightId, childrenIndex);
+    const bloodId = bloodMemberId(highlightId);
+    return lineageNeighborhoodIds(data.members, bloodId, childrenIndex);
   }, [viewMode, highlightId, data.members, childrenIndex]);
+
+  const searchMembers = useMemo(() => {
+    if (!branchFilterLocked || !branchFilter) return data.members;
+    return data.members.filter((m) => m.tree_logic.branch_id === branchFilter);
+  }, [data.members, branchFilterLocked, branchFilter]);
 
   const visibleData = useMemo((): FamilyTreeData => {
     const members = filterVisibleMembers(data.members, {
@@ -359,29 +404,29 @@ function FamilyTreeInner({
     });
   }, []);
 
+  const fullChildCountById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const [id, kids] of childrenIndex) {
+      map.set(id, kids.length);
+    }
+    return map;
+  }, [childrenIndex]);
+
   const baseGraph = useMemo(
-    () => buildFlowGraph(visibleData),
-    [visibleData],
+    () => buildFlowGraph(visibleData, { fullChildCountById }),
+    [visibleData, fullChildCountById],
   );
 
   const enrichedNodes = useMemo(() => {
     return baseGraph.nodes.map((node) => {
       if (node.type !== "member") return node;
-      const visibleChildCount =
-        "childCount" in node.data ? Number(node.data.childCount ?? 0) : 0;
-      // Luôn lấy số con từ FULL tree — không dùng childCount của graph đã lọc
-      // (sau gom nhánh children bị ẩn → childCount=0 → mất nút xổ nhánh).
       const fullChildCount = childrenIndex.get(node.id)?.length ?? 0;
       const collapsed = collapsedIds.has(node.id);
       const hiddenDescendantCount = collapsed
         ? countDescendants(node.id, childrenIndex)
         : 0;
-      const heightBoost =
-        fullChildCount > 0 && visibleChildCount === 0 ? 32 : 0;
       return {
         ...node,
-        height:
-          node.height != null ? node.height + heightBoost : node.height,
         data: {
           ...node.data,
           childCount: fullChildCount,
@@ -440,19 +485,29 @@ function FamilyTreeInner({
 
   const fitToPath = useCallback(
     (targetId: string) => {
-      const member = data.members.find((m) => m.id === targetId);
+      const bloodId = bloodMemberId(targetId);
+      const member = data.members.find((m) => m.id === bloodId);
       if (!member) {
         fitOverview(true);
         return;
       }
       const pathIds = [...member.tree_logic.path];
       for (const m of data.members) {
-        if (m.tree_logic.parent_id === targetId) pathIds.push(m.id);
+        if (m.tree_logic.parent_id === bloodId) pathIds.push(m.id);
       }
-      const visiblePath = pathIds.filter((id) => Boolean(getNode(id)));
+      // Kèm node dâu/rể của người trên path (nếu đã render)
+      const withSpouses = [...pathIds];
+      for (const id of pathIds) {
+        const m = data.members.find((x) => x.id === id);
+        if (!m) continue;
+        for (const s of m.spouses) {
+          withSpouses.push(`spouse:${id}:${s.id}`);
+        }
+      }
+      const visiblePath = withSpouses.filter((id) => Boolean(getNode(id)));
       if (visiblePath.length === 0) {
-        window.setTimeout(() => {
-          const retry = pathIds.filter((id) => Boolean(getNode(id)));
+        scheduleFit(() => {
+          const retry = withSpouses.filter((id) => Boolean(getNode(id)));
           if (retry.length === 0) {
             fitOverview(true);
             return;
@@ -462,7 +517,7 @@ function FamilyTreeInner({
             padding: 0.28,
             maxZoom: 1.2,
             minZoom: 0.05,
-            duration: 520,
+            duration: isMobile ? 0 : 420,
           });
         }, 180);
         return;
@@ -472,16 +527,16 @@ function FamilyTreeInner({
         padding: 0.28,
         maxZoom: 1.2,
         minZoom: 0.05,
-        duration: 520,
+        duration: isMobile ? 0 : 420,
       });
     },
-    [data.members, getNode, fitView, fitOverview],
+    [data.members, getNode, fitView, fitOverview, scheduleFit, isMobile],
   );
 
   const focusMember = useCallback(
     (targetId: string) => {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => fitToPath(targetId));
+        requestAnimationFrame(() => fitToPath(bloodMemberId(targetId)));
       });
     },
     [fitToPath],
@@ -494,28 +549,37 @@ function FamilyTreeInner({
       const member = data.members.find((m) => m.id === bloodId);
       if (!member) return;
 
-      // Highlight cả node dâu/rể nếu click trực tiếp vào họ
       const highlightKey = spouseHit ? rawTargetId : bloodId;
 
-      // Mở đúng tổ tiên trên path + xổ chính người được tìm (thấy con trực tiếp)
       setCollapsedIds((prev) => {
         const next = expandAncestors(prev, member.tree_logic.path);
         next.delete(bloodId);
         return next;
       });
-      if (branchFilter && member.tree_logic.branch_id !== branchFilter) {
-        setBranchFilter(null);
+      if (
+        branchFilter &&
+        member.tree_logic.branch_id !== branchFilter &&
+        !branchFilterLocked
+      ) {
+        setBranchFilterSafe(null);
       }
       setHighlightId(highlightKey);
       pendingFitPathRef.current = bloodId;
 
-      window.setTimeout(() => {
+      scheduleFit(() => {
         if (pendingFitPathRef.current !== bloodId) return;
         fitToPath(bloodId);
         pendingFitPathRef.current = null;
       }, 160);
     },
-    [data.members, branchFilter, fitToPath],
+    [
+      data.members,
+      branchFilter,
+      branchFilterLocked,
+      fitToPath,
+      scheduleFit,
+      setBranchFilterSafe,
+    ],
   );
 
   const openNode = useCallback(
@@ -557,30 +621,28 @@ function FamilyTreeInner({
     [traceRoute, clearHighlight, focusMember, fitOverview],
   );
 
-  // Lần đầu + khi đổi số node: fit vào khung (tránh viewport lệch → trắng)
+  // Lần đầu có node: fit overview một lần (tránh nhiều fitView chồng)
   useEffect(() => {
-    if (!nodes.length) return;
-    // Đang tìm / highlight path — không cướp camera
-    if (highlightId) return;
+    if (!nodes.length || highlightId || overviewDoneRef.current) return;
     const t = window.setTimeout(() => {
-      fitOverview(!overviewDoneRef.current);
+      fitOverview(false);
       overviewDoneRef.current = true;
-    }, 200);
+    }, 120);
     return () => window.clearTimeout(t);
-  }, [nodes.length, forceExpanded, fitOverview, highlightId]);
+  }, [nodes.length, fitOverview, highlightId]);
 
-  // Sau expand path tìm kiếm
+  // Sau expand path tìm kiếm — so khớp theo blood id
   useEffect(() => {
     const pending = pendingFitPathRef.current;
     if (!pending || !highlightId) return;
-    if (pending !== highlightId) return;
+    if (pending !== bloodMemberId(highlightId)) return;
     const t = window.setTimeout(() => {
       if (pendingFitPathRef.current !== pending) return;
       fitToPath(pending);
       pendingFitPathRef.current = null;
     }, 120);
     return () => window.clearTimeout(t);
-  }, [nodes, highlightId, fitToPath]);
+  }, [nodes.length, highlightId, fitToPath]);
 
   const editingMember = editingId
     ? data.members.find((m) => m.id === editingId)
@@ -604,108 +666,160 @@ function FamilyTreeInner({
   };
 
   const branches = data.branches ?? [];
+  const visibleBranches = branchFilterLocked
+    ? branches.filter((b) => b.id === branchFilter)
+    : branches;
   const visibleCount = visibleData.members.length;
   const totalCount = data.members.length;
+  const showMiniMapEffective = showMiniMap && !isMobile;
+  const instantOpen =
+    isMobile || readOnly || typeof onMemberDoubleClick !== "function";
 
   return (
-    <div className={["ft-root", className].filter(Boolean).join(" ")}>
+    <div
+      className={[
+        "ft-root",
+        isMobile ? "ft-root--mobile" : "",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {showToolbar ? (
-        <div className="ft-toolbar" aria-label="Công cụ cây">
+        <div
+          className={[
+            "ft-toolbar",
+            isMobile && !toolbarOpen ? "ft-toolbar--collapsed" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          aria-label="Công cụ cây"
+        >
           <SmartSearch
-            members={data.members}
-            branches={branches}
+            members={searchMembers}
+            branches={visibleBranches.length ? visibleBranches : branches}
             onSelect={(id) => {
               revealAndFocus(id);
               onMemberOpen?.(id);
             }}
           />
 
-          <div className="ft-toolbar__modes" role="group" aria-label="Chế độ xem">
+          {isMobile ? (
             <button
               type="button"
-              data-active={viewMode === "compact"}
-              onClick={() => {
-                setViewMode("compact");
-                setCollapsedIds(
-                  computeCompactCollapsedIds(data.members, childrenIndex, 3),
-                );
-                window.setTimeout(() => fitOverview(true), 220);
-              }}
-              title="Thu gọn từ đời 3 — dễ đọc cây dài"
+              className="ft-toolbar__toggle"
+              onClick={() => setToolbarOpen((v) => !v)}
+              aria-expanded={toolbarOpen}
             >
-              Gom nhánh
+              {toolbarOpen ? "Ẩn công cụ" : "Công cụ"}
             </button>
-            <button
-              type="button"
-              data-active={viewMode === "full"}
-              onClick={() => {
-                setViewMode("full");
-                setCollapsedIds(new Set());
-                // Fit lại sau khi bung toàn bộ (tránh canvas trắng)
-                window.setTimeout(() => fitOverview(true), 220);
-              }}
-              title="Hiện toàn bộ node — cây lớn sẽ rất nhỏ; dùng zoom/search để đọc"
-            >
-              Toàn cây
-            </button>
-            <button
-              type="button"
-              data-active={viewMode === "lineage"}
-              disabled={!highlightId}
-              onClick={() => setViewMode("lineage")}
-              title="Chỉ tổ tiên, anh em và con của người đang chọn"
-            >
-              Dòng họ gần
-            </button>
-          </div>
-
-          {branches.length > 0 ? (
-            <div className="ft-toolbar__branches" role="group" aria-label="Lọc chi">
-              <button
-                type="button"
-                data-active={branchFilter === null}
-                onClick={() => setBranchFilter(null)}
-              >
-                Mọi chi
-              </button>
-              {branches.map((b) => (
-                <button
-                  key={b.id}
-                  type="button"
-                  data-active={branchFilter === b.id}
-                  onClick={() =>
-                    setBranchFilter((cur) => (cur === b.id ? null : b.id))
-                  }
-                  title={b.description || b.name}
-                >
-                  {b.name}
-                </button>
-              ))}
-            </div>
           ) : null}
 
-          <button type="button" onClick={() => clearHighlight()}>
-            Xoá highlight
-          </button>
+          <div
+            className="ft-toolbar__extra"
+            hidden={isMobile && !toolbarOpen ? true : undefined}
+          >
+            <div className="ft-toolbar__modes" role="group" aria-label="Chế độ xem">
+              <button
+                type="button"
+                data-active={viewMode === "compact"}
+                onClick={() => {
+                  setViewMode("compact");
+                  setCollapsedIds(
+                    computeCompactCollapsedIds(data.members, childrenIndex, 3),
+                  );
+                  overviewDoneRef.current = false;
+                  scheduleFit(() => fitOverview(true), 220);
+                }}
+                title="Thu gọn từ đời 3 — dễ đọc cây dài"
+              >
+                Gom nhánh
+              </button>
+              <button
+                type="button"
+                data-active={viewMode === "full"}
+                onClick={() => {
+                  setViewMode("full");
+                  setCollapsedIds(new Set());
+                  overviewDoneRef.current = false;
+                  scheduleFit(() => fitOverview(true), 220);
+                }}
+                title="Hiện toàn bộ node — cây lớn sẽ rất nhỏ; dùng zoom/search để đọc"
+              >
+                Toàn cây
+              </button>
+              <button
+                type="button"
+                data-active={viewMode === "lineage"}
+                disabled={!highlightId}
+                onClick={() => setViewMode("lineage")}
+                title="Chỉ tổ tiên, anh em và con của người đang chọn"
+              >
+                Dòng họ gần
+              </button>
+            </div>
 
-          <div className="ft-life-legend" aria-label="Chú thích sống / mất / dâu rể">
-            <span className="ft-life-legend__item ft-life-legend__item--living">
-              <i /> Còn sống
-            </span>
-            <span className="ft-life-legend__item ft-life-legend__item--deceased">
-              <i /> Đã mất
-            </span>
-            <span className="ft-life-legend__item ft-life-legend__item--dau">
-              <i /> Con dâu
-            </span>
-            <span className="ft-life-legend__item ft-life-legend__item--re">
-              <i /> Con rể
+            {visibleBranches.length > 0 ? (
+              <div
+                className="ft-toolbar__branches"
+                role="group"
+                aria-label="Lọc chi"
+              >
+                {!branchFilterLocked ? (
+                  <button
+                    type="button"
+                    data-active={branchFilter === null}
+                    onClick={() => setBranchFilterSafe(null)}
+                  >
+                    Mọi chi
+                  </button>
+                ) : null}
+                {visibleBranches.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    data-active={branchFilter === b.id}
+                    disabled={branchFilterLocked}
+                    onClick={() => {
+                      if (branchFilterLocked) return;
+                      setBranchFilterSafe((cur) =>
+                        cur === b.id ? null : b.id,
+                      );
+                    }}
+                    title={b.description || b.name}
+                  >
+                    {b.name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <button type="button" onClick={() => clearHighlight()}>
+              Xoá highlight
+            </button>
+
+            <div
+              className="ft-life-legend"
+              aria-label="Chú thích sống / mất / dâu rể"
+            >
+              <span className="ft-life-legend__item ft-life-legend__item--living">
+                <i /> Còn sống
+              </span>
+              <span className="ft-life-legend__item ft-life-legend__item--deceased">
+                <i /> Đã mất
+              </span>
+              <span className="ft-life-legend__item ft-life-legend__item--dau">
+                <i /> Con dâu
+              </span>
+              <span className="ft-life-legend__item ft-life-legend__item--re">
+                <i /> Con rể
+              </span>
+            </div>
+
+            <span className="ft-toolbar__count" title="Số người đang hiện / tổng">
+              {visibleCount}/{totalCount}
             </span>
           </div>
-
-          <span className="ft-toolbar__count" title="Số người đang hiện / tổng">
-            {visibleCount}/{totalCount}
-          </span>
         </div>
       ) : null}
 
@@ -715,8 +829,15 @@ function FamilyTreeInner({
         onNodesChange={interactive ? onNodesChange : undefined}
         onEdgesChange={interactive ? onEdgesChange : undefined}
         onNodeClick={(_, node) => {
-          // Cho phép xem / tìm / highlight cả khi readOnly (link chia sẻ công khai)
           if (!interactive && !onMemberOpen) return;
+          if (instantOpen) {
+            if (clickTimerRef.current != null) {
+              window.clearTimeout(clickTimerRef.current);
+              clickTimerRef.current = null;
+            }
+            openNode(node.id, "view");
+            return;
+          }
           if (clickTimerRef.current != null) {
             window.clearTimeout(clickTimerRef.current);
           }
@@ -730,14 +851,14 @@ function FamilyTreeInner({
             window.clearTimeout(clickTimerRef.current);
             clickTimerRef.current = null;
           }
-          openNode(node.id, readOnly ? "view" : "edit");
+          openNode(node.id, readOnly || instantOpen ? "view" : "edit");
         }}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        fitView
+        fitView={false}
         fitViewOptions={fitViewOptions}
         onInit={(instance) => {
-          window.setTimeout(() => {
+          scheduleFit(() => {
             void instance.fitView({
               padding: 0.16,
               minZoom: 0.01,
@@ -745,25 +866,26 @@ function FamilyTreeInner({
               duration: 0,
             });
             overviewDoneRef.current = true;
-          }, 60);
+          }, 40);
         }}
-        onlyRenderVisibleElements={false}
+        onlyRenderVisibleElements
         minZoom={0.01}
         maxZoom={2.5}
         panOnScroll={interactive}
         panOnDrag={interactive}
         zoomOnScroll={interactive}
         zoomOnPinch={interactive}
+        preventScrolling={interactive}
         nodesDraggable={interactive && !readOnly && !isMobile}
         nodesConnectable={false}
         elementsSelectable={interactive}
         selectionOnDrag={false}
         proOptions={{ hideAttribution: true }}
       >
-        {showBackground ? (
+        {showBackground && !isMobile ? (
           <Background gap={22} size={1} color="rgba(138, 106, 58, 0.22)" />
         ) : null}
-        {showMiniMap ? (
+        {showMiniMapEffective ? (
           <MiniMap
             pannable
             zoomable

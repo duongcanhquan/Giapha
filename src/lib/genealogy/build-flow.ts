@@ -57,6 +57,7 @@ function estimateMemberCardSize(
   if (member.status.is_placeholder) {
     return { width: 168, height: PLACEHOLDER_HEIGHT };
   }
+  // Include collapse button height in dagre packing (tránh đụng sau layout)
   const collapseExtra = childCount > 0 ? COLLAPSE_ROW_HEIGHT : 0;
   const hintExtra = member.spouses.length > 0 ? 18 : 0;
   return {
@@ -167,7 +168,10 @@ function defaultSpouseRole(
   return "SPOUSE";
 }
 
-export function buildFlowGraph(data: FamilyTreeData): {
+export function buildFlowGraph(
+  data: FamilyTreeData,
+  options?: { fullChildCountById?: Map<string, number> },
+): {
   nodes: FamilyFlowNode[];
   edges: FamilyFlowEdge[];
 } {
@@ -192,12 +196,17 @@ export function buildFlowGraph(data: FamilyTreeData): {
   const memberById = new Map(data.members.map((m) => [m.id, m]));
 
   const rawMemberNodes: FamilyFlowNode[] = data.members.map((member) => {
-    const childCount = childCountById.get(member.id) ?? 0;
-    const card = estimateMemberCardSize(member, childCount);
+    const visibleKids = childCountById.get(member.id) ?? 0;
+    const layoutKids =
+      options?.fullChildCountById?.get(member.id) ?? visibleKids;
+    const card = estimateMemberCardSize(member, layoutKids);
     cardSizeById.set(member.id, card);
     unitSizeById.set(member.id, {
       width: unitWidth(member, card.width),
-      height: Math.max(card.height, member.spouses.length ? SPOUSE_NODE_HEIGHT : card.height),
+      height: Math.max(
+        card.height,
+        member.spouses.length ? SPOUSE_NODE_HEIGHT : card.height,
+      ),
     });
 
     const type = memberNodeType(member);
@@ -233,7 +242,7 @@ export function buildFlowGraph(data: FamilyTreeData): {
         spouseCount: member.spouses.length,
         path,
         branchLabel,
-        childCount,
+        childCount: layoutKids,
       } satisfies MemberNodeData,
     };
   });

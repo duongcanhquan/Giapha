@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useDashboardAccessOptional } from "@/components/dashboard/DashboardAccessContext";
 import { DashboardPanelSkeleton } from "@/components/ui/skeleton";
 import { useFamilyTree } from "@/hooks/useFamilyTree";
 import { appToast } from "@/lib/toast";
@@ -28,6 +29,10 @@ export function MembersManager({
   hideHeaderActions = false,
   exportSlot,
 }: MembersManagerProps) {
+  const dash = useDashboardAccessOptional();
+  const lockedBranchId = dash?.isBranchAdmin
+    ? dash.access.branchId ?? null
+    : null;
   const hook = useFamilyTree(treeProp ? null : familyId);
   const tree = treeProp ?? hook.tree;
   const isLoading = treeProp ? false : hook.isLoading;
@@ -54,7 +59,9 @@ export function MembersManager({
     );
   }
 
-  const members = tree?.members ?? [];
+  const members = (tree?.members ?? []).filter((m) =>
+    lockedBranchId ? m.tree_logic.branch_id === lockedBranchId : true,
+  );
 
   const handleDelete = async (member: FamilyMember) => {
     const label = member.status.is_placeholder
