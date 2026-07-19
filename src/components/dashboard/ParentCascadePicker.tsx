@@ -3,6 +3,10 @@
 import { useMemo, useState } from "react";
 import { ChevronRight, Search, UserRound, X } from "lucide-react";
 import { searchMembers } from "@/lib/search/member-search";
+import {
+  filterCoParentSpouses,
+  treeParentRoleLabel,
+} from "@/lib/genealogy/labels";
 import type { FamilyBranch, FamilyMember } from "@/types/genealogy";
 import { memberGeneration } from "@/types/genealogy";
 
@@ -27,8 +31,7 @@ function childCountMap(members: FamilyMember[]): Map<string, number> {
 }
 
 /**
- * Chọn cha theo cascade: Chi → Đời → tìm tên → chọn.
- * Tránh dropdown 500 người trên cây 15 đời.
+ * Chọn Cha/Mẹ (nối cây) theo cascade: Chi → Đời → tìm tên → chọn.
  */
 export function ParentCascadePicker({
   members,
@@ -81,7 +84,6 @@ export function ParentCascadePicker({
     if (query.trim()) {
       return searchMembers(filteredByGen, query, 20, branches);
     }
-    // Không gõ tìm: liệt kê ngắn theo đời (ưu tiên nam đã có dâu / nhiều con)
     return filteredByGen
       .slice()
       .sort((a, b) => {
@@ -111,19 +113,20 @@ export function ParentCascadePicker({
   }, [filteredByGen, query, branches, kids]);
 
   const selected = members.find((m) => m.id === selectedParentId) ?? null;
+  const roleLabel = treeParentRoleLabel(selected);
 
   if (selected) {
     const gen = memberGeneration(selected);
     const branchLabel =
       branches.find((b) => b.id === selected.tree_logic.branch_id)?.name ??
       selected.tree_logic.branch_id;
-    const daus = selected.spouses.filter((s) => s.role === "DAU");
+    const coParents = filterCoParentSpouses(selected);
     return (
       <div className="rounded-lg border border-[#7a1f1f]/25 bg-[#7a1f1f]/05 p-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wide text-[#7a1f1f]">
-              Cha đã chọn
+              {roleLabel} (nối cây) đã chọn
             </p>
             <p className="mt-1 font-semibold text-[#1c1410]">
               {selected.full_name || "Khuyết danh"}
@@ -132,13 +135,16 @@ export function ParentCascadePicker({
               Đời {gen} · {branchLabel} · {kids.get(selected.id) ?? 0} con trong
               cây
             </p>
-            {daus.length ? (
+            {coParents.length ? (
               <p className="mt-1 text-xs text-[#3d372f]">
-                Dâu: {daus.map((d) => d.full_name).join(" · ")}
+                {selected.gender === "FEMALE" ? "Rể" : "Dâu"}:{" "}
+                {coParents.map((d) => d.full_name).join(" · ")}
               </p>
             ) : (
               <p className="mt-1 text-xs text-amber-800">
-                Chưa có dâu — thêm vợ trên hồ sơ cha trước nếu cần gắn mẹ.
+                {selected.gender === "FEMALE"
+                  ? "Chưa có rể — có thể thêm chồng trên hồ sơ, hoặc ghi con không gắn cha (rể)."
+                  : "Chưa có dâu — có thể thêm vợ trên hồ sơ, hoặc ghi con không gắn mẹ (dâu)."}
               </p>
             )}
           </div>
@@ -146,10 +152,10 @@ export function ParentCascadePicker({
             <button
               type="button"
               onClick={onClear}
-              className="inline-flex items-center gap-1 rounded-md border border-stone-300 px-2 py-1 text-xs font-semibold text-stone-600 hover:bg-white"
+              className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-md border border-stone-300 px-3 py-2 text-xs font-semibold text-stone-600 hover:bg-white"
             >
               <X size={14} aria-hidden />
-              Đổi cha
+              Đổi
             </button>
           ) : null}
         </div>
@@ -160,7 +166,7 @@ export function ParentCascadePicker({
   return (
     <div className="space-y-3 rounded-lg border border-stone-200 bg-stone-50/60 p-3">
       <div className="flex flex-wrap items-center gap-1 text-xs font-semibold text-[#7a1f1f]">
-        <span>Chọn cha</span>
+        <span>Chọn Cha/Mẹ (nối cây)</span>
         <ChevronRight size={12} aria-hidden />
         <span>Chi</span>
         <ChevronRight size={12} aria-hidden />
@@ -169,7 +175,7 @@ export function ParentCascadePicker({
         <span>Tìm tên</span>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-xs font-semibold text-stone-700">
           Chi / nhánh
           <select
@@ -179,7 +185,7 @@ export function ParentCascadePicker({
               setGeneration("all");
               setQuery("");
             }}
-            className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
+            className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-base font-normal sm:text-sm"
           >
             {usableBranches.length === 0 ? (
               <option value={branchId}>—</option>
@@ -194,7 +200,7 @@ export function ParentCascadePicker({
         </label>
 
         <label className="block text-xs font-semibold text-stone-700">
-          Đời của cha
+          Đời của Cha/Mẹ
           <select
             value={generation === "all" ? "all" : String(generation)}
             onChange={(e) => {
@@ -202,14 +208,14 @@ export function ParentCascadePicker({
               setGeneration(v === "all" ? "all" : Number(v));
               setQuery("");
             }}
-            className="mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm font-normal"
+            className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-base font-normal sm:text-sm"
           >
             <option value="all">Mọi đời ({pool.length} người)</option>
             {generations.map((g) => {
               const count = pool.filter((m) => memberGeneration(m) === g).length;
               return (
                 <option key={g} value={g}>
-                  Đời {g} ({count} người) — thêm con = đời {g + 1}
+                  Đời {g} ({count}) — con = đời {g + 1}
                 </option>
               );
             })}
@@ -218,66 +224,70 @@ export function ParentCascadePicker({
       </div>
 
       <label className="relative block text-xs font-semibold text-stone-700">
-        Tìm tên cha (hoặc để trống xem danh sách)
+        Tìm tên (hoặc vuốt danh sách bên dưới)
         <span className="relative mt-1 block">
           <Search
-            size={15}
-            className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400"
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
             aria-hidden
           />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="VD: Hữu Đình, Quốc…"
-            className="w-full rounded-lg border border-stone-300 bg-white py-2 pl-8 pr-3 text-sm font-normal"
+            placeholder="VD: Hữu Đình, Thị Lan…"
+            className="min-h-11 w-full rounded-lg border border-stone-300 bg-white py-2.5 pl-10 pr-3 text-base font-normal sm:text-sm"
+            enterKeyHint="search"
           />
         </span>
       </label>
 
-      <ul className="max-h-56 overflow-y-auto rounded-lg border border-stone-200 bg-white divide-y divide-stone-100">
+      <ul className="max-h-[min(50vh,20rem)] overflow-y-auto overscroll-contain rounded-lg border border-stone-200 bg-white divide-y divide-stone-100 [-webkit-overflow-scrolling:touch]">
         {hits.length === 0 ? (
-          <li className="px-3 py-6 text-center text-sm text-stone-500">
+          <li className="px-3 py-8 text-center text-sm text-stone-500">
             Không có ai khớp — đổi chi / đời / từ khóa.
           </li>
         ) : (
-          hits.map((h) => (
-            <li key={h.member.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(h.member)}
-                className="flex w-full items-start gap-2 px-3 py-2.5 text-left hover:bg-[#7a1f1f]/06"
-              >
-                <UserRound
-                  size={16}
-                  className="mt-0.5 shrink-0 text-[#7a1f1f]"
-                  aria-hidden
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold text-[#1c1410]">
-                    {h.member.full_name}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-stone-500">
-                    Đời {h.generation} · {h.branchName} · {h.childCount} con
-                    {h.marriage ? ` · ${h.marriage}` : ""}
-                  </span>
-                  {h.lineage ? (
-                    <span className="mt-0.5 block text-xs text-stone-400">
-                      {h.lineage}
+          hits.map((h) => {
+            const role = treeParentRoleLabel(h.member);
+            return (
+              <li key={h.member.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(h.member)}
+                  className="flex min-h-[3.25rem] w-full items-start gap-2.5 px-3 py-3 text-left active:bg-[#7a1f1f]/10 hover:bg-[#7a1f1f]/06"
+                >
+                  <UserRound
+                    size={18}
+                    className="mt-0.5 shrink-0 text-[#7a1f1f]"
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-[#1c1410]">
+                      <span className="mr-1.5 text-[10px] font-bold uppercase tracking-wide text-[#7a1f1f]">
+                        {role}
+                      </span>
+                      {h.member.full_name}
                     </span>
-                  ) : null}
-                </span>
-              </button>
-            </li>
-          ))
+                    <span className="mt-0.5 block text-xs text-stone-500">
+                      Đời {h.generation} · {h.branchName} · {h.childCount} con
+                      {h.marriage ? ` · ${h.marriage}` : ""}
+                    </span>
+                    {h.lineage ? (
+                      <span className="mt-0.5 block text-xs text-stone-400">
+                        {h.lineage}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              </li>
+            );
+          })
         )}
       </ul>
-      <p className="text-[11px] text-stone-500">
-        Đang xem {hits.length}
-        {query.trim() ? " kết quả tìm" : " gợi ý"}
-        {generation !== "all" ? ` trong đời ${generation}` : ""} · tổng{" "}
-        {filteredByGen.length} người sau lọc chi
-        {generation !== "all" ? "/đời" : ""}.
+      <p className="text-[11px] leading-relaxed text-stone-500">
+        Nam → gắn là <strong>Cha</strong>; nữ → gắn là <strong>Mẹ</strong>. Có
+        thể ghi con của con gái (họ chồng) nếu admin muốn.
       </p>
     </div>
   );

@@ -248,10 +248,11 @@ export function ManagersManager({ familyId }: { familyId: string }) {
               branches.map((b) => (
                 <label
                   key={b.id}
-                  className="flex cursor-pointer items-center gap-2 rounded-md border border-[var(--gp-scroll-edge)] px-3 py-2"
+                  className="flex min-h-11 cursor-pointer items-center gap-2.5 rounded-md border border-[var(--gp-scroll-edge)] px-3 py-2.5"
                 >
                   <input
                     type="checkbox"
+                    className="h-4 w-4"
                     checked={selectedBranches.includes(b.id)}
                     onChange={() =>
                       toggleBranch(b.id, selectedBranches, setSelectedBranches)
@@ -266,7 +267,7 @@ export function ManagersManager({ familyId }: { familyId: string }) {
 
         <button
           type="submit"
-          className="gp-btn gp-btn-primary"
+          className="gp-btn gp-btn-primary w-full sm:w-auto"
           disabled={
             submitting ||
             branches.length === 0 ||
@@ -344,7 +345,7 @@ export function ManagersManager({ familyId }: { familyId: string }) {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 rounded-md border border-[var(--gp-scroll-edge)] px-3 py-1.5 text-xs font-semibold hover:bg-[var(--gp-paper)]"
+                      className="inline-flex min-h-10 items-center gap-1 rounded-md border border-[var(--gp-scroll-edge)] px-3 py-2 text-xs font-semibold hover:bg-[var(--gp-paper)]"
                       onClick={() => startEdit(m)}
                     >
                       <Pencil size={14} aria-hidden />
@@ -352,7 +353,7 @@ export function ManagersManager({ familyId }: { familyId: string }) {
                     </button>
                     <button
                       type="button"
-                      className="inline-flex items-center gap-1 rounded-md border border-[var(--gp-scroll-edge)] px-3 py-1.5 text-xs font-semibold text-[var(--gp-lacquer)] hover:bg-[var(--gp-lacquer-soft)]"
+                      className="inline-flex min-h-10 items-center gap-1 rounded-md border border-[var(--gp-scroll-edge)] px-3 py-2 text-xs font-semibold text-[var(--gp-lacquer)] hover:bg-[var(--gp-lacquer-soft)]"
                       onClick={() => void onRevoke(m)}
                     >
                       <Trash2 size={14} aria-hidden />
@@ -366,10 +367,11 @@ export function ManagersManager({ familyId }: { familyId: string }) {
                       {branches.map((b) => (
                         <label
                           key={b.id}
-                          className="flex items-center gap-2 text-sm"
+                          className="flex min-h-11 items-center gap-2.5 text-sm"
                         >
                           <input
                             type="checkbox"
+                            className="h-4 w-4"
                             checked={editBranches.includes(b.id)}
                             onChange={() =>
                               toggleBranch(b.id, editBranches, setEditBranches)

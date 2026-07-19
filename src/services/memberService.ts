@@ -149,6 +149,7 @@ export async function addMember(
     spouses: input.spouses ?? [],
     gender: input.gender ?? "UNKNOWN",
     is_huong_hoa: input.is_huong_hoa ?? false,
+    photo_url: input.photo_url ?? null,
     biography: input.biography ?? null,
     notes: input.notes,
     created_at: nowIso(),

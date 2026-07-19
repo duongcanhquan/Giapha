@@ -9,6 +9,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ParentCascadePicker } from "@/components/dashboard/ParentCascadePicker";
+import { MemberPhotoUploader } from "@/components/dashboard/MemberPhotoUploader";
+import {
+  coParentEmptyHint,
+  coParentFieldLabel,
+  coParentPickPlaceholder,
+  filterCoParentSpouses,
+  pickDefaultCoParentId,
+  spouseRoleLabel,
+  treeParentRoleLabel,
+} from "@/lib/genealogy/labels";
 import { computeAnniversary } from "@/lib/lunar/death-date";
 import { appToast } from "@/lib/toast";
 import {
@@ -148,27 +158,25 @@ function MemberFormBody({
         ? [lockedBranchId]
         : null;
 
-  const parentIdForMother =
+  const parentIdForCoParent =
     mode === "create" ? form.parent_id : (member?.tree_logic.parent_id ?? "");
-  const motherChoices = useMemo(() => {
-    const parent = members.find((m) => m.id === parentIdForMother);
-    if (!parent) return [];
-    return parent.spouses.filter((s) => s.role === "DAU" || !s.role);
-  }, [members, parentIdForMother]);
-
   const selectedParent =
-    members.find((m) => m.id === form.parent_id) ?? null;
+    members.find((m) => m.id === parentIdForCoParent) ?? null;
+  const coParentChoices = useMemo(
+    () => filterCoParentSpouses(selectedParent),
+    [selectedParent],
+  );
+  const parentRole = treeParentRoleLabel(selectedParent);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const applyParent = (parent: FamilyMember) => {
-    const firstDau = parent.spouses.find((s) => s.role === "DAU")?.id ?? "";
     setForm((prev) => ({
       ...prev,
       parent_id: parent.id,
-      mother_spouse_id: firstDau,
+      mother_spouse_id: pickDefaultCoParentId(parent),
       branch_id: parent.tree_logic.branch_id,
     }));
   };
@@ -216,12 +224,12 @@ function MemberFormBody({
 
   const persistCreate = async () => {
     if (!form.parent_id && members.length > 0) {
-      throw new Error("Chọn cha theo Chi → Đời → tên trước khi lưu.");
+      throw new Error("Chọn Cha/Mẹ (nối cây) theo Chi → Đời → tên trước khi lưu.");
     }
 
     if (form.is_placeholder) {
       if (!form.parent_id) {
-        throw new Error("Placeholder cần chọn cha.");
+        throw new Error("Placeholder cần chọn Cha/Mẹ (nối cây).");
       }
       await addPlaceholderNode({
         family_id: familyId,
@@ -237,7 +245,7 @@ function MemberFormBody({
       throw new Error("Họ tên không được để trống.");
     }
     if (!form.parent_id) {
-      throw new Error("Cần chọn cha khi thêm thành viên.");
+      throw new Error("Cần chọn Cha/Mẹ (nối cây) khi thêm thành viên.");
     }
     await addMember({
       family_id: familyId,
@@ -279,7 +287,7 @@ function MemberFormBody({
           appToast.success(
             "Đã thêm — tiếp tục anh/chị/em",
             selectedParent
-              ? `Dưới ${selectedParent.full_name}`
+              ? `Dưới ${parentRole} ${selectedParent.full_name}`
               : undefined,
           );
           resetChildFields();
@@ -342,8 +350,8 @@ function MemberFormBody({
         <>
           {addedCount > 0 ? (
             <p className="rounded-md bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
-              Đã thêm {addedCount} người dưới cùng cha trong phiên này. Tiếp tục
-              điền anh/chị/em hoặc đóng.
+              Đã thêm {addedCount} người dưới cùng {parentRole.toLowerCase()} trong
+              phiên này. Tiếp tục điền anh/chị/em hoặc đóng.
             </p>
           ) : null}
           <ParentCascadePicker
@@ -357,28 +365,33 @@ function MemberFormBody({
           {form.parent_id ? (
             <>
               <label className="block font-semibold">
-                Mẹ (dâu của cha)
+                {coParentFieldLabel(selectedParent)}
                 <select
                   value={form.mother_spouse_id}
                   onChange={(e) => setField("mother_spouse_id", e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
-                  disabled={motherChoices.length === 0}
+                  className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
+                  disabled={coParentChoices.length === 0}
                 >
                   <option value="">
-                    {motherChoices.length
-                      ? "— Chọn dâu sinh con —"
-                      : "Cha chưa có dâu (sửa hồ sơ cha)"}
+                    {coParentChoices.length
+                      ? coParentPickPlaceholder(selectedParent)
+                      : coParentEmptyHint(selectedParent)}
                   </option>
-                  {motherChoices.map((s) => (
+                  {coParentChoices.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.full_name}
                       {s.maiden_name ? ` · họ ${s.maiden_name}` : ""}
+                      {s.role === "RE"
+                        ? " (rể)"
+                        : s.role === "DAU"
+                          ? " (dâu)"
+                          : ""}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="block font-semibold">
-                Quan hệ với cha
+                Quan hệ với {parentRole.toLowerCase()}
                 <select
                   value={form.relationship_type}
                   onChange={(e) =>
@@ -387,7 +400,7 @@ function MemberFormBody({
                       e.target.value as RelationshipType,
                     )
                   }
-                  className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+                  className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
                 >
                   <option value="BLOOD">Huyết thống</option>
                   <option value="ADOPTED">Con nuôi</option>
@@ -412,16 +425,29 @@ function MemberFormBody({
 
       {mode === "create" && !form.parent_id ? (
         <p className="rounded-md border border-dashed border-stone-300 px-3 py-4 text-center text-sm text-stone-500">
-          Chọn cha theo <strong>Chi → Đời → tên</strong> ở trên, rồi điền thông
-          tin con tại đây.
+          Chọn <strong>Cha/Mẹ (nối cây)</strong> theo Chi → Đời → tên ở trên,
+          rồi điền thông tin con. Con gái cũng chọn được nếu muốn ghi con theo
+          họ chồng.
         </p>
       ) : null}
 
       {(mode === "edit" || Boolean(form.parent_id)) ? (
         <>
-      <label className="flex items-center gap-2 font-semibold">
+      {mode === "edit" && member && !form.is_placeholder ? (
+        <MemberPhotoUploader
+          memberId={member.id}
+          familyId={familyId}
+          fullName={form.full_name || member.full_name}
+          photoUrl={member.photo_url}
+          deceased={!form.is_alive}
+          onChanged={() => onSaved?.()}
+        />
+      ) : null}
+
+      <label className="flex min-h-11 items-center gap-2.5 font-semibold">
         <input
           type="checkbox"
+          className="h-4 w-4"
           checked={form.is_placeholder}
           onChange={(e) => setField("is_placeholder", e.target.checked)}
         />
@@ -436,7 +462,7 @@ function MemberFormBody({
               required={!form.is_placeholder}
               value={form.full_name}
               onChange={(e) => setField("full_name", e.target.value)}
-              className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+              className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
             />
           </label>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -445,7 +471,7 @@ function MemberFormBody({
               <input
                 value={form.birth_name}
                 onChange={(e) => setField("birth_name", e.target.value)}
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+                className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
               />
             </label>
             <label className="block font-semibold">
@@ -453,7 +479,7 @@ function MemberFormBody({
               <input
                 value={form.courtesy_name}
                 onChange={(e) => setField("courtesy_name", e.target.value)}
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+                className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
               />
             </label>
             <label className="block font-semibold">
@@ -461,7 +487,7 @@ function MemberFormBody({
               <input
                 value={form.posthumous_name}
                 onChange={(e) => setField("posthumous_name", e.target.value)}
-                className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+                className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
               />
             </label>
           </div>
@@ -470,19 +496,27 @@ function MemberFormBody({
 
       {mode === "edit" ? (
         <label className="block font-semibold">
-          Mẹ (dâu của cha)
+          {coParentFieldLabel(
+            members.find((m) => m.id === member?.tree_logic.parent_id) ?? null,
+          )}
           <select
             value={form.mother_spouse_id}
             onChange={(e) => setField("mother_spouse_id", e.target.value)}
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
-            disabled={motherChoices.length === 0}
+            className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
+            disabled={coParentChoices.length === 0}
           >
             <option value="">
-              {motherChoices.length
-                ? "— Chọn dâu sinh con —"
-                : "Cha chưa có dâu"}
+              {coParentChoices.length
+                ? coParentPickPlaceholder(
+                    members.find((m) => m.id === member?.tree_logic.parent_id) ??
+                      null,
+                  )
+                : coParentEmptyHint(
+                    members.find((m) => m.id === member?.tree_logic.parent_id) ??
+                      null,
+                  )}
             </option>
-            {motherChoices.map((s) => (
+            {coParentChoices.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.full_name}
                 {s.maiden_name ? ` · họ ${s.maiden_name}` : ""}
@@ -498,7 +532,7 @@ function MemberFormBody({
           <select
             value={form.gender}
             onChange={(e) => setField("gender", e.target.value as Gender)}
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+            className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
           >
             <option value="MALE">Nam</option>
             <option value="FEMALE">Nữ</option>
@@ -514,13 +548,13 @@ function MemberFormBody({
                 form.branch_id
               }
               disabled
-              className="mt-1 w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2 font-normal text-stone-600"
+              className="mt-1 min-h-11 w-full rounded-lg border border-stone-200 bg-stone-100 px-3 py-2.5 text-base font-normal text-stone-600 sm:text-sm"
             />
           ) : allowedBranches?.length ? (
             <select
               value={form.branch_id}
               onChange={(e) => setField("branch_id", e.target.value)}
-              className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+              className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
             >
               {allowedBranches.map((id) => (
                 <option key={id} value={id}>
@@ -532,7 +566,7 @@ function MemberFormBody({
             <select
               value={form.branch_id}
               onChange={(e) => setField("branch_id", e.target.value)}
-              className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+              className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
             >
               {branches.map((b) => (
                 <option key={b.id} value={b.id}>
@@ -548,18 +582,20 @@ function MemberFormBody({
       </div>
 
       <div className="flex flex-wrap gap-4">
-        <label className="flex items-center gap-2 font-semibold">
+        <label className="flex min-h-11 items-center gap-2.5 font-semibold">
           <input
             type="checkbox"
+            className="h-4 w-4"
             checked={form.is_alive}
             disabled={form.is_placeholder}
             onChange={(e) => setField("is_alive", e.target.checked)}
           />
           Đang sống
         </label>
-        <label className="flex items-center gap-2 font-semibold">
+        <label className="flex min-h-11 items-center gap-2.5 font-semibold">
           <input
             type="checkbox"
+            className="h-4 w-4"
             checked={form.is_huong_hoa}
             onChange={(e) => setField("is_huong_hoa", e.target.checked)}
           />
@@ -574,7 +610,7 @@ function MemberFormBody({
             type="date"
             value={form.birth}
             onChange={(e) => setField("birth", e.target.value)}
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+            className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
           />
         </label>
         <label className="block font-semibold">
@@ -584,7 +620,7 @@ function MemberFormBody({
             value={form.death}
             disabled={form.is_alive && !form.is_placeholder}
             onChange={(e) => onDeathChange(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal disabled:opacity-50"
+            className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal disabled:opacity-50 sm:text-sm"
           />
         </label>
       </div>
@@ -595,7 +631,7 @@ function MemberFormBody({
           value={form.lunar_death}
           onChange={(e) => setField("lunar_death", e.target.value)}
           placeholder="YYYY-M-D"
-          className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+          className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
         />
         {lunarHint ? (
           <span className="mt-1 block text-xs font-normal text-[#7a1f1f]">
@@ -610,7 +646,7 @@ function MemberFormBody({
           value={form.biography}
           onChange={(e) => setField("biography", e.target.value)}
           rows={3}
-          className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+          className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
         />
       </label>
 
@@ -619,7 +655,7 @@ function MemberFormBody({
         <input
           value={form.notes}
           onChange={(e) => setField("notes", e.target.value)}
-          className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+          className="mt-1 min-h-11 w-full rounded-lg border border-stone-300 px-3 py-2.5 text-base font-normal sm:text-sm"
         />
       </label>
 
@@ -631,7 +667,7 @@ function MemberFormBody({
             </h3>
             <button
               type="button"
-              className="text-xs font-semibold text-[#7a1f1f] hover:underline"
+              className="min-h-9 text-xs font-semibold text-[#7a1f1f] hover:underline"
               onClick={() => {
                 const role: SpouseInfo["role"] =
                   form.gender === "FEMALE" ? "RE" : "DAU";
@@ -657,7 +693,7 @@ function MemberFormBody({
           </div>
           {spousesDraft.length === 0 ? (
             <p className="text-xs text-stone-500">
-              Chưa có dâu/rể. Thêm để hiện node «Cưới» và chọn mẹ khi ghi con.
+              Chưa có dâu/rể. Thêm để hiện node «Cưới» và gắn phối ngẫu sinh con.
             </p>
           ) : (
             spousesDraft.map((s, idx) => (
@@ -677,7 +713,7 @@ function MemberFormBody({
                       ),
                     );
                   }}
-                  className="rounded border border-stone-300 px-2 py-1.5 font-normal"
+                  className="min-h-11 rounded border border-stone-300 px-2 py-2 text-base font-normal sm:text-sm"
                 />
                 <select
                   value={s.role ?? "SPOUSE"}
@@ -687,11 +723,11 @@ function MemberFormBody({
                       prev.map((x, i) => (i === idx ? { ...x, role } : x)),
                     );
                   }}
-                  className="rounded border border-stone-300 px-2 py-1.5 font-normal"
+                  className="min-h-11 rounded border border-stone-300 px-2 py-2 text-base font-normal sm:text-sm"
                 >
-                  <option value="DAU">Dâu</option>
-                  <option value="RE">Rể</option>
-                  <option value="SPOUSE">Phối ngẫu</option>
+                  <option value="DAU">{spouseRoleLabel("DAU")}</option>
+                  <option value="RE">{spouseRoleLabel("RE")}</option>
+                  <option value="SPOUSE">{spouseRoleLabel("SPOUSE")}</option>
                 </select>
                 <button
                   type="button"
@@ -708,10 +744,10 @@ function MemberFormBody({
         </section>
       ) : null}
 
-          <div className="flex flex-wrap justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:flex-wrap sm:justify-end">
             <button
               type="button"
-              className="gp-btn gp-btn-ghost"
+              className="gp-btn gp-btn-ghost min-h-11 w-full sm:w-auto"
               onClick={() => onOpenChange(false)}
             >
               Huỷ
@@ -720,7 +756,7 @@ function MemberFormBody({
               <button
                 type="button"
                 disabled={saving || !form.full_name.trim()}
-                className="gp-btn gp-btn-ghost disabled:opacity-60"
+                className="gp-btn gp-btn-ghost min-h-11 w-full disabled:opacity-60 sm:w-auto"
                 onClick={(e) => void handleSubmit(e, true)}
               >
                 {saving ? "…" : "Lưu & thêm anh/chị/em"}
@@ -732,7 +768,7 @@ function MemberFormBody({
                 saving ||
                 (mode === "create" && !form.parent_id && members.length > 0)
               }
-              className="gp-btn gp-btn-primary disabled:opacity-60"
+              className="gp-btn gp-btn-primary min-h-11 w-full disabled:opacity-60 sm:w-auto"
             >
               {saving
                 ? "Đang lưu…"
@@ -794,8 +830,7 @@ export function MemberFormModal({
       : undefined;
     const form = emptyForm(parentId, parent?.tree_logic.branch_id ?? defaultBranch);
     if (parent) {
-      form.mother_spouse_id =
-        parent.spouses.find((s) => s.role === "DAU")?.id ?? "";
+      form.mother_spouse_id = pickDefaultCoParentId(parent);
     }
     return form;
   }, [mode, member, defaultParentId, members, defaultBranch]);
@@ -816,13 +851,13 @@ export function MemberFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-xl overflow-hidden">
+      <DialogContent className="max-h-[92dvh] w-[min(100vw-1rem,36rem)] max-w-xl overflow-hidden sm:w-[min(520px,calc(100%-2rem))]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {mode === "edit" && member
               ? `Đời thứ ${memberGeneration(member)} · id ${member.id}`
-              : "Chọn cha: Chi → Đời → tìm tên. Rồi điền thông tin con. Có thể thêm liên tục anh/chị/em dưới cùng cha."}
+              : "Chọn Cha/Mẹ (nối cây): Chi → Đời → tên. Nam = Cha + dâu; nữ = Mẹ + rể. Có thể thêm liên tục anh/chị/em."}
           </DialogDescription>
         </DialogHeader>
 

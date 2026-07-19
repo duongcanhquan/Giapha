@@ -249,6 +249,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  min-height: 2.75rem;
   border-radius: var(--gp-radius-sm);
   padding: 0.65rem 1.15rem;
   font-size: 0.875rem;
@@ -258,6 +259,12 @@ body {
     color 160ms ease,
     border-color 160ms ease,
     transform 160ms ease;
+}
+
+@media (min-width: 640px) {
+  .gp-btn {
+    min-height: 2.5rem;
+  }
 }
 
 .gp-btn:active {
@@ -303,17 +310,39 @@ body {
   background: rgba(255, 248, 240, 0.1);
 }
 
+.gp-btn-logout {
+  border: 1.5px solid rgba(122, 31, 31, 0.45);
+  background: rgba(122, 31, 31, 0.08);
+  color: var(--gp-lacquer);
+}
+
+.gp-btn-logout:hover {
+  border-color: var(--gp-lacquer);
+  background: var(--gp-lacquer);
+  color: var(--gp-seal-ink);
+}
+
 /* —— Form controls —— */
 .gp-input {
   width: 100%;
+  min-height: 2.75rem;
   border-radius: var(--gp-radius);
   border: 1px solid var(--gp-scroll-edge);
   background: var(--gp-scroll);
-  padding: 0.55rem 0.75rem;
+  padding: 0.65rem 0.75rem;
+  font-size: 1rem;
   font-weight: 500;
   color: var(--gp-ink);
   outline: none;
   transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+@media (min-width: 640px) {
+  .gp-input {
+    min-height: 2.5rem;
+    font-size: 0.875rem;
+    padding: 0.55rem 0.75rem;
+  }
 }
 
 .gp-input:focus {
@@ -331,6 +360,7 @@ body {
 /* —— Table —— */
 .gp-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: var(--gp-radius-lg);
   border: 1px solid var(--gp-scroll-edge);
   background: var(--gp-scroll);
@@ -343,6 +373,13 @@ body {
   border-collapse: collapse;
   text-align: left;
   font-size: 0.875rem;
+}
+
+@media (max-width: 639px) {
+  .gp-table th,
+  .gp-table td {
+    padding: 0.85rem 0.75rem;
+  }
 }
 
 .gp-table thead {

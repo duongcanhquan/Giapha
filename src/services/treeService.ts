@@ -90,6 +90,7 @@ function mapMember(id: string, data: Record<string, unknown>): FamilyMember {
     })),
     gender: (data.gender as FamilyMember["gender"]) ?? "UNKNOWN",
     is_huong_hoa: Boolean(data.is_huong_hoa),
+    photo_url: (data.photo_url as string | null | undefined) ?? null,
     biography: (data.biography as string) ?? null,
     notes: data.notes as string | undefined,
   };

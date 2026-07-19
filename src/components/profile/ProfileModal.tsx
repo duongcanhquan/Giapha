@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { FamilyMember, MemberContact, SpouseInfo } from "@/types/genealogy";
+import type { FamilyMember, MemberContact } from "@/types/genealogy";
 import { memberGeneration } from "@/types/genealogy";
 import {
   Dialog,
@@ -11,7 +11,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { computeAnniversary, toLunarDeathDate } from "@/lib/lunar/death-date";
+import {
+  spouseRoleLabel,
+  treeParentRoleLabel,
+  coParentShortLabel,
+} from "@/lib/genealogy/labels";
 import { getMemberContact } from "@/services/memberService";
+import { MemberAvatar } from "@/components/ui/MemberAvatar";
 
 type ProfileModalProps = {
   member: FamilyMember | null;
@@ -20,12 +26,6 @@ type ProfileModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
-
-function spouseRoleLabel(role?: SpouseInfo["role"]) {
-  if (role === "DAU") return "Con dâu";
-  if (role === "RE") return "Con rể";
-  return "Phối ngẫu";
-}
 
 export function ProfileModal({
   member,
@@ -72,24 +72,24 @@ export function ProfileModal({
 
   const lineage = useMemo(() => {
     if (!member) return null;
-    const father =
+    const treeParent =
       members.find((m) => m.id === member.tree_logic.parent_id) ?? null;
-    const motherId = member.tree_logic.mother_spouse_id;
-    const mother =
-      father && motherId
-        ? (father.spouses.find((s) => s.id === motherId) ?? null)
+    const coParentId = member.tree_logic.mother_spouse_id;
+    const coParent =
+      treeParent && coParentId
+        ? (treeParent.spouses.find((s) => s.id === coParentId) ?? null)
         : null;
     const children = members.filter(
       (m) => m.tree_logic.parent_id === member.id && !m.status.is_placeholder,
     );
-    const childrenByMother = new Map<string, FamilyMember[]>();
+    const childrenByCoParent = new Map<string, FamilyMember[]>();
     for (const child of children) {
       const mid = child.tree_logic.mother_spouse_id ?? "_unknown";
-      const list = childrenByMother.get(mid) || [];
+      const list = childrenByCoParent.get(mid) || [];
       list.push(child);
-      childrenByMother.set(mid, list);
+      childrenByCoParent.set(mid, list);
     }
-    return { father, mother, children, childrenByMother };
+    return { treeParent, coParent, children, childrenByCoParent };
   }, [member, members]);
 
   if (!member) return null;
@@ -98,48 +98,65 @@ export function ProfileModal({
     contact &&
     (contact.phone || contact.address || contact.email || contact.notes);
 
+  const treeParentRole = treeParentRoleLabel(lineage?.treeParent);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[92dvh] w-[min(100vw-1rem,36rem)] overflow-hidden sm:w-[min(520px,calc(100%-2rem))]">
         <DialogHeader>
-          <DialogTitle>{member.full_name || "Khuyết danh"}</DialogTitle>
-          <DialogDescription>
-            Đời thứ {memberGeneration(member)}
-            {member.is_huong_hoa ? " · Hương hỏa" : ""}
-            {" · "}
-            {member.status.is_alive ? "Đang sống" : "Đã mất"}
-          </DialogDescription>
+          <div className="flex items-start gap-3 pr-8">
+            <MemberAvatar
+              name={member.full_name || "?"}
+              photoUrl={member.photo_url}
+              size="lg"
+              deceased={!member.status.is_alive}
+              className="mt-0.5"
+            />
+            <div className="min-w-0">
+              <DialogTitle>{member.full_name || "Khuyết danh"}</DialogTitle>
+              <DialogDescription>
+                Đời thứ {memberGeneration(member)}
+                {member.is_huong_hoa ? " · Hương hỏa" : ""}
+                {" · "}
+                {member.status.is_alive ? "Đang sống" : "Đã mất"}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="space-y-5 text-sm">
-          {lineage && (lineage.father || lineage.children.length > 0) ? (
+          {lineage && (lineage.treeParent || lineage.children.length > 0) ? (
             <section className="rounded-lg border border-[#7a1f1f]/18 bg-[#7a1f1f]/04 p-3">
               <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
                 Dòng huyết thống
               </h3>
               <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5">
-                {lineage.father ? (
+                {lineage.treeParent ? (
                   <>
-                    <dt className="text-[#6a6258]">Cha</dt>
+                    <dt className="text-[#6a6258]">{treeParentRole}</dt>
                     <dd className="font-medium">
-                      {lineage.father.full_name || "Khuyết danh"}
+                      {lineage.treeParent.full_name || "Khuyết danh"}
                     </dd>
                   </>
                 ) : null}
-                {lineage.mother ? (
+                {lineage.coParent ? (
                   <>
-                    <dt className="text-[#6a6258]">Mẹ (dâu)</dt>
+                    <dt className="text-[#6a6258]">
+                      {coParentShortLabel(lineage.coParent.role)}
+                    </dt>
                     <dd className="font-medium">
-                      {lineage.mother.full_name}
-                      {lineage.mother.maiden_name
-                        ? ` · họ gốc ${lineage.mother.maiden_name}`
+                      {lineage.coParent.full_name}
+                      {lineage.coParent.maiden_name
+                        ? ` · họ gốc ${lineage.coParent.maiden_name}`
                         : ""}
                     </dd>
                   </>
-                ) : lineage.father ? (
+                ) : lineage.treeParent ? (
                   <>
-                    <dt className="text-[#6a6258]">Mẹ</dt>
-                    <dd className="text-[#6a6258]">Chưa gắn dâu / mẹ</dd>
+                    <dt className="text-[#6a6258]">
+                      {coParentShortLabel(null, lineage.treeParent)}
+                    </dt>
+                    <dd className="text-[#6a6258]">Chưa gắn trên hồ sơ</dd>
                   </>
                 ) : null}
               </dl>
@@ -148,27 +165,31 @@ export function ProfileModal({
                   <p className="text-xs font-semibold text-[#3d372f]">
                     Con trong họ ({lineage.children.length})
                   </p>
-                  {member.spouses
-                    .filter((s) => s.role === "DAU")
-                    .map((dau) => {
-                      const kids =
-                        lineage.childrenByMother.get(dau.id) ?? [];
-                      return (
-                        <p key={dau.id} className="text-xs leading-relaxed text-[#3d372f]">
-                          <span className="font-medium text-[#7a1f1f]">
-                            {dau.full_name}
-                          </span>
-                          {kids.length
-                            ? ` sinh: ${kids.map((k) => k.full_name || "?").join(", ")}`
-                            : " — chưa ghi con trong cây"}
-                        </p>
-                      );
-                    })}
-                  {(lineage.childrenByMother.get("_unknown") ?? []).length >
+                  {member.spouses.map((sp) => {
+                    const kids =
+                      lineage.childrenByCoParent.get(sp.id) ?? [];
+                    if (!kids.length && sp.role !== "DAU" && sp.role !== "RE") {
+                      return null;
+                    }
+                    return (
+                      <p
+                        key={sp.id}
+                        className="text-xs leading-relaxed text-[#3d372f]"
+                      >
+                        <span className="font-medium text-[#7a1f1f]">
+                          {spouseRoleLabel(sp.role)} {sp.full_name}
+                        </span>
+                        {kids.length
+                          ? ` · con: ${kids.map((k) => k.full_name || "?").join(", ")}`
+                          : " · chưa ghi con trong cây"}
+                      </p>
+                    );
+                  })}
+                  {(lineage.childrenByCoParent.get("_unknown") ?? []).length >
                   0 ? (
                     <p className="text-xs text-[#5c564e]">
-                      Chưa gắn mẹ:{" "}
-                      {(lineage.childrenByMother.get("_unknown") ?? [])
+                      Chưa gắn dâu/rể:{" "}
+                      {(lineage.childrenByCoParent.get("_unknown") ?? [])
                         .map((k) => k.full_name || "?")
                         .join(", ")}
                     </p>

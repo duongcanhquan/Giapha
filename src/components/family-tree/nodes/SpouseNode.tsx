@@ -2,6 +2,7 @@
 
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
 import { Flower2, Heart, HeartHandshake } from "lucide-react";
+import { spouseRoleLabel } from "@/lib/genealogy/labels";
 import type { SpouseRole } from "@/types/genealogy";
 import type { NodeLifeStatus } from "./MemberNode";
 
@@ -24,12 +25,6 @@ export type SpouseNodeData = {
 };
 
 export type SpouseFlowNode = Node<SpouseNodeData, "spouse">;
-
-function roleTitle(role: SpouseRole) {
-  if (role === "DAU") return "Con dâu";
-  if (role === "RE") return "Con rể";
-  return "Phối ngẫu";
-}
 
 function roleHint(role: SpouseRole, partnerName: string) {
   if (role === "DAU") return `Vợ của ${partnerName}`;
@@ -66,7 +61,7 @@ export function SpouseNode({ data }: NodeProps<SpouseFlowNode>) {
 
       <div className="ft-spouse-node__badge">
         <HeartHandshake size={12} aria-hidden />
-        {roleTitle(data.role)}
+        {spouseRoleLabel(data.role)}
       </div>
 
       <p className="ft-spouse-node__name">{data.fullName}</p>

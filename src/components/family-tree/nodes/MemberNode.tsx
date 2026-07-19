@@ -29,6 +29,8 @@ export type MemberNodeData = {
   hiddenDescendantCount?: number;
   collapsed?: boolean;
   onToggleCollapse?: (memberId: string) => void;
+  /** Ảnh đại diện tròn (R2) */
+  photoUrl?: string | null;
 };
 
 export type MemberFlowNode = Node<MemberNodeData, "member">;
@@ -63,22 +65,43 @@ export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
 
       <div className="ft-member__stack">
         <div className="ft-member__main">
-          <div className="ft-member__meta">
-            <span className="ft-member__gen">Đời {data.generation}</span>
-            {data.branchLabel ? (
-              <span className="ft-member__branch" title={data.branchLabel}>
-                {data.branchLabel}
-              </span>
-            ) : null}
-            {data.isHuongHoa ? (
-              <span className="ft-member__icon" title="Hương hỏa">
-                <Flame size={13} aria-hidden />
-                <span>Hương hỏa</span>
-              </span>
-            ) : null}
-          </div>
+          <div className="ft-member__identity">
+            <div className="ft-member__avatar" aria-hidden>
+              {data.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={data.photoUrl} alt="" draggable={false} />
+              ) : (
+                <span className="ft-member__avatar-fallback">
+                  {(data.fullName || "?")
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(-2)
+                    .map((p) => p[0])
+                    .join("")
+                    .toUpperCase() || "?"}
+                </span>
+              )}
+            </div>
+            <div className="ft-member__identity-text">
+              <div className="ft-member__meta">
+                <span className="ft-member__gen">Đời {data.generation}</span>
+                {data.branchLabel ? (
+                  <span className="ft-member__branch" title={data.branchLabel}>
+                    {data.branchLabel}
+                  </span>
+                ) : null}
+                {data.isHuongHoa ? (
+                  <span className="ft-member__icon" title="Hương hỏa">
+                    <Flame size={13} aria-hidden />
+                    <span>Hương hỏa</span>
+                  </span>
+                ) : null}
+              </div>
 
-          <p className="ft-member__name">{data.fullName}</p>
+              <p className="ft-member__name">{data.fullName}</p>
+            </div>
+          </div>
 
           <span
             className={`ft-member__status ${deceased ? "ft-member__status--deceased" : "ft-member__status--living"}`}

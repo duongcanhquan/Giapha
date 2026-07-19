@@ -8,14 +8,18 @@ import type {
   SpouseRole,
 } from "@/types/genealogy";
 import { memberGeneration } from "@/types/genealogy";
+import {
+  parentChildEdgeLabel,
+  spouseChildEdgeLabel,
+} from "@/lib/genealogy/labels";
 import type { MemberNodeData } from "@/components/family-tree/nodes/MemberNode";
 import type { PlaceholderNodeData } from "@/components/family-tree/nodes/PlaceholderNode";
 import type { SpouseNodeData } from "@/components/family-tree/nodes/SpouseNode";
 import type { RelationshipEdgeData } from "@/components/family-tree/edges/RelationshipEdge";
 
 /** Kích thước thẻ người trong họ */
-const BASE_NODE_WIDTH = 196;
-const BASE_NODE_HEIGHT = 112;
+const BASE_NODE_WIDTH = 210;
+const BASE_NODE_HEIGHT = 118;
 const COLLAPSE_ROW_HEIGHT = 32;
 const PLACEHOLDER_HEIGHT = 96;
 
@@ -243,15 +247,16 @@ export function buildFlowGraph(
         path,
         branchLabel,
         childCount: layoutKids,
+        photoUrl: member.photo_url ?? null,
       } satisfies MemberNodeData,
     };
   });
 
   const edges: FamilyFlowEdge[] = data.relations.map((relation) =>
-    relationToEdge(relation),
+    relationToEdge(relation, memberById.get(relation.source)?.gender),
   );
 
-  // Nếu thiếu relation nhưng có parent_id — bổ sung cạnh cha→con
+  // Nếu thiếu relation nhưng có parent_id — bổ sung cạnh cha/mẹ→con
   const edgeKeys = new Set(edges.map((e) => `${e.source}→${e.target}`));
   for (const member of data.members) {
     const parentId = member.tree_logic.parent_id;
@@ -260,27 +265,31 @@ export function buildFlowGraph(
     if (edgeKeys.has(key)) continue;
     if (!unitSizeById.has(parentId)) continue;
     edges.push(
-      relationToEdge({
-        id: `auto-${parentId}-${member.id}`,
-        family_id: member.family_id,
-        branch_id: member.tree_logic.branch_id,
-        source: parentId,
-        target: member.id,
-        relationship_type: member.tree_logic.relationship_type,
-      }),
+      relationToEdge(
+        {
+          id: `auto-${parentId}-${member.id}`,
+          family_id: member.family_id,
+          branch_id: member.tree_logic.branch_id,
+          source: parentId,
+          target: member.id,
+          relationship_type: member.tree_logic.relationship_type,
+        },
+        memberById.get(parentId)?.gender,
+      ),
     );
     edgeKeys.add(key);
   }
 
-  // Gắn nhãn "Cha" trên cạnh máu (không phải nuôi)
+  // Gắn nhãn Cha/Mẹ → con trên cạnh máu
   for (const edge of edges) {
     if (edge.data?.relationshipType === "ADOPTED") {
       edge.data = { ...edge.data, kind: "ADOPTED", label: "Con nuôi" };
     } else {
+      const parent = memberById.get(edge.source);
       edge.data = {
         ...edge.data!,
         kind: "BLOOD",
-        label: "Cha → con",
+        label: parentChildEdgeLabel(parent?.gender),
       };
     }
   }
@@ -315,10 +324,13 @@ export function buildFlowGraph(
       branchNameById.get(member.tree_logic.branch_id) ??
       member.tree_logic.branch_id;
 
-    // Dâu chính (mẹ) — ưu tiên spouse đầu role DAU
-    const motherSpouse =
-      member.spouses.find((s) => defaultSpouseRole(member, s) === "DAU") ??
-      (member.gender === "MALE" ? member.spouses[0] : undefined);
+    // Phối ngẫu chính cùng sinh con: nam → dâu; nữ → rể
+    const coParentSpouse =
+      member.gender === "FEMALE"
+        ? (member.spouses.find((s) => defaultSpouseRole(member, s) === "RE") ??
+          member.spouses[0])
+        : (member.spouses.find((s) => defaultSpouseRole(member, s) === "DAU") ??
+          member.spouses[0]);
 
     member.spouses.forEach((spouse, index) => {
       const sid = makeSpouseNodeId(member.id, spouse.id);
@@ -364,16 +376,18 @@ export function buildFlowGraph(
         } satisfies RelationshipEdgeData,
       });
 
-    // Nối đúng mẹ (dâu) → từng con theo mother_spouse_id; fallback dâu chính
+    // Nối dâu/rể → con theo mother_spouse_id (co-parent)
     const kids = childrenByParent.get(member.id) ?? [];
     for (const child of kids) {
       if (!memberById.has(child.id)) continue;
-      const motherId =
+      const coParentId =
         child.tree_logic.mother_spouse_id ??
-        (motherSpouse && role === "DAU" && spouse.id === motherSpouse.id
-          ? motherSpouse.id
+        (coParentSpouse &&
+        spouse.id === coParentSpouse.id &&
+        (role === "DAU" || role === "RE")
+          ? coParentSpouse.id
           : null);
-      if (!motherId || motherId !== spouse.id) continue;
+      if (!coParentId || coParentId !== spouse.id) continue;
       edges.push({
         id: `mother-${spouse.id}-${child.id}`,
         source: sid,
@@ -383,7 +397,7 @@ export function buildFlowGraph(
         data: {
           relationshipType: child.tree_logic.relationship_type,
           kind: "MOTHER",
-          label: "Mẹ → con",
+          label: spouseChildEdgeLabel(role),
         } satisfies RelationshipEdgeData,
       });
     }
@@ -396,7 +410,10 @@ export function buildFlowGraph(
   };
 }
 
-export function relationToEdge(relation: FamilyRelation): FamilyFlowEdge {
+export function relationToEdge(
+  relation: FamilyRelation,
+  parentGender?: FamilyMember["gender"] | null,
+): FamilyFlowEdge {
   const isAdopted = relation.relationship_type === "ADOPTED";
 
   return {
@@ -408,7 +425,7 @@ export function relationToEdge(relation: FamilyRelation): FamilyFlowEdge {
     data: {
       relationshipType: relation.relationship_type,
       kind: isAdopted ? "ADOPTED" : "BLOOD",
-      label: isAdopted ? "Con nuôi" : "Cha → con",
+      label: isAdopted ? "Con nuôi" : parentChildEdgeLabel(parentGender),
     } satisfies RelationshipEdgeData,
   };
 }

@@ -195,10 +195,10 @@ export function FamilyAdminWorkspace({
             .
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
           <button
             type="button"
-            className="gp-btn gp-btn-ghost"
+            className="gp-btn gp-btn-ghost w-full sm:w-auto"
             onClick={() => setStatsOpen((v) => !v)}
             aria-expanded={statsOpen}
           >
@@ -214,7 +214,7 @@ export function FamilyAdminWorkspace({
           </button>
           <button
             type="button"
-            className="gp-btn gp-btn-primary"
+            className="gp-btn gp-btn-primary w-full sm:w-auto"
             onClick={() => openCreate()}
           >
             + Thêm thành viên
@@ -222,7 +222,7 @@ export function FamilyAdminWorkspace({
           <ExportTreeButton
             data={tree}
             label="Xuất Infographic"
-            className="gp-btn gp-btn-ghost disabled:opacity-60"
+            className="gp-btn gp-btn-ghost w-full disabled:opacity-60 sm:w-auto"
           />
         </div>
       </header>

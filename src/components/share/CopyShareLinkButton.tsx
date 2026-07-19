@@ -47,7 +47,7 @@ export function CopyShareLinkButton({
       title="Sao chép link để gửi Zalo / Facebook"
     >
       {copied ? <Check size={16} aria-hidden /> : <Link2 size={16} aria-hidden />}
-      <span>{copied ? "Đã copy!" : label}</span>
+      {label ? <span>{copied ? "Đã copy!" : label}</span> : null}
     </button>
   );
 }

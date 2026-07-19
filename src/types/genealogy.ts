@@ -139,6 +139,8 @@ export interface FamilyMember {
   spouses: SpouseInfo[];
   gender?: Gender;
   is_huong_hoa?: boolean;
+  /** URL ảnh đại diện (R2) — luôn hiển thị dạng tròn */
+  photo_url?: string | null;
   biography?: string | null;
   notes?: string;
   created_at?: string;
@@ -205,6 +207,7 @@ export type AddMemberInput = {
   dates?: MemberDates;
   biography?: string | null;
   notes?: string;
+  photo_url?: string | null;
   id?: string;
 };
 
