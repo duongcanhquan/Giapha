@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { getFamily, updateFamilyAppearance } from "@/services/familyService";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
+import { appToast } from "@/lib/toast";
 import type { FamilyTheme } from "@/types/family";
 
 type AppearanceSettingsProps = {
@@ -51,13 +52,18 @@ export function AppearanceSettings({ familyId }: AppearanceSettingsProps) {
 
     try {
       if (!isFirebaseConfigured()) {
-        setMessage("Đã áp dụng xem trước cục bộ (demo). Cấu hình Firebase để lưu.");
+        const msg = "Đã áp dụng xem trước cục bộ (demo). Cấu hình Firebase để lưu.";
+        setMessage(msg);
+        appToast.success("Giao diện (demo)", msg);
         return;
       }
       await updateFamilyAppearance(familyId, { theme: next });
       setMessage("Đã lưu giao diện dòng họ.");
+      appToast.success("Đã lưu giao diện");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Lưu thất bại.");
+      const msg = err instanceof Error ? err.message : "Lưu thất bại.";
+      setMessage(msg);
+      appToast.error("Lưu giao diện thất bại", msg);
     } finally {
       setSaving(false);
     }

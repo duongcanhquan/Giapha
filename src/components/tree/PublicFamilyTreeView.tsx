@@ -1,48 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { FamilyTree } from "@/components/family-tree";
 import { ProfileModal } from "@/components/profile/ProfileModal";
 import { CopyShareLinkButton } from "@/components/share/CopyShareLinkButton";
-import { fetchFamilyTree } from "@/services/treeService";
-import type { Family } from "@/types/family";
-import type { FamilyMember, FamilyTreeData } from "@/types/genealogy";
+import { TreePageSkeleton } from "@/components/ui/skeleton";
+import { useFamilyTree } from "@/hooks/useFamilyTree";
+import type { FamilyMember } from "@/types/genealogy";
 
 type PublicFamilyTreeViewProps = {
   familyId: string;
 };
 
 export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
-  const [family, setFamily] = useState<Family | null>(null);
-  const [tree, setTree] = useState<FamilyTreeData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { family, tree, error, isLoading } = useFamilyTree(familyId);
   const [profileMember, setProfileMember] = useState<FamilyMember | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const result = await fetchFamilyTree(familyId);
-        if (cancelled) return;
-        setFamily(result.family);
-        setTree(result.tree);
-        setError(null);
-      } catch (err: unknown) {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Không tải được cây.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [familyId]);
 
   const shareUrl = useMemo(() => {
     if (typeof window === "undefined") return `/tree/${familyId}`;
@@ -53,19 +27,17 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
   const primary = theme?.primary_color ?? "#7a1f1f";
   const surface = theme?.surface_color ?? "#e9eef3";
 
-  if (loading) {
-    return (
-      <main className="grid min-h-screen place-items-center text-sm text-stone-500">
-        Đang tải cây gia phả…
-      </main>
-    );
+  if (isLoading && !tree) {
+    return <TreePageSkeleton />;
   }
 
   if (error || !tree) {
     return (
       <main className="grid min-h-screen place-items-center px-4 text-center">
         <div>
-          <p className="text-[#7a1f1f]">{error ?? "Không tìm thấy dòng họ."}</p>
+          <p className="text-[#7a1f1f]">
+            {error?.message ?? "Không tìm thấy dòng họ."}
+          </p>
           <Link href="/" className="mt-3 inline-block text-sm font-semibold underline">
             Về trang chủ
           </Link>
@@ -91,7 +63,10 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
       <header className="border-b border-stone-300/50 px-4 py-4 md:px-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: primary }}>
+            <p
+              className="text-xs font-semibold uppercase tracking-[0.14em]"
+              style={{ color: primary }}
+            >
               <Link href="/" className="hover:underline">
                 Giapha
               </Link>

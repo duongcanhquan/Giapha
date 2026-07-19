@@ -7,6 +7,7 @@ import {
   useImperativeHandle,
   useMemo,
   useState,
+  useSyncExternalStore,
   type FormEvent,
   type Ref,
 } from "react";
@@ -39,7 +40,30 @@ import { highlightPath as resolveHighlightPath } from "@/lib/genealogy/highlight
 import { MemberNode } from "./nodes/MemberNode";
 import { PlaceholderNode } from "./nodes/PlaceholderNode";
 import { RelationshipEdge } from "./edges/RelationshipEdge";
+import { SmartSearch } from "./SmartSearch";
 import "./family-tree.css";
+
+function subscribeMobile(onStoreChange: () => void): () => void {
+  const mq = window.matchMedia("(max-width: 768px)");
+  mq.addEventListener("change", onStoreChange);
+  return () => mq.removeEventListener("change", onStoreChange);
+}
+
+function getMobileSnapshot(): boolean {
+  return window.matchMedia("(max-width: 768px)").matches;
+}
+
+function getServerMobileSnapshot(): boolean {
+  return false;
+}
+
+function useIsMobileViewport(): boolean {
+  return useSyncExternalStore(
+    subscribeMobile,
+    getMobileSnapshot,
+    getServerMobileSnapshot,
+  );
+}
 
 const nodeTypes = {
   member: MemberNode,
@@ -55,6 +79,8 @@ export type FamilyTreeHandle = {
   highlightPath: (targetId: string) => void;
   clearHighlight: () => void;
   fitView: () => void;
+  /** Zoom/Pan tới node (Smart Search) */
+  focusMember: (targetId: string) => void;
 };
 
 export type FamilyTreeProps = {
@@ -163,9 +189,19 @@ function FamilyTreeInner({
   treeRef,
 }: InnerProps) {
   const { fitView, setCenter, getNode } = useReactFlow();
+  const isMobile = useIsMobileViewport();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(
     initialHighlightId,
+  );
+
+  const fitViewOptions = useMemo(
+    () => ({
+      padding: isMobile ? 0.35 : 0.2,
+      maxZoom: isMobile ? 0.85 : 1.2,
+      duration: isMobile ? 0 : 200,
+    }),
+    [isMobile],
   );
 
   const openUpdate = useCallback((memberId: string) => {
@@ -199,23 +235,31 @@ function FamilyTreeInner({
   }, [seeded, setNodes, setEdges]);
 
   const centerOnTarget = useCallback(
-    (targetId: string) => {
+    (targetId: string, zoom = 1.15) => {
       const node = getNode(targetId);
       if (!node) return;
       const width = node.measured?.width ?? 180;
       const height = node.measured?.height ?? 80;
       setCenter(node.position.x + width / 2, node.position.y + height / 2, {
-        zoom: 1.15,
+        zoom: isMobile ? Math.min(zoom, 1.05) : zoom,
         duration: 480,
       });
     },
-    [getNode, setCenter],
+    [getNode, setCenter, isMobile],
+  );
+
+  const focusMember = useCallback(
+    (targetId: string) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => centerOnTarget(targetId, 1.25));
+      });
+    },
+    [centerOnTarget],
   );
 
   const highlightPath = useCallback(
     (targetId: string) => {
       setHighlightId(targetId);
-      // Center after paint so measured sizes / highlight styles settle
       requestAnimationFrame(() => {
         requestAnimationFrame(() => centerOnTarget(targetId));
       });
@@ -232,12 +276,22 @@ function FamilyTreeInner({
     () => ({
       highlightPath,
       clearHighlight,
+      focusMember,
       fitView: () => {
-        void fitView({ padding: 0.2, duration: 400 });
+        void fitView({ ...fitViewOptions, duration: 400 });
       },
     }),
-    [highlightPath, clearHighlight, fitView],
+    [highlightPath, clearHighlight, focusMember, fitView, fitViewOptions],
   );
+
+  /** Mobile: khởi động Fit View vừa màn hình */
+  useEffect(() => {
+    if (!isMobile) return;
+    const t = window.setTimeout(() => {
+      void fitView({ ...fitViewOptions, duration: 0 });
+    }, 80);
+    return () => window.clearTimeout(t);
+  }, [isMobile, fitView, fitViewOptions, data.members.length]);
 
   const editingMember = editingId
     ? data.members.find((m) => m.id === editingId)
@@ -266,23 +320,33 @@ function FamilyTreeInner({
   return (
     <div className={["ft-root", className].filter(Boolean).join(" ")}>
       {showToolbar ? (
-        <div className="ft-toolbar" aria-label="Trace route">
+        <div className="ft-toolbar" aria-label="Công cụ cây">
+          <SmartSearch
+            members={data.members}
+            onSelect={(id) => {
+              focusMember(id);
+              highlightPath(id);
+            }}
+          />
           <button type="button" onClick={() => clearHighlight()}>
             Xoá highlight
           </button>
-          {livingIds.slice(0, 5).map((id) => {
-            const m = data.members.find((x) => x.id === id)!;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => highlightPath(id)}
-                title={`Trace: ${m.full_name || id}`}
-              >
-                Trace {m.full_name || id}
-              </button>
-            );
-          })}
+          {!isMobile
+            ? livingIds.slice(0, 3).map((id) => {
+                const m = data.members.find((x) => x.id === id);
+                if (!m) return null;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => highlightPath(id)}
+                    title={`Trace: ${m.full_name || id}`}
+                  >
+                    Trace {m.full_name || id}
+                  </button>
+                );
+              })
+            : null}
         </div>
       ) : null}
 
@@ -297,13 +361,15 @@ function FamilyTreeInner({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
-        minZoom={0.25}
+        fitViewOptions={fitViewOptions}
+        onlyRenderVisibleElements
+        minZoom={0.15}
         maxZoom={2}
         panOnScroll={interactive}
         panOnDrag={interactive}
         zoomOnScroll={interactive}
         zoomOnPinch={interactive}
-        nodesDraggable={interactive}
+        nodesDraggable={interactive && !isMobile}
         nodesConnectable={false}
         elementsSelectable={interactive}
         selectionOnDrag={false}

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Be_Vietnam_Pro, Literata } from "next/font/google";
+import { SwrProvider } from "@/lib/swr/provider";
+import { AppToaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 const beVietnam = Be_Vietnam_Pro({
@@ -31,7 +33,10 @@ export default function RootLayout({
       className={`${beVietnam.variable} ${literata.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#e9eef3] text-[#1c1410]">
-        {children}
+        <SwrProvider>
+          {children}
+          <AppToaster />
+        </SwrProvider>
       </body>
     </html>
   );

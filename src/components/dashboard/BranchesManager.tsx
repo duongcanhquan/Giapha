@@ -7,6 +7,7 @@ import {
   DEFAULT_BRANCH,
 } from "@/services/familyService";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
+import { appToast } from "@/lib/toast";
 import type { FamilyBranch } from "@/types/family";
 
 type BranchesManagerProps = {
@@ -56,13 +57,18 @@ export function BranchesManager({ familyId }: BranchesManagerProps) {
     setMessage(null);
     try {
       if (!isFirebaseConfigured()) {
-        setMessage("Đã lưu cục bộ (demo). Cấu hình Firebase để ghi Firestore.");
+        const msg = "Đã lưu cục bộ (demo). Cấu hình Firebase để ghi Firestore.";
+        setMessage(msg);
+        appToast.success("Đã lưu nhánh (demo)", msg);
         return;
       }
       await updateFamilyBranches(familyId, { branches });
       setMessage("Đã cập nhật danh sách nhánh.");
+      appToast.success("Đã lưu nhánh");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Lưu thất bại.");
+      const msg = err instanceof Error ? err.message : "Lưu thất bại.";
+      setMessage(msg);
+      appToast.error("Lưu nhánh thất bại", msg);
     } finally {
       setSaving(false);
     }

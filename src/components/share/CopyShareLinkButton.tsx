@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from "react";
 import { Link2, Check } from "lucide-react";
+import { appToast } from "@/lib/toast";
 
 type CopyShareLinkButtonProps = {
   url: string;
@@ -22,9 +23,9 @@ export function CopyShareLinkButton({
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      appToast.success("Đã copy link", "Gửi qua Zalo / Facebook để chia sẻ cây.");
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const input = document.createElement("input");
       input.value = url;
       document.body.appendChild(input);
@@ -32,6 +33,7 @@ export function CopyShareLinkButton({
       document.execCommand("copy");
       document.body.removeChild(input);
       setCopied(true);
+      appToast.success("Đã copy link");
       window.setTimeout(() => setCopied(false), 2000);
     }
   };

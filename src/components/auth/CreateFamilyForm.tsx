@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { subscribeAuth } from "@/services/authService";
 import { createFamily } from "@/services/familyService";
+import { appToast } from "@/lib/toast";
 
 export function CreateFamilyForm() {
   const router = useRouter();
@@ -33,12 +34,13 @@ export function CreateFamilyForm() {
 
     try {
       const family = await createFamily({ name, description });
-      // Admin dòng họ = owner_id → vào dashboard quản trị
+      appToast.success("Đã tạo gia phả", `Bạn là Admin của dòng họ ${family.name}.`);
       router.replace(`/dashboard/${encodeURIComponent(family.id)}`);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Không tạo được gia phả.";
       setError(message);
+      appToast.error("Tạo gia phả thất bại", message);
     } finally {
       setLoading(false);
     }

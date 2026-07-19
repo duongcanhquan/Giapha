@@ -74,3 +74,12 @@ await addMember({
 - Trace route, PlaceholderNode, ADOPTED dashed edges
 - Double-click → Profile Modal (húy/thụy, tiểu sử, lịch giỗ âm)
 - `ExportTreeButton` → PDF khổ A0
+
+## Performance & UX
+
+- **SWR** (`useFamilyTree`) — cache/revalidate theo `familyId`, không refetch khi đổi trang
+- **React Flow** `onlyRenderVisibleElements` — virtualize nodes khi cây lớn
+- **firestore.indexes.json** — composite `family_id` + `branch_id` + `path`
+- **error.tsx** boundaries + skeleton shimmer + **sonner** toast (`appToast`)
+- **Smart Search** (Fuse.js, bỏ dấu) → zoom/pan tới node
+- Mobile mặc định Fit View vừa màn hình

@@ -1,33 +1,38 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { fetchFamilyTree } from "@/services/treeService";
-import type { FamilyMember } from "@/types/genealogy";
+import { useState } from "react";
+import { DashboardPanelSkeleton } from "@/components/ui/skeleton";
+import { useFamilyTree } from "@/hooks/useFamilyTree";
+import { appToast } from "@/lib/toast";
 
 type MembersManagerProps = {
   familyId: string;
 };
 
 export function MembersManager({ familyId }: MembersManagerProps) {
-  const [members, setMembers] = useState<FamilyMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { tree, isLoading, error, mutate } = useFamilyTree(familyId);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    void fetchFamilyTree(familyId).then((res) => {
-      if (cancelled) return;
-      setMembers(res.tree.members);
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [familyId]);
-
-  if (loading) {
-    return <p className="text-sm text-stone-500">Đang tải danh sách thành viên…</p>;
+  if (isLoading && !tree) {
+    return <DashboardPanelSkeleton />;
   }
+
+  if (error) {
+    return (
+      <p className="text-sm text-[#7a1f1f]">
+        {error.message}{" "}
+        <button
+          type="button"
+          className="font-semibold underline"
+          onClick={() => void mutate()}
+        >
+          Thử lại
+        </button>
+      </p>
+    );
+  }
+
+  const members = tree?.members ?? [];
 
   return (
     <div className="space-y-4">
@@ -40,18 +45,18 @@ export function MembersManager({ familyId }: MembersManagerProps) {
             Quản lý Thành viên
           </h1>
           <p className="mt-1 text-sm text-stone-600">
-            {members.length} người · CRUD ghi Firestore qua memberService (cần đăng nhập
-            Owner / Branch Admin).
+            {members.length} người · dữ liệu cache SWR (không reload khi chuyển trang).
           </p>
         </div>
         <button
           type="button"
           className="rounded-lg bg-[#7a1f1f] px-3 py-2 text-sm font-semibold text-[#fffdf8]"
-          onClick={() =>
-            setMessage(
-              "Dùng addMember / addPlaceholderNode từ dashboard form chi tiết (phase tiếp). Hiện tại xem danh sách & mở cây công khai.",
-            )
-          }
+          onClick={() => {
+            const text =
+              "Dùng addMember / addPlaceholderNode để ghi Firestore. Danh sách dùng cache SWR.";
+            setMessage(text);
+            appToast.info("Thêm thành viên", text);
+          }}
         >
           + Thêm thành viên
         </button>

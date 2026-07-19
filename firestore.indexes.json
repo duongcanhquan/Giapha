@@ -1,4 +1,55 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "family_members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "family_id", "order": "ASCENDING" },
+        { "fieldPath": "branch_id", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "family_members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "family_id", "order": "ASCENDING" },
+        { "fieldPath": "branch_id", "order": "ASCENDING" },
+        { "fieldPath": "generation", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "family_members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "family_id", "order": "ASCENDING" },
+        { "fieldPath": "path", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "family_members",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "family_id", "order": "ASCENDING" },
+        { "fieldPath": "branch_id", "order": "ASCENDING" },
+        { "fieldPath": "path", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "family_relations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "family_id", "order": "ASCENDING" },
+        { "fieldPath": "branch_id", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "family_relations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "family_id", "order": "ASCENDING" },
+        { "fieldPath": "relationship_type", "order": "ASCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }
