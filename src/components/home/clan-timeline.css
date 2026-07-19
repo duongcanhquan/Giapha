@@ -1,0 +1,110 @@
+.clan-timeline {
+  isolation: isolate;
+}
+
+.clan-timeline__glow {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(64px);
+  opacity: 0.45;
+  animation: clan-glow 10s ease-in-out infinite;
+}
+
+.clan-timeline__glow--a {
+  width: 280px;
+  height: 280px;
+  left: -40px;
+  top: 12%;
+  background: rgba(122, 31, 31, 0.18);
+}
+
+.clan-timeline__glow--b {
+  width: 320px;
+  height: 320px;
+  right: -60px;
+  bottom: 18%;
+  background: rgba(184, 149, 45, 0.16);
+  animation-delay: -4s;
+}
+
+@keyframes clan-glow {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateY(-18px) scale(1.06);
+    opacity: 0.55;
+  }
+}
+
+.clan-timeline__axis {
+  background: linear-gradient(
+    180deg,
+    rgba(122, 31, 31, 0.08),
+    rgba(184, 149, 45, 0.75),
+    rgba(122, 31, 31, 0.15)
+  );
+}
+
+.clan-timeline__node {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: var(--gp-seal-ink);
+  background: linear-gradient(145deg, var(--gp-lacquer), #9a2a2a);
+  border: 2px solid rgba(247, 244, 236, 0.95);
+  box-shadow:
+    0 0 0 4px rgba(184, 149, 45, 0.22),
+    0 8px 20px rgba(26, 20, 16, 0.16);
+}
+
+.clan-timeline__card {
+  max-width: 28rem;
+  padding: 1.15rem 1.25rem;
+  border-radius: var(--gp-radius-lg);
+  background: color-mix(in srgb, var(--gp-scroll) 92%, white);
+  border: 1px solid var(--gp-scroll-edge);
+  box-shadow: var(--gp-shadow-soft);
+  transition:
+    transform 220ms ease,
+    box-shadow 220ms ease,
+    border-color 220ms ease;
+}
+
+.clan-timeline__card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(122, 31, 31, 0.35);
+  box-shadow: var(--gp-shadow-lift);
+}
+
+.clan-timeline__era {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gp-lacquer);
+  background: var(--gp-lacquer-soft);
+}
+
+.clan-timeline__icon-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  color: var(--gp-gold);
+  background: var(--gp-gold-soft);
+}
+
+.milestone-art {
+  filter: drop-shadow(0 12px 24px rgba(26, 20, 16, 0.1));
+}

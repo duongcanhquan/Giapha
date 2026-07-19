@@ -1,12 +1,22 @@
+export type MilestoneIcon =
+  | "founder"
+  | "settle"
+  | "branches"
+  | "flame"
+  | "temple"
+  | "tree";
+
 export type ClanMilestone = {
   id: string;
-  year: string;
+  /** Nhãn đời / giai đoạn — ví dụ “Đời 1”, “Đời 2” */
+  era: string;
   title: string;
   body: string;
   side: "left" | "right";
+  icon: MilestoneIcon;
 };
 
-/** Nội dung landing — văn hoá hương hỏa chung, không gắn dòng họ mẫu */
+/** Cột mốc mẫu — hành trình hương hỏa điển hình (không gắn họ cụ thể) */
 export const clanStory = {
   tagline:
     "Gìn giữ hương hỏa — mỗi gia đình một gia phả riêng, chỉ người trong nhà mới vào được.",
@@ -14,38 +24,51 @@ export const clanStory = {
   milestones: [
     {
       id: "ms1",
-      year: "Gốc rễ",
-      title: "Thờ phụng tổ tiên",
-      body: "Bàn thờ, ngày giỗ âm lịch và tên húy — tên thụy là mạch nối các đời. Giapha giúp lưu giữ trang trọng trên nền số.",
+      era: "Đời 1",
+      title: "Thủy tổ",
+      body: "Người đứng đầu dòng họ dựng bàn thờ, đặt lệ giỗ đầu xuân và ghi tên húy — mở mạch hương hỏa cho các đời sau.",
       side: "left",
+      icon: "founder",
     },
     {
       id: "ms2",
-      year: "Riêng tư",
-      title: "Gia phả của từng nhà",
-      body: "Không dùng bản demo chung. Ai đăng nhập sẽ vào đúng dòng họ mình quản trị; khách xem qua link chia sẻ riêng.",
+      era: "Đời 2",
+      title: "Lập nghiệp",
+      body: "Con cháu khai phá đất đai, dựng nhà cửa, giữ chữ tín trong làng xã — nền tảng vững để nuôi dưỡng chi họ.",
       side: "right",
+      icon: "settle",
     },
     {
       id: "ms3",
-      year: "Tra cứu",
-      title: "Tìm người trong nháy mắt",
-      body: "Gõ tên, tên húy hay thụy — cây phóng tới đúng người. Phù hợp khi họp họ, cúng giỗ hay dạy con cháu về nguồn cội.",
+      era: "Đời 3–4",
+      title: "Mở rộng chi nhánh",
+      body: "Các chi phụ tách ra nhưng vẫn cùng một Thủy tổ. Trên cây gia phả, mỗi nhánh là một cành xanh nối về gốc.",
       side: "left",
+      icon: "branches",
     },
     {
       id: "ms4",
-      year: "Chia sẻ",
-      title: "Copy link gửi trong họ",
-      body: "Chủ dòng họ copy link cây công khai và gửi Zalo / Facebook. Người nhận chỉ xem; không sửa được sổ của bạn.",
+      era: "Thời biến",
+      title: "Giữ lửa qua biến cố",
+      body: "Dù thăng trầm, sổ gia phả được chép lại, tên thụy được lưu — ngọn lửa hương hỏa không tắt.",
       side: "right",
+      icon: "flame",
     },
     {
       id: "ms5",
-      year: "In ấn",
-      title: "Xuất infographic A0",
-      body: "Khi cần treo nhà thờ họ hoặc họp mặt lớn, xuất bản đồ quan hệ khổ lớn để in offline.",
+      era: "Trùng tu",
+      title: "Nhà thờ & họp họ",
+      body: "Con cháu góp sức trùng tu nhà thờ họ, họp mặt đầu năm — nơi kể chuyện tổ tiên cho thế hệ trẻ.",
       side: "left",
+      icon: "temple",
+    },
+    {
+      id: "ms6",
+      era: "Hôm nay",
+      title: "Gia phả số",
+      body: "Cây tương tác, tra cứu tên húy/thụy, chia sẻ link trong họ và xuất bản đồ in ấn — hương hỏa bước sang thời đại số.",
+      side: "right",
+      icon: "tree",
     },
   ] satisfies ClanMilestone[],
 };
