@@ -32,11 +32,10 @@ import type {
 } from "@/types/genealogy";
 import {
   buildFlowGraph,
-  edgeIdsOnPath,
-  extractPathIds,
   type FamilyFlowEdge,
   type FamilyFlowNode,
 } from "@/lib/genealogy/build-flow";
+import { highlightPath as resolveHighlightPath } from "@/lib/genealogy/highlight-path";
 import { MemberNode } from "./nodes/MemberNode";
 import { PlaceholderNode } from "./nodes/PlaceholderNode";
 import { RelationshipEdge } from "./edges/RelationshipEdge";
@@ -89,27 +88,25 @@ function applyHighlight(
     };
   }
 
-  const path = extractPathIds(members, targetId);
-  const pathSet = new Set(path);
-  const onPathEdges = edgeIdsOnPath(relations, path);
+  const route = resolveHighlightPath(targetId, members, relations);
 
   return {
     nodes: nodes.map((n) => ({
       ...n,
       data: {
         ...n.data,
-        dimmed: !pathSet.has(n.id),
-        highlighted: pathSet.has(n.id),
+        dimmed: route.isNodeDimmed(n.id),
+        highlighted: route.isNodeHighlighted(n.id),
       },
     })),
     edges: edges.map((e) => {
-      const highlighted = onPathEdges.has(e.id);
+      const highlighted = route.isEdgeHighlighted(e.id);
       return {
         ...e,
         animated: e.data?.relationshipType === "ADOPTED" || highlighted,
         data: {
           ...e.data!,
-          dimmed: !highlighted,
+          dimmed: route.isEdgeDimmed(e.id),
           highlighted,
         },
       };

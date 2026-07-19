@@ -2,7 +2,8 @@
   --ft-ink: #1c1410;
   --ft-lacquer: #7a1f1f;
   --ft-gold: #c9a227;
-  --ft-path-stroke: #d4a017;
+  --ft-path-stroke: #b91c1c;
+  --ft-path-gold: #d4a017;
   --ft-edge-stroke: #8a6a3a;
   --ft-living-border: #2f7d4a;
   --ft-living-glow: rgba(47, 125, 74, 0.45);
@@ -75,8 +76,10 @@
 }
 
 .ft-member--highlighted {
-  border-color: var(--ft-lacquer);
-  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.55);
+  border-color: var(--ft-path-stroke);
+  box-shadow:
+    0 0 0 2px var(--ft-path-gold),
+    0 0 0 5px rgba(185, 28, 28, 0.2);
 }
 
 .ft-member__row {
