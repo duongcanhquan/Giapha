@@ -1,0 +1,109 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    /* ─── Helpers ─────────────────────────────────────────────── */
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && request.auth.token.role == 'super_admin';
+    }
+
+    function isBranchAdmin() {
+      return isSignedIn() && request.auth.token.role == 'branch_admin';
+    }
+
+    function managedBranchId() {
+      return request.auth.token.managed_branch_id;
+    }
+
+    function memberBranchId(data) {
+      return data.tree_logic.branch_id;
+    }
+
+    function managesResourceBranch() {
+      return isBranchAdmin()
+        && memberBranchId(resource.data) == managedBranchId();
+    }
+
+    function managesRequestBranch() {
+      return isBranchAdmin()
+        && memberBranchId(request.resource.data) == managedBranchId();
+    }
+
+    /**
+     * Document công khai không được chứa object `contact`.
+     * Contact chỉ được lưu ở subcollection `sensitive/contact`.
+     */
+    function hasNoContactOnMember() {
+      return !request.resource.data.keys().hasAny(['contact']);
+    }
+
+    /**
+     * Trưởng nhánh không được xoá người có path dài hơn 2
+     * (tránh đứt gãy cây dưới đời thứ 2).
+     */
+    function pathTooDeepToDelete() {
+      return resource.data.keys().hasAll(['path'])
+        && resource.data.path is list
+        && resource.data.path.size() > 2;
+    }
+
+    function branchAdminCanDelete() {
+      return managesResourceBranch() && !pathTooDeepToDelete();
+    }
+
+    /* ─── Members (public tree fields) ────────────────────────── */
+
+    match /members/{memberId} {
+      /**
+       * Khách (chưa login): chỉ đọc document công khai
+       * (tên, trạng thái sinh tử, vị trí cây / tree_logic, path, …).
+       * Không có field `contact` trên document này.
+       */
+      allow read: if true;
+
+      allow create: if isSuperAdmin()
+        || (managesRequestBranch() && hasNoContactOnMember());
+
+      allow update: if isSuperAdmin()
+        || (managesResourceBranch()
+            && managesRequestBranch()
+            && hasNoContactOnMember());
+
+      allow delete: if isSuperAdmin() || branchAdminCanDelete();
+
+      /**
+       * Contact nhạy cảm (sđt, địa chỉ) — tách subcollection.
+       * Khách: DENY. Super admin: full. Branch admin: cùng branch_id.
+       */
+      match /sensitive/{docId} {
+        allow read: if isSuperAdmin()
+          || (isBranchAdmin()
+              && get(/databases/$(database)/documents/members/$(memberId))
+                    .data.tree_logic.branch_id == managedBranchId());
+
+        allow write: if isSuperAdmin()
+          || (isBranchAdmin()
+              && get(/databases/$(database)/documents/members/$(memberId))
+                    .data.tree_logic.branch_id == managedBranchId());
+      }
+    }
+
+    /* ─── Relations (parent → child edges) ────────────────────── */
+
+    match /relations/{relationId} {
+      allow read: if true;
+
+      allow create, update: if isSuperAdmin()
+        || (isBranchAdmin()
+            && request.resource.data.tree_logic.branch_id == managedBranchId());
+
+      allow delete: if isSuperAdmin()
+        || (isBranchAdmin()
+            && resource.data.tree_logic.branch_id == managedBranchId());
+    }
+  }
+}

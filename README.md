@@ -1,21 +1,24 @@
 # Giapha
 
-Ứng dụng cây gia phả tiếng Việt — Phase 1 (types) + Phase 2 (React Flow `FamilyTree`).
+Ứng dụng cây gia phả tiếng Việt — types, React Flow `FamilyTree`, Firebase Rules & Services.
 
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind
 - [`@xyflow/react`](https://reactflow.dev/) (React Flow v12)
 - Framer Motion (fade / highlight)
+- Firebase Auth + Firestore
 - Lucide icons (hương hỏa, hoa sen)
 
 ## Cấu trúc chính
 
 | Path | Mô tả |
 |------|--------|
-| `src/types/genealogy.ts` | Type Phase 1: `FamilyMember`, `FamilyRelation`, `path`, `is_placeholder`, … |
+| `src/types/genealogy.ts` | Types: `FamilyMember`, `tree_logic`, `path`, `MemberContact`, … |
 | `src/components/family-tree/` | `FamilyTree`, `MemberNode`, `PlaceholderNode`, `RelationshipEdge` |
-| `src/lib/genealogy/build-flow.ts` | Layout + `extractPathIds` / highlight helpers |
+| `src/services/memberService.ts` | CRUD: `addMember`, `updateMember`, `addPlaceholderNode` |
+| `firestore.rules` | Security Rules (guest / super_admin / branch_admin) |
+| `src/lib/firebase/client.ts` | Firebase client init |
 | `src/data/sample-family.ts` | Dữ liệu mẫu để demo |
 
 ## Chạy local
@@ -45,3 +48,32 @@ ref.current?.clearHighlight();
 - **MemberNode** — tên, đời thứ N, icon hương hỏa; đang sống (viền sáng) / đã mất (nền đồng + hoa sen); spouses cạnh người chính.
 - **PlaceholderNode** — `is_placeholder === true`: viền dashed, opacity 0.5, `? Khuyết danh`, click mở form cập nhật.
 - **RelationshipEdge** — `relationship_type === 'ADOPTED'`: nét đứt animated.
+
+## Firebase Security & Services
+
+### Roles (custom claims)
+
+| Claim | Quyền |
+|-------|--------|
+| *(chưa login)* | Read document `members` công khai (tên, sinh tử, `tree_logic`, `path`). **Không** đọc `members/{id}/sensitive/contact`. |
+| `role == 'super_admin'` | Full Read/Write |
+| `role == 'branch_admin'` | Create/Update khi `tree_logic.branch_id == managed_branch_id`. Delete bị chặn nếu `path.size() > 2`. |
+
+Deploy rules:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+### memberService
+
+```ts
+import { addMember, updateMember, addPlaceholderNode } from "@/services/memberService";
+
+// path = parent.path + [newId] — kể cả khi parent là PlaceholderNode
+await addMember({ full_name: "Nguyễn Văn A", parent_id: "parent-or-placeholder-id" });
+await addPlaceholderNode({ parent_id: "parent-id" });
+await updateMember("id", { full_name: "Tên mới", contact: { phone: "..." } });
+```
+
+Copy `.env.example` → `.env.local` và điền Firebase config.

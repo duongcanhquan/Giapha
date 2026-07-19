@@ -21,6 +21,7 @@ export const sampleFamilyTree: FamilyTreeData = {
       ],
       parent_ids: [],
       path: ["m1"],
+      tree_logic: { branch_id: "branch-main", position: { order: 0 } },
       birth_year: 1880,
       death_year: 1955,
     },
@@ -41,6 +42,7 @@ export const sampleFamilyTree: FamilyTreeData = {
       ],
       parent_ids: ["m1"],
       path: ["m1", "m2"],
+      tree_logic: { branch_id: "branch-main", position: { order: 0 } },
       birth_year: 1910,
       death_year: 1988,
     },
@@ -54,6 +56,7 @@ export const sampleFamilyTree: FamilyTreeData = {
       spouses: [],
       parent_ids: ["m1"],
       path: ["m1", "m3"],
+      tree_logic: { branch_id: "branch-main", position: { order: 0 } },
       birth_year: 1915,
       death_year: 1972,
     },
@@ -74,6 +77,7 @@ export const sampleFamilyTree: FamilyTreeData = {
       ],
       parent_ids: ["m2"],
       path: ["m1", "m2", "m4"],
+      tree_logic: { branch_id: "branch-main", position: { order: 0 } },
       birth_year: 1955,
     },
     {
@@ -86,6 +90,7 @@ export const sampleFamilyTree: FamilyTreeData = {
       spouses: [],
       parent_ids: ["m2"],
       path: ["m1", "m2", "m5"],
+      tree_logic: { branch_id: "branch-main", position: { order: 0 } },
     },
     {
       id: "m6",
@@ -103,6 +108,7 @@ export const sampleFamilyTree: FamilyTreeData = {
       ],
       parent_ids: ["m3"],
       path: ["m1", "m3", "m6"],
+      tree_logic: { branch_id: "branch-main", position: { order: 0 } },
       birth_year: 1960,
     },
     {
@@ -115,6 +121,7 @@ export const sampleFamilyTree: FamilyTreeData = {
       spouses: [],
       parent_ids: ["m4"],
       path: ["m1", "m2", "m4", "m7"],
+      tree_logic: { branch_id: "branch-main", position: { order: 0 } },
       birth_year: 1985,
     },
     {
@@ -134,6 +141,7 @@ export const sampleFamilyTree: FamilyTreeData = {
       ],
       parent_ids: ["m4"],
       path: ["m1", "m2", "m4", "m8"],
+      tree_logic: { branch_id: "branch-main", position: { order: 0 } },
       birth_year: 1988,
     },
   ],
