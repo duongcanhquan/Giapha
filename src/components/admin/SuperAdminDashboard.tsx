@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { LogOut } from "lucide-react";
 import { RegistrationQueue } from "@/components/admin/RegistrationQueue";
 import { SuperAdminBanner } from "@/components/admin/SuperAdminBanner";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
@@ -19,6 +20,7 @@ export function SuperAdminDashboard() {
   const [families, setFamilies] = useState<Family[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("registrations");
 
   useEffect(() => {
@@ -48,6 +50,12 @@ export function SuperAdminDashboard() {
         }
 
         setEmail(user.email);
+        setDisplayName(
+          user.displayName?.trim() ||
+            user.email?.split("@")[0] ||
+            user.email ||
+            "Super Admin",
+        );
         try {
           const all = await listAllFamilies();
           if (!cancelled) {
@@ -106,7 +114,7 @@ export function SuperAdminDashboard() {
       <SuperAdminBanner />
 
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--gp-gold)]/20 px-4 py-5 md:px-8">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--gp-gold-bright)]/90">
             Gia phả · Ấn son nền tảng
           </p>
@@ -114,18 +122,31 @@ export function SuperAdminDashboard() {
             Super Admin
           </h1>
           <p className="mt-1 text-sm text-[var(--gp-seal-ink)]/65">
-            {email ?? "—"} · {families.length} dòng họ
+            {families.length} dòng họ trên nền tảng
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/" className="gp-btn gp-btn-outline-light">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="rounded-xl border border-[var(--gp-gold)]/25 bg-white/5 px-3 py-2">
+            <p className="text-sm font-semibold text-[var(--gp-seal-ink)]">
+              {displayName ?? "—"}
+            </p>
+            {email ? (
+              <p className="truncate text-xs text-[var(--gp-seal-ink)]/55">
+                {email}
+              </p>
+            ) : null}
+          </div>
+          <Link href="/" className="gp-btn gp-btn-outline-light !min-h-10">
             Trang chủ
           </Link>
           <button
             type="button"
-            className="gp-btn border border-[var(--gp-gold)]/30 bg-white/5 hover:bg-white/10"
-            onClick={() => void signOutUser().then(() => router.replace("/login"))}
+            className="gp-btn gp-btn-logout !min-h-10 border-[var(--gp-gold)]/40 bg-[var(--gp-gold)]/10 text-[var(--gp-gold-bright)] hover:border-[var(--gp-gold)] hover:bg-[var(--gp-gold)] hover:text-[#1a0a0a]"
+            onClick={() =>
+              void signOutUser().then(() => router.replace("/login"))
+            }
           >
+            <LogOut size={16} aria-hidden />
             Đăng xuất
           </button>
         </div>

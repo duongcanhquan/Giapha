@@ -33,19 +33,15 @@ export function ExportTreeButton({
   const [exporting, setExporting] = useState(false);
   const [stageReady, setStageReady] = useState(false);
 
-  const ensureStage = useCallback(() => {
-    setStageReady(true);
-  }, []);
-
   const handleExport = useCallback(async () => {
     setExporting(true);
     setStageReady(true);
 
     try {
       // Đợi clone mount + React Flow đo layout
-      await new Promise((r) => setTimeout(r, 80));
+      await new Promise((r) => setTimeout(r, 280));
       treeRef.current?.fitView();
-      await new Promise((r) => setTimeout(r, 420));
+      await new Promise((r) => setTimeout(r, 700));
 
       const node = stageRef.current;
       if (!node) throw new Error("Không tìm thấy khung xuất cây.");
@@ -79,6 +75,7 @@ export function ExportTreeButton({
       alert("Xuất PDF thất bại. Thử lại sau khi cây đã tải xong.");
     } finally {
       setExporting(false);
+      setStageReady(false);
     }
   }, [data.clan_name, fileName]);
 
@@ -88,8 +85,6 @@ export function ExportTreeButton({
         type="button"
         className={className}
         disabled={exporting}
-        onMouseEnter={ensureStage}
-        onFocus={ensureStage}
         onClick={() => void handleExport()}
       >
         {exporting ? "Đang xuất PDF…" : label}
@@ -123,6 +118,7 @@ export function ExportTreeButton({
               showControls={false}
               showBackground={false}
               interactive={false}
+              forceExpanded
               className="ft-export-tree"
             />
           </div>

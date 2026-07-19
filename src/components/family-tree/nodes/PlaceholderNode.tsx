@@ -1,7 +1,6 @@
 "use client";
 
 import { Handle, Position, type Node, type NodeProps } from "@xyflow/react";
-import { motion } from "framer-motion";
 
 export type PlaceholderNodeData = {
   memberId: string;
@@ -16,11 +15,11 @@ export type PlaceholderNodeData = {
 export type PlaceholderFlowNode = Node<PlaceholderNodeData, "placeholder">;
 
 export function PlaceholderNode({ data }: NodeProps<PlaceholderFlowNode>) {
-  const opacity = data.dimmed ? 0.2 : 0.5;
+  const opacity = data.dimmed ? 0.14 : 0.55;
   const canEdit = !data.readOnly && Boolean(data.onOpenUpdate);
 
   return (
-    <motion.div
+    <div
       className={[
         "ft-placeholder",
         data.highlighted ? "ft-placeholder--highlighted" : "",
@@ -28,8 +27,7 @@ export function PlaceholderNode({ data }: NodeProps<PlaceholderFlowNode>) {
       ]
         .filter(Boolean)
         .join(" ")}
-      animate={{ opacity }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
+      style={{ opacity }}
       role={canEdit ? "button" : "group"}
       tabIndex={canEdit ? 0 : -1}
       onClick={() => {
@@ -51,6 +49,6 @@ export function PlaceholderNode({ data }: NodeProps<PlaceholderFlowNode>) {
         <span className="ft-placeholder__hint">Nhấn để cập nhật</span>
       ) : null}
       <Handle type="source" position={Position.Bottom} className="ft-handle" />
-    </motion.div>
+    </div>
   );
 }

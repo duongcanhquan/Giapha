@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { mutate as swrMutate } from "swr";
 import {
   getFamily,
   updateFamilyBranches,
   DEFAULT_BRANCH,
 } from "@/services/familyService";
+import { familyTreeKey } from "@/hooks/useFamilyTree";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { appToast } from "@/lib/toast";
 import type { FamilyBranch } from "@/types/family";
@@ -63,6 +65,7 @@ export function BranchesManager({ familyId }: BranchesManagerProps) {
         return;
       }
       await updateFamilyBranches(familyId, { branches });
+      await swrMutate(familyTreeKey(familyId));
       setMessage("Đã cập nhật danh sách nhánh.");
       appToast.success("Đã lưu nhánh");
     } catch (err) {
@@ -103,7 +106,7 @@ export function BranchesManager({ familyId }: BranchesManagerProps) {
             </div>
             <button
               type="button"
-              className="text-sm font-semibold text-[#7a1f1f]"
+              className="min-h-10 text-sm font-semibold text-[#7a1f1f]"
               onClick={() =>
                 setBranches((prev) => prev.filter((x) => x.id !== b.id))
               }
@@ -123,16 +126,16 @@ export function BranchesManager({ familyId }: BranchesManagerProps) {
           name="name"
           required
           placeholder="Tên nhánh"
-          className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+          className="min-h-11 rounded-lg border border-stone-300 px-3 py-2.5 text-base sm:text-sm"
         />
         <input
           name="description"
           placeholder="Mô tả"
-          className="rounded-lg border border-stone-300 px-3 py-2 text-sm"
+          className="min-h-11 rounded-lg border border-stone-300 px-3 py-2.5 text-base sm:text-sm"
         />
         <button
           type="submit"
-          className="rounded-lg border border-stone-400 px-3 py-2 text-sm font-semibold"
+          className="min-h-11 rounded-lg border border-stone-400 px-3 py-2 text-sm font-semibold"
         >
           Thêm nhánh
         </button>
@@ -142,7 +145,7 @@ export function BranchesManager({ familyId }: BranchesManagerProps) {
         type="button"
         disabled={saving}
         onClick={() => void onSave()}
-        className="rounded-lg bg-[#7a1f1f] px-4 py-2 text-sm font-semibold text-[#fffdf8] disabled:opacity-60"
+        className="min-h-11 w-full rounded-lg bg-[#7a1f1f] px-4 py-2 text-sm font-semibold text-[#fffdf8] disabled:opacity-60 sm:w-auto"
       >
         {saving ? "Đang lưu…" : "Lưu nhánh"}
       </button>

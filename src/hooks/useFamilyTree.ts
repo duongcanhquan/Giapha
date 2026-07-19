@@ -29,8 +29,11 @@ export function useFamilyTree(familyId: string | null | undefined) {
     key,
     fetcher,
     {
-      revalidateIfStale: true,
-      revalidateOnMount: true,
+      revalidateIfStale: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 15_000,
+      keepPreviousData: true,
     },
   );
 

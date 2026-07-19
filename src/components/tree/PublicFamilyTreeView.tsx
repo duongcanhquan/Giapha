@@ -27,6 +27,13 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
   const primary = theme?.primary_color ?? "var(--gp-lacquer)";
   const surface = theme?.surface_color ?? "var(--gp-paper)";
 
+  const openProfile = (id: string) => {
+    const m = tree?.members.find((x) => x.id === id) ?? null;
+    if (!m || m.status.is_placeholder) return;
+    setProfileMember(m);
+    setProfileOpen(true);
+  };
+
   if (isLoading && !tree) {
     return <TreePageSkeleton />;
   }
@@ -37,7 +44,10 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
         <div className="gp-panel max-w-md p-8">
           <p className="gp-eyebrow">Không tìm thấy</p>
           <p className="mt-3 text-[var(--gp-lacquer)]">
-            {error?.message ?? "Không tìm thấy dòng họ."}
+            {error?.message ?? "Không tìm thấy dòng họ hoặc chưa có dữ liệu công khai."}
+          </p>
+          <p className="mt-2 text-sm text-[var(--gp-muted)]">
+            Kiểm tra lại link chia sẻ, hoặc yêu cầu chủ dòng họ gửi lại.
           </p>
           <Link href="/" className="gp-btn gp-btn-ghost mt-5">
             Về trang chủ
@@ -49,7 +59,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
 
   return (
     <main
-      className="flex min-h-screen flex-col"
+      className="flex h-dvh max-h-dvh flex-col overflow-hidden"
       style={{
         background: surface,
         ["--ft-lacquer" as string]:
@@ -59,7 +69,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
     >
       {theme?.background_image ? (
         <div
-          className="h-28 w-full bg-cover bg-center md:h-36"
+          className="h-16 w-full shrink-0 bg-cover bg-center md:h-20"
           style={{ backgroundImage: `url(${theme.background_image})` }}
           role="img"
           aria-label="Ảnh nền dòng họ"
@@ -67,28 +77,28 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
       ) : (
         <div
           aria-hidden
-          className="h-2 w-full"
+          className="h-1.5 w-full shrink-0"
           style={{
             background: `linear-gradient(90deg, ${primary}, var(--gp-gold), ${primary})`,
           }}
         />
       )}
 
-      <header className="border-b border-[var(--gp-scroll-edge)] bg-[color-mix(in_srgb,var(--gp-scroll)_88%,transparent)] px-4 py-5 backdrop-blur-sm md:px-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+      <header className="shrink-0 border-b border-[var(--gp-scroll-edge)] bg-[color-mix(in_srgb,var(--gp-scroll)_92%,transparent)] px-4 py-3 backdrop-blur-sm md:px-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
             <p className="gp-eyebrow">
               <Link href="/" className="hover:underline">
                 Gia phả
               </Link>
               {" · "}Chế độ chỉ xem
             </p>
-            <h1 className="gp-title mt-2 text-2xl md:text-3xl">
+            <h1 className="gp-title mt-1 text-xl md:text-2xl">
               Dòng họ {tree.clan_name}
             </h1>
-            <p className="gp-lede mt-1.5 max-w-xl text-sm">
+            <p className="gp-lede mt-1 max-w-xl text-xs md:text-sm">
               {family?.settings.description ||
-                "Bạn đang xem bản được chia sẻ. Thành viên quản trị hãy đăng nhập để vào đúng gia phả nhà mình."}
+                "Click một người để xem hồ sơ · tìm kiếm / gom nhánh / zoom như bản quản trị."}
             </p>
           </div>
 
@@ -105,29 +115,34 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 p-3 md:p-5">
+      <div className="flex min-h-0 flex-1 flex-col p-2 md:p-3">
         {tree.members.length === 0 ? (
-          <div className="gp-panel grid h-[60vh] place-items-center text-sm text-[var(--gp-muted)]">
+          <div className="gp-panel grid flex-1 place-items-center text-sm text-[var(--gp-muted)]">
             Dòng họ chưa có thành viên công khai.
           </div>
         ) : (
-          <FamilyTree
-            data={tree}
-            readOnly
-            showToolbar
-            className="h-[calc(100vh-11rem)]"
-            onMemberDoubleClick={(id) => {
-              const m = tree.members.find((x) => x.id === id) ?? null;
-              if (!m || m.status.is_placeholder) return;
-              setProfileMember(m);
-              setProfileOpen(true);
-            }}
-          />
+          <section
+            className="clan-tree-stage min-h-0 flex-1"
+            aria-label="Cây hương hỏa công khai"
+          >
+            <FamilyTree
+              data={tree}
+              readOnly
+              interactive
+              showToolbar
+              showMiniMap
+              showControls
+              className="clan-tree-stage__canvas"
+              onMemberOpen={openProfile}
+              onMemberDoubleClick={openProfile}
+            />
+          </section>
         )}
       </div>
 
       <ProfileModal
         member={profileMember}
+        members={tree.members}
         open={profileOpen}
         onOpenChange={setProfileOpen}
       />

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { FamilyMember } from "@/types/genealogy";
+import { useEffect, useMemo, useState } from "react";
+import type { FamilyMember, MemberContact } from "@/types/genealogy";
 import { memberGeneration } from "@/types/genealogy";
 import {
   Dialog,
@@ -11,15 +11,48 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { computeAnniversary, toLunarDeathDate } from "@/lib/lunar/death-date";
+import {
+  spouseRoleLabel,
+  treeParentRoleLabel,
+  coParentShortLabel,
+} from "@/lib/genealogy/labels";
+import { getMemberContact } from "@/services/memberService";
+import { MemberAvatar } from "@/components/ui/MemberAvatar";
 
 type ProfileModalProps = {
   member: FamilyMember | null;
+  /** Toàn bộ thành viên — để hiện cha/mẹ và dòng sinh */
+  members?: FamilyMember[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) {
+export function ProfileModal({
+  member,
+  members = [],
+  open,
+  onOpenChange,
+}: ProfileModalProps) {
   const [solarInput, setSolarInput] = useState("");
+  const [contact, setContact] = useState<MemberContact | null>(null);
+
+  useEffect(() => {
+    if (!open || !member) {
+      setContact(null);
+      return;
+    }
+    let cancelled = false;
+    getMemberContact(member.id)
+      .then((c) => {
+        if (!cancelled) setContact(c);
+      })
+      .catch(() => {
+        if (!cancelled) setContact(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, member]);
 
   const storedLunar = useMemo(() => {
     if (!member) return null;
@@ -37,22 +70,135 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
     return computeAnniversary(solarInput);
   }, [solarInput]);
 
+  const lineage = useMemo(() => {
+    if (!member) return null;
+    const treeParent =
+      members.find((m) => m.id === member.tree_logic.parent_id) ?? null;
+    const coParentId = member.tree_logic.mother_spouse_id;
+    const coParent =
+      treeParent && coParentId
+        ? (treeParent.spouses.find((s) => s.id === coParentId) ?? null)
+        : null;
+    const children = members.filter(
+      (m) => m.tree_logic.parent_id === member.id && !m.status.is_placeholder,
+    );
+    const childrenByCoParent = new Map<string, FamilyMember[]>();
+    for (const child of children) {
+      const mid = child.tree_logic.mother_spouse_id ?? "_unknown";
+      const list = childrenByCoParent.get(mid) || [];
+      list.push(child);
+      childrenByCoParent.set(mid, list);
+    }
+    return { treeParent, coParent, children, childrenByCoParent };
+  }, [member, members]);
+
   if (!member) return null;
+
+  const hasContact =
+    contact &&
+    (contact.phone || contact.address || contact.email || contact.notes);
+
+  const treeParentRole = treeParentRoleLabel(lineage?.treeParent);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-h-[92dvh] w-[min(100vw-1rem,36rem)] overflow-hidden sm:w-[min(520px,calc(100%-2rem))]">
         <DialogHeader>
-          <DialogTitle>{member.full_name || "Khuyết danh"}</DialogTitle>
-          <DialogDescription>
-            Đời thứ {memberGeneration(member)}
-            {member.is_huong_hoa ? " · Hương hỏa" : ""}
-            {" · "}
-            {member.status.is_alive ? "Đang sống" : "Đã mất"}
-          </DialogDescription>
+          <div className="flex items-start gap-3 pr-8">
+            <MemberAvatar
+              name={member.full_name || "?"}
+              photoUrl={member.photo_url}
+              size="lg"
+              deceased={!member.status.is_alive}
+              className="mt-0.5"
+            />
+            <div className="min-w-0">
+              <DialogTitle>{member.full_name || "Khuyết danh"}</DialogTitle>
+              <DialogDescription>
+                Đời thứ {memberGeneration(member)}
+                {member.is_huong_hoa ? " · Hương hỏa" : ""}
+                {" · "}
+                {member.status.is_alive ? "Đang sống" : "Đã mất"}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         <div className="space-y-5 text-sm">
+          {lineage && (lineage.treeParent || lineage.children.length > 0) ? (
+            <section className="rounded-lg border border-[#7a1f1f]/18 bg-[#7a1f1f]/04 p-3">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
+                Dòng huyết thống
+              </h3>
+              <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5">
+                {lineage.treeParent ? (
+                  <>
+                    <dt className="text-[#6a6258]">{treeParentRole}</dt>
+                    <dd className="font-medium">
+                      {lineage.treeParent.full_name || "Khuyết danh"}
+                    </dd>
+                  </>
+                ) : null}
+                {lineage.coParent ? (
+                  <>
+                    <dt className="text-[#6a6258]">
+                      {coParentShortLabel(lineage.coParent.role)}
+                    </dt>
+                    <dd className="font-medium">
+                      {lineage.coParent.full_name}
+                      {lineage.coParent.maiden_name
+                        ? ` · họ gốc ${lineage.coParent.maiden_name}`
+                        : ""}
+                    </dd>
+                  </>
+                ) : lineage.treeParent ? (
+                  <>
+                    <dt className="text-[#6a6258]">
+                      {coParentShortLabel(null, lineage.treeParent)}
+                    </dt>
+                    <dd className="text-[#6a6258]">Chưa gắn trên hồ sơ</dd>
+                  </>
+                ) : null}
+              </dl>
+              {lineage.children.length > 0 ? (
+                <div className="mt-3 space-y-2 border-t border-[#8a6a3a]/20 pt-2">
+                  <p className="text-xs font-semibold text-[#3d372f]">
+                    Con trong họ ({lineage.children.length})
+                  </p>
+                  {member.spouses.map((sp) => {
+                    const kids =
+                      lineage.childrenByCoParent.get(sp.id) ?? [];
+                    if (!kids.length && sp.role !== "DAU" && sp.role !== "RE") {
+                      return null;
+                    }
+                    return (
+                      <p
+                        key={sp.id}
+                        className="text-xs leading-relaxed text-[#3d372f]"
+                      >
+                        <span className="font-medium text-[#7a1f1f]">
+                          {spouseRoleLabel(sp.role)} {sp.full_name}
+                        </span>
+                        {kids.length
+                          ? ` · con: ${kids.map((k) => k.full_name || "?").join(", ")}`
+                          : " · chưa ghi con trong cây"}
+                      </p>
+                    );
+                  })}
+                  {(lineage.childrenByCoParent.get("_unknown") ?? []).length >
+                  0 ? (
+                    <p className="text-xs text-[#5c564e]">
+                      Chưa gắn dâu/rể:{" "}
+                      {(lineage.childrenByCoParent.get("_unknown") ?? [])
+                        .map((k) => k.full_name || "?")
+                        .join(", ")}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
+
           <section>
             <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
               Các loại tên
@@ -83,6 +229,40 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
               {member.biography || member.notes || "Chưa có tiểu sử."}
             </p>
           </section>
+
+          {hasContact ? (
+            <section>
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
+                Liên hệ / địa chỉ
+              </h3>
+              <dl className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-1.5">
+                {contact.address ? (
+                  <>
+                    <dt className="text-[#6a6258]">Địa chỉ</dt>
+                    <dd className="font-medium">{contact.address}</dd>
+                  </>
+                ) : null}
+                {contact.phone ? (
+                  <>
+                    <dt className="text-[#6a6258]">Điện thoại</dt>
+                    <dd className="font-medium">{contact.phone}</dd>
+                  </>
+                ) : null}
+                {contact.email ? (
+                  <>
+                    <dt className="text-[#6a6258]">Email</dt>
+                    <dd className="font-medium">{contact.email}</dd>
+                  </>
+                ) : null}
+                {contact.notes ? (
+                  <>
+                    <dt className="text-[#6a6258]">Ghi chú</dt>
+                    <dd className="font-medium">{contact.notes}</dd>
+                  </>
+                ) : null}
+              </dl>
+            </section>
+          ) : null}
 
           <section className="rounded-lg border border-[#8a6a3a]/30 bg-[#f7f1e8]/60 p-3">
             <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
@@ -143,15 +323,66 @@ export function ProfileModal({ member, open, onOpenChange }: ProfileModalProps) 
           {member.spouses.length > 0 ? (
             <section>
               <h3 className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[#7a1f1f]">
-                Phối ngẫu
+                Hôn nhân · Dâu / rể ({member.spouses.length})
               </h3>
-              <ul className="space-y-1">
+              <p className="mb-2 text-xs text-[#5c564e]">
+                Người khác họ lấy vào dòng tộc — hiện cạnh thẻ trên cây với cạnh
+                «Cưới» / «Mẹ → con».
+              </p>
+              <ul className="space-y-3">
                 {member.spouses.map((s) => (
-                  <li key={s.id}>
-                    {s.full_name}{" "}
-                    <span className="text-[#6a6258]">
-                      ({s.is_alive === false ? "đã mất" : "đang sống"})
-                    </span>
+                  <li
+                    key={s.id}
+                    className="rounded-md border border-[#8a6a3a]/20 bg-white/70 px-3 py-2"
+                  >
+                    <p className="font-medium text-[#1c1410]">
+                      <span className="mr-2 text-xs font-bold uppercase tracking-wide text-[#7a1f1f]">
+                        {spouseRoleLabel(s.role)}
+                      </span>
+                      {s.full_name}
+                      <span className="ml-2 text-[#6a6258] font-normal">
+                        ({s.is_alive === false ? "đã mất" : "đang sống"})
+                      </span>
+                    </p>
+                    <p className="mt-1 text-xs text-[#5c564e]">
+                      {s.role === "DAU"
+                        ? `Vợ của ${member.full_name}`
+                        : s.role === "RE"
+                          ? `Chồng của ${member.full_name}`
+                          : `Phối ngẫu của ${member.full_name}`}
+                    </p>
+                    <dl className="mt-1.5 grid grid-cols-[5rem_1fr] gap-x-2 gap-y-0.5 text-xs text-[#3d372f]">
+                      {s.maiden_name ? (
+                        <>
+                          <dt className="text-[#6a6258]">Họ gốc</dt>
+                          <dd>{s.maiden_name}</dd>
+                        </>
+                      ) : null}
+                      {s.birth ? (
+                        <>
+                          <dt className="text-[#6a6258]">Sinh</dt>
+                          <dd>{s.birth}</dd>
+                        </>
+                      ) : null}
+                      {s.death ? (
+                        <>
+                          <dt className="text-[#6a6258]">Mất</dt>
+                          <dd>{s.death}</dd>
+                        </>
+                      ) : null}
+                      {s.hometown ? (
+                        <>
+                          <dt className="text-[#6a6258]">Quê quán</dt>
+                          <dd>{s.hometown}</dd>
+                        </>
+                      ) : null}
+                      {s.notes ? (
+                        <>
+                          <dt className="text-[#6a6258]">Ghi chú</dt>
+                          <dd>{s.notes}</dd>
+                        </>
+                      ) : null}
+                    </dl>
                   </li>
                 ))}
               </ul>

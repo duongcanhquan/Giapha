@@ -19,6 +19,7 @@ import type {
   FamilyTheme,
   UpdateFamilyAppearanceInput,
   UpdateFamilyBranchesInput,
+  UpdateFamilyProfileInput,
 } from "@/types/genealogy";
 
 const FAMILIES = "families";
@@ -190,6 +191,29 @@ export async function updateFamilyAppearance(
     settings,
     updated_at: serverTimestamp(),
   });
+}
+
+export async function updateFamilyProfile(
+  familyId: string,
+  input: UpdateFamilyProfileInput,
+): Promise<void> {
+  const current = await getFamily(familyId);
+  if (!current) throw new Error("Không tìm thấy dòng họ.");
+  const patch: Record<string, unknown> = {
+    updated_at: serverTimestamp(),
+  };
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    if (!name) throw new Error("Tên dòng họ không được để trống.");
+    patch.name = name;
+  }
+  if (input.description !== undefined) {
+    patch.settings = {
+      ...(current.settings ?? {}),
+      description: input.description.trim(),
+    };
+  }
+  await updateDoc(familyRef(familyId), patch);
 }
 
 export async function updateFamilyBranches(

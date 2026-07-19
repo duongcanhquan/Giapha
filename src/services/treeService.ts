@@ -72,16 +72,25 @@ function mapMember(id: string, data: Record<string, unknown>): FamilyMember {
       relationship_type:
         (treeLogicRaw.relationship_type as FamilyMember["tree_logic"]["relationship_type"]) ??
         "BLOOD",
+      mother_spouse_id:
+        (treeLogicRaw.mother_spouse_id as string | null | undefined) ?? null,
       position: treeLogicRaw.position as FamilyMember["tree_logic"]["position"],
     },
     spouses: ((data.spouses as FamilyMember["spouses"]) ?? []).map((s) => ({
-      id: s.id,
-      full_name: s.full_name,
+      id: String(s.id),
+      full_name: String(s.full_name ?? ""),
       is_alive: s.is_alive,
       is_placeholder: s.is_placeholder,
+      role: s.role,
+      maiden_name: s.maiden_name ?? null,
+      birth: s.birth ?? null,
+      death: s.death ?? null,
+      hometown: s.hometown ?? null,
+      notes: s.notes ?? null,
     })),
     gender: (data.gender as FamilyMember["gender"]) ?? "UNKNOWN",
     is_huong_hoa: Boolean(data.is_huong_hoa),
+    photo_url: (data.photo_url as string | null | undefined) ?? null,
     biography: (data.biography as string) ?? null,
     notes: data.notes as string | undefined,
   };
@@ -99,38 +108,31 @@ function mapRelation(id: string, data: Record<string, unknown>): FamilyRelation 
   };
 }
 
-function emptyTree(familyId: string): {
-  family: Family | null;
-  tree: FamilyTreeData;
-} {
-  return {
-    family: null,
-    tree: {
-      family_id: familyId,
-      clan_name: "Chưa có dữ liệu",
-      members: [],
-      relations: [],
-    },
-  };
-}
-
 export async function fetchFamilyTree(
   familyId: string,
 ): Promise<{ family: Family | null; tree: FamilyTreeData }> {
+  if (!familyId.trim()) {
+    throw new Error("Thiếu mã dòng họ trên link chia sẻ.");
+  }
+
   if (!isFirebaseConfigured()) {
-    return emptyTree(familyId);
+    throw new Error(
+      "Ứng dụng chưa cấu hình Firebase — không tải được cây công khai.",
+    );
   }
 
   try {
     const family = await getFamily(familyId);
     const db = getDb();
 
-    const membersSnap = await getDocs(
-      query(collection(db, MEMBERS), where("family_id", "==", familyId)),
-    );
-    const relationsSnap = await getDocs(
-      query(collection(db, RELATIONS), where("family_id", "==", familyId)),
-    );
+    const [membersSnap, relationsSnap] = await Promise.all([
+      getDocs(
+        query(collection(db, MEMBERS), where("family_id", "==", familyId)),
+      ),
+      getDocs(
+        query(collection(db, RELATIONS), where("family_id", "==", familyId)),
+      ),
+    ]);
 
     const members = membersSnap.docs.map((d) =>
       mapMember(d.id, d.data() as Record<string, unknown>),
@@ -140,7 +142,7 @@ export async function fetchFamilyTree(
     );
 
     if (!family && members.length === 0) {
-      return emptyTree(familyId);
+      throw new Error("Không tìm thấy dòng họ hoặc link đã hết hiệu lực.");
     }
 
     return {
@@ -150,10 +152,12 @@ export async function fetchFamilyTree(
         clan_name: family?.name ?? "Gia tộc",
         members,
         relations,
+        branches: family?.settings.branches ?? [],
       },
     };
   } catch (error) {
     console.warn("fetchFamilyTree:", error);
-    return emptyTree(familyId);
+    if (error instanceof Error) throw error;
+    throw new Error("Không tải được cây gia phả. Thử lại sau.");
   }
 }

@@ -56,6 +56,23 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "norm_email", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "family_managers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "family_id", "order": "ASCENDING" },
+        { "fieldPath": "email", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "family_managers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "family_id", "order": "ASCENDING" },
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -20,23 +20,6 @@ export function StoryLanding() {
 
   return (
     <div className="min-h-screen bg-[var(--gp-paper)] text-[var(--gp-ink)]">
-      <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-5 py-5 md:px-10">
-        <p className="font-display text-base font-semibold tracking-[0.14em] text-[var(--gp-seal-ink)] md:text-lg">
-          Gia phả
-        </p>
-        <nav className="flex items-center gap-5 text-sm font-medium text-[var(--gp-seal-ink)]/90">
-          <a href="#cot-moc" className="hidden hover:text-white sm:inline">
-            Cột mốc
-          </a>
-          <Link href="/register" className="hover:text-white">
-            Đăng ký
-          </Link>
-          <Link href="/login" className="hover:text-white">
-            Đăng nhập
-          </Link>
-        </nav>
-      </header>
-
       <section
         ref={heroRef}
         className="relative flex min-h-[100svh] items-end overflow-hidden"
@@ -58,7 +41,7 @@ export function StoryLanding() {
           className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#120e0c]/35 to-transparent"
         />
 
-        <div className="relative z-10 w-full px-5 pb-16 pt-36 md:px-10 md:pb-24">
+        <div className="relative z-10 w-full px-5 pb-16 pt-20 md:px-10 md:pb-24">
           <motion.h1
             className="font-display max-w-4xl text-5xl font-semibold uppercase tracking-[0.06em] leading-[1.02] text-[var(--gp-seal-ink)] md:text-7xl"
             initial={{ opacity: 0, y: 28 }}
