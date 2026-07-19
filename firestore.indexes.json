@@ -40,6 +40,23 @@
         { "fieldPath": "family_id", "order": "ASCENDING" },
         { "fieldPath": "relationship_type", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "family_managers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "family_id", "order": "ASCENDING" },
+        { "fieldPath": "email", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "family_managers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "family_id", "order": "ASCENDING" },
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

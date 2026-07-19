@@ -1,5 +1,6 @@
 import type { User } from "firebase/auth";
 import { getFamily } from "@/services/familyService";
+import { findActiveBranchManager } from "@/services/managerService";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 
 export type FamilyAccessRole = "super_admin" | "owner" | "branch_admin" | null;
@@ -8,6 +9,7 @@ export type FamilyAccess = {
   allowed: boolean;
   role: FamilyAccessRole;
   branchId?: string | null;
+  branchName?: string | null;
 };
 
 /**
@@ -28,7 +30,6 @@ export async function checkSuperAdminAccess(
 ): Promise<boolean> {
   if (!user) return false;
   if (!isFirebaseConfigured()) {
-    // Demo: cho phép xem UI super-admin khi chưa cấu hình Firebase
     return true;
   }
   try {
@@ -41,7 +42,7 @@ export async function checkSuperAdminAccess(
 
 /**
  * Kiểm tra quyền quản trị `familyId`:
- * Super Admin · Family Owner · Branch Admin.
+ * Super Admin · Family Owner · Branch Admin (claim hoặc danh sách family_managers).
  */
 export async function checkFamilyAdminAccess(
   familyId: string,
@@ -82,6 +83,21 @@ export async function checkFamilyAdminAccess(
         allowed: true,
         role: "branch_admin",
         branchId: typeof claimBranchId === "string" ? claimBranchId : null,
+      };
+    }
+
+    // Danh sách mời / trưởng nhánh trong Firestore (không cần custom claim)
+    const listed = await findActiveBranchManager(
+      familyId,
+      user.uid,
+      user.email,
+    );
+    if (listed) {
+      return {
+        allowed: true,
+        role: "branch_admin",
+        branchId: listed.branch_id,
+        branchName: listed.branch_name,
       };
     }
 

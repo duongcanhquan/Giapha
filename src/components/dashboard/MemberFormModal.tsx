@@ -32,6 +32,8 @@ type MemberFormModalProps = {
   members: FamilyMember[];
   member?: FamilyMember | null;
   defaultParentId?: string | null;
+  /** Trưởng nhánh bị khoá chi này */
+  lockedBranchId?: string | null;
   onSaved?: () => void;
 };
 
@@ -103,6 +105,7 @@ type FormBodyProps = {
   member: FamilyMember | null;
   initial: FormState;
   initialLunarHint: string | null;
+  lockedBranchId?: string | null;
   onOpenChange: (open: boolean) => void;
   onSaved?: () => void;
 };
@@ -114,6 +117,7 @@ function MemberFormBody({
   member,
   initial,
   initialLunarHint,
+  lockedBranchId = null,
   onOpenChange,
   onSaved,
 }: FormBodyProps) {
@@ -329,11 +333,12 @@ function MemberFormBody({
           </select>
         </label>
         <label className="block font-semibold">
-          branch_id
+          Chi / nhánh (branch_id)
           <input
             value={form.branch_id}
             onChange={(e) => setField("branch_id", e.target.value)}
-            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal"
+            disabled={Boolean(lockedBranchId)}
+            className="mt-1 w-full rounded-lg border border-stone-300 px-3 py-2 font-normal disabled:bg-stone-100"
           />
         </label>
       </div>
@@ -442,6 +447,7 @@ export function MemberFormModal({
   members,
   member = null,
   defaultParentId = null,
+  lockedBranchId = null,
   onSaved,
 }: MemberFormModalProps) {
   const roots = useMemo(
@@ -449,6 +455,7 @@ export function MemberFormModal({
     [members],
   );
   const defaultBranch =
+    lockedBranchId ??
     members[0]?.tree_logic.branch_id ??
     roots[0]?.tree_logic.branch_id ??
     "branch-main";
@@ -465,7 +472,7 @@ export function MemberFormModal({
     return null;
   }, [mode, member]);
 
-  const formKey = `${mode}:${member?.id ?? "new"}:${defaultParentId ?? ""}:${open ? "1" : "0"}`;
+  const formKey = `${mode}:${member?.id ?? "new"}:${defaultParentId ?? ""}:${lockedBranchId ?? ""}:${open ? "1" : "0"}`;
 
   const title =
     mode === "create"
@@ -493,6 +500,7 @@ export function MemberFormModal({
             member={member}
             initial={initial}
             initialLunarHint={initialLunarHint}
+            lockedBranchId={lockedBranchId}
             onOpenChange={onOpenChange}
             onSaved={onSaved}
           />

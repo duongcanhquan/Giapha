@@ -4,9 +4,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SuperAdminBanner } from "@/components/admin/SuperAdminBanner";
+import {
+  DashboardAccessProvider,
+} from "@/components/dashboard/DashboardAccessContext";
 import { CopyShareLinkButton } from "@/components/share/CopyShareLinkButton";
 import { subscribeAuth, signOutUser } from "@/services/authService";
-import { checkFamilyAdminAccess, type FamilyAccess } from "@/services/accessService";
+import {
+  checkFamilyAdminAccess,
+  type FamilyAccess,
+} from "@/services/accessService";
 import { getFamily } from "@/services/familyService";
 import type { Family } from "@/types/family";
 
@@ -15,11 +21,18 @@ type DashboardShellProps = {
   children: ReactNode;
 };
 
-const NAV = [
+const OWNER_NAV = [
   { href: "", label: "Cây hương hỏa" },
   { href: "/members", label: "Thành viên" },
   { href: "/branches", label: "Nhánh" },
+  { href: "/managers", label: "Phân quyền" },
   { href: "/appearance", label: "Giao diện" },
+] as const;
+
+const BRANCH_NAV = [
+  { href: "", label: "Cây hương hỏa" },
+  { href: "/members", label: "Thành viên" },
+  { href: "/managers", label: "Quyền của tôi" },
 ] as const;
 
 export function DashboardShell({ familyId, children }: DashboardShellProps) {
@@ -85,10 +98,10 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
     };
   }, [familyId, router]);
 
-  if (status === "loading") {
+  if (status === "loading" || !access) {
     return (
       <main className="grid min-h-screen place-items-center text-sm text-[var(--gp-muted)]">
-        Đang kiểm tra quyền quản trị…
+        Đang xác thực quyền quản trị…
       </main>
     );
   }
@@ -96,118 +109,144 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
   if (status === "denied") {
     return (
       <main className="grid min-h-screen place-items-center text-sm text-[var(--gp-lacquer)]">
-        Bạn không có quyền truy cập khu vực quản trị này.
+        Không có quyền truy cập dashboard dòng họ này.
       </main>
     );
   }
 
   const base = `/dashboard/${familyId}`;
-  const isSuperAdmin = access?.role === "super_admin";
+  const isSuperAdmin = access.role === "super_admin";
+  const isBranchAdmin = access.role === "branch_admin";
+  const canManageManagers =
+    access.role === "owner" || access.role === "super_admin";
+  const nav = isBranchAdmin ? BRANCH_NAV : OWNER_NAV;
+
+  const roleLabel = isSuperAdmin
+    ? "Super Admin"
+    : access.role === "owner"
+      ? "Chủ dòng họ"
+      : `Trưởng nhánh${access.branchName ? ` · ${access.branchName}` : ""}`;
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--gp-paper)] text-[var(--gp-ink)]">
-      {isSuperAdmin ? <SuperAdminBanner familyName={family?.name} /> : null}
+    <DashboardAccessProvider
+      value={{
+        familyId,
+        access,
+        family,
+        canManageManagers,
+        isBranchAdmin,
+      }}
+    >
+      <div className="flex min-h-screen flex-col bg-[var(--gp-paper)] text-[var(--gp-ink)]">
+        {isSuperAdmin ? <SuperAdminBanner familyName={family?.name} /> : null}
 
-      <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-60 shrink-0 border-r border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-5 md:block">
-          <Link href="/" className="font-display text-sm font-semibold text-[var(--gp-lacquer)]">
-            Gia phả
-          </Link>
-          <p className="gp-eyebrow mt-5">Quản trị dòng họ</p>
-          <p className="gp-title mt-1 text-lg">{family?.name ?? "…"}</p>
-          <p className="mt-1 text-xs text-[var(--gp-muted)]">
-            Vai trò:{" "}
-            {isSuperAdmin
-              ? "Super Admin"
-              : access?.role === "owner"
-                ? "Chủ dòng họ"
-                : "Trưởng nhánh"}
-          </p>
-
-          <nav className="mt-7 flex flex-col gap-1">
-            {NAV.map((item) => {
-              const href = `${base}${item.href}`;
-              const active =
-                item.href === "" ? pathname === base : pathname.startsWith(href);
-              return (
-                <Link
-                  key={item.href || "home"}
-                  href={href}
-                  className={[
-                    "rounded-[var(--gp-radius-sm)] px-3 py-2 text-sm font-semibold transition",
-                    active
-                      ? "bg-[var(--gp-lacquer)] text-[var(--gp-seal-ink)]"
-                      : "text-[var(--gp-ink)] hover:bg-[var(--gp-lacquer-soft)]",
-                  ].join(" ")}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="mt-8 space-y-2 border-t border-[var(--gp-scroll-edge)] pt-4">
-            {isSuperAdmin ? (
-              <Link
-                href="/super-admin"
-                className="block text-sm font-semibold text-[var(--gp-seal)] hover:underline"
-              >
-                Cổng Super Admin
-              </Link>
-            ) : null}
-            <CopyShareLinkButton
-              url={shareUrl}
-              label="Copy link gửi họ hàng"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--gp-lacquer)] hover:underline"
-            />
-            <button
-              type="button"
-              className="block text-sm text-[var(--gp-muted)] hover:underline"
-              onClick={() => void signOutUser().then(() => router.replace("/"))}
+        <div className="flex min-h-0 flex-1">
+          <aside className="hidden w-60 shrink-0 border-r border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-5 md:block">
+            <Link
+              href="/"
+              className="font-display text-sm font-semibold text-[var(--gp-lacquer)]"
             >
-              Đăng xuất
-            </button>
-          </div>
-        </aside>
+              Gia phả
+            </Link>
+            <p className="gp-eyebrow mt-5">Quản trị dòng họ</p>
+            <p className="gp-title mt-1 text-lg">{family?.name ?? "…"}</p>
+            <p className="mt-1 text-xs text-[var(--gp-muted)]">
+              Vai trò: {roleLabel}
+            </p>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between gap-2 border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)]/90 px-4 py-3 md:hidden">
-            <div>
-              <p className="gp-eyebrow">Quản trị</p>
-              <p className="font-display font-semibold">{family?.name}</p>
-            </div>
-            <CopyShareLinkButton
-              url={shareUrl}
-              label="Copy link"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--gp-lacquer)]"
-            />
-          </header>
+            <nav className="mt-7 flex flex-col gap-1">
+              {nav.map((item) => {
+                const href = `${base}${item.href}`;
+                const active =
+                  item.href === ""
+                    ? pathname === base
+                    : pathname.startsWith(href);
+                return (
+                  <Link
+                    key={item.href || "home"}
+                    href={href}
+                    className={[
+                      "rounded-[var(--gp-radius-sm)] px-3 py-2 text-sm font-semibold transition",
+                      active
+                        ? "bg-[var(--gp-lacquer)] text-[var(--gp-seal-ink)]"
+                        : "text-[var(--gp-ink)] hover:bg-[var(--gp-lacquer-soft)]",
+                    ].join(" ")}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
 
-          <nav className="flex gap-1 overflow-x-auto border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] px-2 py-2 md:hidden">
-            {NAV.map((item) => {
-              const href = `${base}${item.href}`;
-              const active =
-                item.href === "" ? pathname === base : pathname.startsWith(href);
-              return (
+            <div className="mt-8 space-y-2 border-t border-[var(--gp-scroll-edge)] pt-4">
+              {isSuperAdmin ? (
                 <Link
-                  key={item.href || "home-m"}
-                  href={href}
-                  className={[
-                    "whitespace-nowrap rounded-[var(--gp-radius-sm)] px-3 py-1.5 text-xs font-semibold",
-                    active
-                      ? "bg-[var(--gp-lacquer)] text-[var(--gp-seal-ink)]"
-                      : "text-[var(--gp-ink)]",
-                  ].join(" ")}
+                  href="/super-admin"
+                  className="block text-sm font-semibold text-[var(--gp-seal)] hover:underline"
                 >
-                  {item.label}
+                  Cổng Super Admin
                 </Link>
-              );
-            })}
-          </nav>
+              ) : null}
+              <CopyShareLinkButton
+                url={shareUrl}
+                label="Copy link gửi họ hàng"
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-[var(--gp-lacquer)] hover:underline"
+              />
+              <button
+                type="button"
+                className="block text-sm text-[var(--gp-muted)] hover:underline"
+                onClick={() =>
+                  void signOutUser().then(() => router.replace("/"))
+                }
+              >
+                Đăng xuất
+              </button>
+            </div>
+          </aside>
 
-          <main className="flex min-h-0 flex-1 flex-col p-3 md:p-5">{children}</main>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <header className="flex items-center justify-between gap-2 border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)]/90 px-4 py-3 md:hidden">
+              <div>
+                <p className="gp-eyebrow">Quản trị</p>
+                <p className="font-display font-semibold">{family?.name}</p>
+              </div>
+              <CopyShareLinkButton
+                url={shareUrl}
+                label="Copy link"
+                className="inline-flex items-center gap-1 text-sm font-semibold text-[var(--gp-lacquer)]"
+              />
+            </header>
+
+            <nav className="flex gap-1 overflow-x-auto border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] px-2 py-2 md:hidden">
+              {nav.map((item) => {
+                const href = `${base}${item.href}`;
+                const active =
+                  item.href === ""
+                    ? pathname === base
+                    : pathname.startsWith(href);
+                return (
+                  <Link
+                    key={item.href || "home-m"}
+                    href={href}
+                    className={[
+                      "whitespace-nowrap rounded-[var(--gp-radius-sm)] px-3 py-1.5 text-xs font-semibold",
+                      active
+                        ? "bg-[var(--gp-lacquer)] text-[var(--gp-seal-ink)]"
+                        : "text-[var(--gp-ink)]",
+                    ].join(" ")}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <main className="flex min-h-0 flex-1 flex-col p-3 md:p-5">
+              {children}
+            </main>
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardAccessProvider>
   );
 }

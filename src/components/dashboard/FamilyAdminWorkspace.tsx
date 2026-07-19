@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { FamilyTree, type FamilyTreeHandle } from "@/components/family-tree";
@@ -9,6 +9,7 @@ import { MembersManager } from "@/components/dashboard/MembersManager";
 import { ClanOverviewInfographic } from "@/components/dashboard/ClanOverviewInfographic";
 import { ExportTreeButton } from "@/components/export/ExportTreeButton";
 import { ProfileModal } from "@/components/profile/ProfileModal";
+import { useDashboardAccessOptional } from "@/components/dashboard/DashboardAccessContext";
 import { DashboardPanelSkeleton } from "@/components/ui/skeleton";
 import { useFamilyTree } from "@/hooks/useFamilyTree";
 import type { FamilyMember, PlaceholderUpdatePayload } from "@/types/genealogy";
@@ -22,6 +23,11 @@ export function FamilyAdminWorkspace({
   familyId,
   tableOnly = false,
 }: FamilyAdminWorkspaceProps) {
+  const dash = useDashboardAccessOptional();
+  const lockedBranchId = dash?.isBranchAdmin
+    ? dash.access.branchId ?? null
+    : null;
+
   const { tree, isLoading, error, mutate } = useFamilyTree(familyId);
   const treeRef = useRef<FamilyTreeHandle>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -30,8 +36,14 @@ export function FamilyAdminWorkspace({
   const [defaultParentId, setDefaultParentId] = useState<string | null>(null);
   const [profileMember, setProfileMember] = useState<FamilyMember | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [treeBranchFilter, setTreeBranchFilter] = useState<string | null>(null);
+  const [treeBranchFilter, setTreeBranchFilter] = useState<string | null>(
+    lockedBranchId,
+  );
   const [statsOpen, setStatsOpen] = useState(false);
+
+  useEffect(() => {
+    if (lockedBranchId) setTreeBranchFilter(lockedBranchId);
+  }, [lockedBranchId]);
 
   const openCreate = useCallback((parentId?: string | null) => {
     setFormMode("create");
@@ -40,12 +52,21 @@ export function FamilyAdminWorkspace({
     setFormOpen(true);
   }, []);
 
-  const openEdit = useCallback((member: FamilyMember) => {
-    setFormMode("edit");
-    setEditing(member);
-    setDefaultParentId(null);
-    setFormOpen(true);
-  }, []);
+  const openEdit = useCallback(
+    (member: FamilyMember) => {
+      if (
+        lockedBranchId &&
+        member.tree_logic.branch_id !== lockedBranchId
+      ) {
+        return;
+      }
+      setFormMode("edit");
+      setEditing(member);
+      setDefaultParentId(null);
+      setFormOpen(true);
+    },
+    [lockedBranchId],
+  );
 
   const openProfile = useCallback(
     (memberId: string) => {
@@ -130,8 +151,21 @@ export function FamilyAdminWorkspace({
             Cây dòng họ {tree.clan_name}
           </h1>
           <p className="gp-lede mt-1 max-w-2xl text-sm">
-            Cây ưu tiên toàn khung — mặc định gom nhánh để nhìn rõ. Tìm tên →
-            mờ phần khác, sáng đường huyết thống. Bảng chi tiết:{" "}
+            {lockedBranchId ? (
+              <>
+                Bạn đang quản lý chi{" "}
+                <strong>
+                  {dash?.access.branchName ?? lockedBranchId}
+                </strong>{" "}
+                — chỉ thêm/sửa người thuộc chi này.{" "}
+              </>
+            ) : (
+              <>
+                Cây ưu tiên toàn khung — mặc định gom nhánh để nhìn rõ. Tìm tên →
+                mờ phần khác, sáng đường huyết thống.{" "}
+              </>
+            )}
+            Bảng chi tiết:{" "}
             <Link
               href={`/dashboard/${familyId}/members`}
               className="font-semibold text-[var(--gp-lacquer)] underline-offset-2 hover:underline"
@@ -181,7 +215,13 @@ export function FamilyAdminWorkspace({
               openProfile(id);
               focusOnTree(id);
             }}
-            onFilterBranch={(branchId) => setTreeBranchFilter(branchId)}
+            onFilterBranch={(branchId) => {
+              if (lockedBranchId) {
+                setTreeBranchFilter(lockedBranchId);
+                return;
+              }
+              setTreeBranchFilter(branchId);
+            }}
           />
         </div>
       ) : (
@@ -232,6 +272,7 @@ export function FamilyAdminWorkspace({
         members={tree.members}
         member={editing}
         defaultParentId={defaultParentId}
+        lockedBranchId={lockedBranchId}
         onSaved={onSaved}
       />
 
