@@ -25,8 +25,8 @@ export function StoryLanding() {
           Giapha
         </p>
         <nav className="flex items-center gap-5 text-sm font-medium text-[var(--gp-seal-ink)]/90">
-          <a href="#huong-hoa" className="hidden hover:text-white sm:inline">
-            Hương hỏa
+          <a href="#cot-moc" className="hidden hover:text-white sm:inline">
+            Cột mốc
           </a>
           <Link href="/register" className="hover:text-white">
             Đăng ký
@@ -91,9 +91,7 @@ export function StoryLanding() {
         </div>
       </section>
 
-      <div id="huong-hoa">
-        <ClanTimeline milestones={clanStory.milestones} />
-      </div>
+      <ClanTimeline milestones={clanStory.milestones} />
 
       <section className="border-t border-[var(--gp-scroll-edge)] px-5 py-16 md:px-10">
         <div className="mx-auto flex max-w-4xl flex-col items-start justify-between gap-6 md:flex-row md:items-center">
