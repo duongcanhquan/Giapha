@@ -100,7 +100,10 @@ export type FamilyTreeProps = {
   data: FamilyTreeData;
   className?: string;
   onPlaceholderUpdate?: (payload: PlaceholderUpdatePayload) => void;
+  /** Double-click — sửa (dashboard) */
   onMemberDoubleClick?: (memberId: string) => void;
+  /** Click chọn ổn định — xem hồ sơ */
+  onMemberOpen?: (memberId: string) => void;
   initialHighlightId?: string | null;
   showToolbar?: boolean;
   showMiniMap?: boolean;
@@ -108,6 +111,10 @@ export type FamilyTreeProps = {
   showBackground?: boolean;
   interactive?: boolean;
   readOnly?: boolean;
+  /** Xuất PDF: luôn mở toàn cây */
+  forceExpanded?: boolean;
+  /** Lọc chi khi mount (từ infographic) */
+  initialBranchFilter?: string | null;
 };
 
 function applyHighlight(
@@ -184,6 +191,7 @@ function FamilyTreeInner({
   className,
   onPlaceholderUpdate,
   onMemberDoubleClick,
+  onMemberOpen,
   initialHighlightId = null,
   showToolbar = true,
   showMiniMap = true,
@@ -191,6 +199,8 @@ function FamilyTreeInner({
   showBackground = true,
   interactive = true,
   readOnly = false,
+  forceExpanded = false,
+  initialBranchFilter = null,
   treeRef,
 }: InnerProps) {
   const { fitView, setCenter, getNode } = useReactFlow();
@@ -200,11 +210,20 @@ function FamilyTreeInner({
     initialHighlightId,
   );
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
-    data.members.length >= LARGE_TREE_THRESHOLD ? "compact" : "full",
+    forceExpanded
+      ? "full"
+      : data.members.length >= LARGE_TREE_THRESHOLD
+        ? "compact"
+        : "full",
   );
-  const [branchFilter, setBranchFilter] = useState<string | null>(null);
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
+  const [branchFilter, setBranchFilter] = useState<string | null>(
+    initialBranchFilter,
+  );
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() =>
+    forceExpanded ? new Set() : new Set(),
+  );
   const seededForFamily = useRef<string | null>(null);
+  const clickTimerRef = useRef<number | null>(null);
 
   const childrenIndex = useMemo(
     () => buildChildrenIndex(data.members),
@@ -213,6 +232,11 @@ function FamilyTreeInner({
 
   // Seed gom nhánh một lần khi đổi gia phả / lần đầu có dữ liệu
   useEffect(() => {
+    if (forceExpanded) {
+      setViewMode("full");
+      setCollapsedIds(new Set());
+      return;
+    }
     const familyKey = data.family_id ?? data.clan_name;
     if (!data.members.length) return;
     if (seededForFamily.current === familyKey) return;
@@ -220,7 +244,7 @@ function FamilyTreeInner({
 
     const large = data.members.length >= LARGE_TREE_THRESHOLD;
     setViewMode(large ? "compact" : "full");
-    setBranchFilter(null);
+    setBranchFilter(initialBranchFilter);
     setHighlightId(initialHighlightId);
     setCollapsedIds(
       large
@@ -228,12 +252,22 @@ function FamilyTreeInner({
         : new Set(),
     );
   }, [
+    forceExpanded,
     data.family_id,
     data.clan_name,
     data.members,
     childrenIndex,
     initialHighlightId,
+    initialBranchFilter,
   ]);
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current != null) {
+        window.clearTimeout(clickTimerRef.current);
+      }
+    };
+  }, []);
 
   const includeIds = useMemo(() => {
     if (viewMode !== "lineage" || !highlightId) return null;
@@ -290,19 +324,27 @@ function FamilyTreeInner({
   const enrichedNodes = useMemo(() => {
     return baseGraph.nodes.map((node) => {
       if (node.type !== "member") return node;
-      const childCount =
-        "childCount" in node.data ? (node.data.childCount as number) : 0;
+      const visibleChildCount =
+        "childCount" in node.data ? Number(node.data.childCount ?? 0) : 0;
+      // Luôn lấy số con từ FULL tree — không dùng childCount của graph đã lọc
+      // (sau gom nhánh children bị ẩn → childCount=0 → mất nút xổ nhánh).
+      const fullChildCount = childrenIndex.get(node.id)?.length ?? 0;
       const collapsed = collapsedIds.has(node.id);
       const hiddenDescendantCount = collapsed
         ? countDescendants(node.id, childrenIndex)
         : 0;
+      const heightBoost =
+        fullChildCount > 0 && visibleChildCount === 0 ? 32 : 0;
       return {
         ...node,
+        height:
+          node.height != null ? node.height + heightBoost : node.height,
         data: {
           ...node.data,
+          childCount: fullChildCount,
           collapsed,
           hiddenDescendantCount,
-          onToggleCollapse: childCount > 0 ? toggleCollapse : undefined,
+          onToggleCollapse: fullChildCount > 0 ? toggleCollapse : undefined,
         },
       };
     });
@@ -495,7 +537,10 @@ function FamilyTreeInner({
           <SmartSearch
             members={data.members}
             branches={branches}
-            onSelect={(id) => revealAndFocus(id)}
+            onSelect={(id) => {
+              revealAndFocus(id);
+              onMemberOpen?.(id);
+            }}
           />
 
           <div className="ft-toolbar__modes" role="group" aria-label="Chế độ xem">
@@ -576,10 +621,24 @@ function FamilyTreeInner({
         onEdgesChange={interactive ? onEdgesChange : undefined}
         onNodeClick={(_, node) => {
           if (!interactive) return;
-          revealAndFocus(node.id);
+          if (clickTimerRef.current != null) {
+            window.clearTimeout(clickTimerRef.current);
+          }
+          // Trì hoãn để phân biệt double-click (sửa) vs click (xem info)
+          clickTimerRef.current = window.setTimeout(() => {
+            clickTimerRef.current = null;
+            revealAndFocus(node.id);
+            onMemberOpen?.(node.id);
+          }, 220);
         }}
         onNodeDoubleClick={(_, node) => {
-          onMemberDoubleClick?.(node.id);
+          if (clickTimerRef.current != null) {
+            window.clearTimeout(clickTimerRef.current);
+            clickTimerRef.current = null;
+          }
+          revealAndFocus(node.id);
+          if (onMemberDoubleClick) onMemberDoubleClick(node.id);
+          else onMemberOpen?.(node.id);
         }}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}

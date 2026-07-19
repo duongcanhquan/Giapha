@@ -88,7 +88,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
             </h1>
             <p className="gp-lede mt-1.5 max-w-xl text-sm">
               {family?.settings.description ||
-                "Bạn đang xem bản được chia sẻ. Thành viên quản trị hãy đăng nhập để vào đúng gia phả nhà mình."}
+                "Bạn đang xem bản được chia sẻ. Click một người để xem hồ sơ; dùng tìm kiếm để mở theo chi / cha–ông–cố."}
             </p>
           </div>
 
@@ -116,6 +116,12 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
             readOnly
             showToolbar
             className="h-[calc(100vh-11rem)]"
+            onMemberOpen={(id) => {
+              const m = tree.members.find((x) => x.id === id) ?? null;
+              if (!m || m.status.is_placeholder) return;
+              setProfileMember(m);
+              setProfileOpen(true);
+            }}
             onMemberDoubleClick={(id) => {
               const m = tree.members.find((x) => x.id === id) ?? null;
               if (!m || m.status.is_placeholder) return;

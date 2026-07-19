@@ -1,17 +1,18 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { FamilyTree } from "@/components/family-tree";
+import { useCallback, useRef, useState } from "react";
+import { FamilyTree, type FamilyTreeHandle } from "@/components/family-tree";
 import { MemberFormModal } from "@/components/dashboard/MemberFormModal";
 import { MembersManager } from "@/components/dashboard/MembersManager";
+import { ClanOverviewInfographic } from "@/components/dashboard/ClanOverviewInfographic";
 import { ExportTreeButton } from "@/components/export/ExportTreeButton";
+import { ProfileModal } from "@/components/profile/ProfileModal";
 import { DashboardPanelSkeleton } from "@/components/ui/skeleton";
 import { useFamilyTree } from "@/hooks/useFamilyTree";
-import type { FamilyMember } from "@/types/genealogy";
+import type { FamilyMember, PlaceholderUpdatePayload } from "@/types/genealogy";
 
 type FamilyAdminWorkspaceProps = {
   familyId: string;
-  /** Chỉ hiện bảng (trang /members) */
   tableOnly?: boolean;
 };
 
@@ -20,10 +21,17 @@ export function FamilyAdminWorkspace({
   tableOnly = false,
 }: FamilyAdminWorkspaceProps) {
   const { tree, isLoading, error, mutate } = useFamilyTree(familyId);
+  const treeRef = useRef<FamilyTreeHandle>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
   const [editing, setEditing] = useState<FamilyMember | null>(null);
   const [defaultParentId, setDefaultParentId] = useState<string | null>(null);
+  const [profileMember, setProfileMember] = useState<FamilyMember | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [branchFilterToken, setBranchFilterToken] = useState(0);
+  const [pendingBranchFilter, setPendingBranchFilter] = useState<string | null>(
+    null,
+  );
 
   const openCreate = useCallback((parentId?: string | null) => {
     setFormMode("create");
@@ -39,9 +47,26 @@ export function FamilyAdminWorkspace({
     setFormOpen(true);
   }, []);
 
+  const openProfile = useCallback(
+    (memberId: string) => {
+      if (!tree) return;
+      const m = tree.members.find((x) => x.id === memberId) ?? null;
+      if (!m || m.status.is_placeholder) return;
+      setProfileMember(m);
+      setProfileOpen(true);
+    },
+    [tree],
+  );
+
   const onSaved = useCallback(() => {
     void mutate();
   }, [mutate]);
+
+  const focusOnTree = useCallback((memberId: string) => {
+    const el = document.getElementById("clan-tree-canvas");
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.setTimeout(() => treeRef.current?.traceRoute(memberId), 120);
+  }, []);
 
   if (isLoading && !tree) {
     return <DashboardPanelSkeleton />;
@@ -65,48 +90,69 @@ export function FamilyAdminWorkspace({
   return (
     <div className="space-y-8">
       {!tableOnly ? (
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="gp-eyebrow">Quản trị hương hỏa</p>
-              <h1 className="gp-title mt-1 text-2xl md:text-3xl">
-                Dòng họ {tree.clan_name}
-              </h1>
-              <p className="gp-lede mt-1.5 max-w-xl text-sm">
-                Đây là gia phả nhà bạn sau khi đăng nhập. Double-click để cập nhật; bảng
-                bên dưới để thêm / sửa / xoá.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="gp-btn gp-btn-primary"
-                onClick={() => openCreate()}
-              >
-                + Thêm thành viên
-              </button>
-              <ExportTreeButton
-                data={tree}
-                label="Xuất Infographic"
-                className="gp-btn gp-btn-ghost disabled:opacity-60"
-              />
-            </div>
-          </div>
-
-          <FamilyTree
-            data={tree}
-            showToolbar
-            className="h-[min(70vh,640px)]"
-            onMemberDoubleClick={(id) => {
-              const m = tree.members.find((x) => x.id === id);
-              if (m) openEdit(m);
+        <>
+          <ClanOverviewInfographic
+            tree={tree}
+            onFocusMember={(id) => {
+              openProfile(id);
+              focusOnTree(id);
             }}
-            onPlaceholderUpdate={(payload) => {
-              const m = tree.members.find((x) => x.id === payload.id);
-              if (m) openEdit(m);
+            onFilterBranch={(branchId) => {
+              setPendingBranchFilter(branchId);
+              setBranchFilterToken((n) => n + 1);
+              document
+                .getElementById("clan-tree-canvas")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
           />
-        </section>
+
+          <section id="clan-tree-canvas" className="scroll-mt-4 space-y-3">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="gp-eyebrow">Quản trị hương hỏa</p>
+                <h1 className="gp-title mt-1 text-2xl md:text-3xl">
+                  Dòng họ {tree.clan_name}
+                </h1>
+                <p className="gp-lede mt-1.5 max-w-xl text-sm">
+                  Click để xem hồ sơ · Double-click để sửa · Nút trên node để
+                  gom/xổ nhánh. Tìm kiếm hiện chi và cha–ông–cố.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="gp-btn gp-btn-primary"
+                  onClick={() => openCreate()}
+                >
+                  + Thêm thành viên
+                </button>
+                <ExportTreeButton
+                  data={tree}
+                  label="Xuất Infographic"
+                  className="gp-btn gp-btn-ghost disabled:opacity-60"
+                />
+              </div>
+            </div>
+
+            <FamilyTree
+              key={`${familyId}-br-${branchFilterToken}`}
+              ref={treeRef}
+              data={tree}
+              showToolbar
+              className="h-[min(72vh,680px)]"
+              initialBranchFilter={pendingBranchFilter}
+              onMemberOpen={openProfile}
+              onMemberDoubleClick={(id) => {
+                const m = tree.members.find((x) => x.id === id);
+                if (m) openEdit(m);
+              }}
+              onPlaceholderUpdate={(payload: PlaceholderUpdatePayload) => {
+                const m = tree.members.find((x) => x.id === payload.id);
+                if (m) openEdit(m);
+              }}
+            />
+          </section>
+        </>
       ) : null}
 
       <MembersManager
@@ -136,6 +182,12 @@ export function FamilyAdminWorkspace({
         member={editing}
         defaultParentId={defaultParentId}
         onSaved={onSaved}
+      />
+
+      <ProfileModal
+        member={profileMember}
+        open={profileOpen}
+        onOpenChange={setProfileOpen}
       />
     </div>
   );

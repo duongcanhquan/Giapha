@@ -111,8 +111,8 @@ export function searchMembers(
   const q = stripVietnameseDiacritics(query);
   if (!q) return [];
 
-  const searchableMembers = members.filter((m) => !m.status.is_placeholder);
-  const { fuse } = getFuse(searchableMembers, branches);
+  // Cache theo mảng members gốc (ổn định qua SWR), không filter() mỗi lần gõ.
+  const { fuse } = getFuse(members, branches);
   const nameById = buildMemberNameMap(members);
 
   const childCountByParent = new Map<string, number>();
@@ -122,16 +122,20 @@ export function searchMembers(
     childCountByParent.set(pid, (childCountByParent.get(pid) ?? 0) + 1);
   }
 
-  return fuse.search(q, { limit }).map((r) => {
-    const member = r.item as FamilyMember;
-    return {
-      member,
-      score: r.score,
-      generation: memberGeneration(member),
-      branchName: branchNameOf(member, branches),
-      lineage: formatLineageLabel(member, nameById, 3),
-      aka: akaLine(member),
-      childCount: childCountByParent.get(member.id) ?? 0,
-    };
-  });
+  return fuse
+    .search(q, { limit: limit * 2 })
+    .filter((r) => !r.item.status.is_placeholder)
+    .slice(0, limit)
+    .map((r) => {
+      const member = r.item as FamilyMember;
+      return {
+        member,
+        score: r.score,
+        generation: memberGeneration(member),
+        branchName: branchNameOf(member, branches),
+        lineage: formatLineageLabel(member, nameById, 3),
+        aka: akaLine(member),
+        childCount: childCountByParent.get(member.id) ?? 0,
+      };
+    });
 }

@@ -114,7 +114,7 @@ export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
         {canCollapse ? (
           <button
             type="button"
-            className="ft-member__collapse"
+            className="ft-member__collapse nodrag nopan"
             title={
               data.collapsed
                 ? `Mở nhánh (${hidden || childCount} người đang ẩn)`

@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { mutate as swrMutate } from "swr";
 import {
   getFamily,
   updateFamilyBranches,
   DEFAULT_BRANCH,
 } from "@/services/familyService";
+import { familyTreeKey } from "@/hooks/useFamilyTree";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
 import { appToast } from "@/lib/toast";
 import type { FamilyBranch } from "@/types/family";
@@ -63,6 +65,7 @@ export function BranchesManager({ familyId }: BranchesManagerProps) {
         return;
       }
       await updateFamilyBranches(familyId, { branches });
+      await swrMutate(familyTreeKey(familyId));
       setMessage("Đã cập nhật danh sách nhánh.");
       appToast.success("Đã lưu nhánh");
     } catch (err) {

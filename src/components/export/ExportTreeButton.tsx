@@ -43,9 +43,9 @@ export function ExportTreeButton({
 
     try {
       // Đợi clone mount + React Flow đo layout
-      await new Promise((r) => setTimeout(r, 80));
+      await new Promise((r) => setTimeout(r, 200));
       treeRef.current?.fitView();
-      await new Promise((r) => setTimeout(r, 420));
+      await new Promise((r) => setTimeout(r, 900));
 
       const node = stageRef.current;
       if (!node) throw new Error("Không tìm thấy khung xuất cây.");
@@ -123,6 +123,7 @@ export function ExportTreeButton({
               showControls={false}
               showBackground={false}
               interactive={false}
+              forceExpanded
               className="ft-export-tree"
             />
           </div>
