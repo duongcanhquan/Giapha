@@ -7,6 +7,12 @@ export const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+/** Đủ biến client để khởi tạo app (Auth vẫn cần bật trên Firebase Console). */
 export function isFirebaseConfigured(): boolean {
-  return Boolean(firebaseConfig.projectId && firebaseConfig.apiKey);
+  return Boolean(
+    firebaseConfig.apiKey &&
+      firebaseConfig.authDomain &&
+      firebaseConfig.projectId &&
+      firebaseConfig.appId,
+  );
 }

@@ -6,6 +6,7 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
+import { mapFirebaseAuthError } from "@/lib/firebase/auth-errors";
 import { getFirebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
 
 export type RegisterInput = {
@@ -16,18 +17,24 @@ export type RegisterInput = {
 
 export async function registerWithEmail(input: RegisterInput): Promise<User> {
   if (!isFirebaseConfigured()) {
-    throw new Error("Firebase chưa cấu hình — không thể đăng ký.");
+    throw new Error(
+      "Firebase chưa cấu hình — thêm đủ NEXT_PUBLIC_FIREBASE_* (apiKey, authDomain, projectId, appId).",
+    );
   }
-  const auth = getFirebaseAuth();
-  const cred = await createUserWithEmailAndPassword(
-    auth,
-    input.email.trim(),
-    input.password,
-  );
-  if (input.displayName?.trim()) {
-    await updateProfile(cred.user, { displayName: input.displayName.trim() });
+  try {
+    const auth = getFirebaseAuth();
+    const cred = await createUserWithEmailAndPassword(
+      auth,
+      input.email.trim(),
+      input.password,
+    );
+    if (input.displayName?.trim()) {
+      await updateProfile(cred.user, { displayName: input.displayName.trim() });
+    }
+    return cred.user;
+  } catch (err) {
+    throw new Error(mapFirebaseAuthError(err));
   }
-  return cred.user;
 }
 
 export async function signInWithEmail(
@@ -35,11 +42,17 @@ export async function signInWithEmail(
   password: string,
 ): Promise<User> {
   if (!isFirebaseConfigured()) {
-    throw new Error("Firebase chưa cấu hình — không thể đăng nhập.");
+    throw new Error(
+      "Firebase chưa cấu hình — thêm đủ NEXT_PUBLIC_FIREBASE_* (apiKey, authDomain, projectId, appId).",
+    );
   }
-  const auth = getFirebaseAuth();
-  const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-  return cred.user;
+  try {
+    const auth = getFirebaseAuth();
+    const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+    return cred.user;
+  } catch (err) {
+    throw new Error(mapFirebaseAuthError(err));
+  }
 }
 
 export async function signOutUser(): Promise<void> {

@@ -227,24 +227,11 @@ async function ensureApplicantUser(
     throw new Error("Mật khẩu phải có ít nhất 6 ký tự.");
   }
 
-  try {
-    return await registerWithEmail({
-      email,
-      password,
-      displayName: fullName,
-    });
-  } catch (err) {
-    const code =
-      err && typeof err === "object" && "code" in err
-        ? String((err as { code: unknown }).code)
-        : "";
-    if (code === "auth/email-already-in-use") {
-      throw new Error(
-        "Email đã có tài khoản. Hãy đăng nhập, rồi gửi lại hồ sơ (nếu bị từ chối) tại trang Đăng ký.",
-      );
-    }
-    throw err instanceof Error ? err : new Error("Đăng ký Auth thất bại.");
-  }
+  return registerWithEmail({
+    email,
+    password,
+    displayName: fullName,
+  });
 }
 
 /**
