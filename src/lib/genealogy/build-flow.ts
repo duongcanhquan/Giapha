@@ -1,3 +1,4 @@
+import dagre from "dagre";
 import type { Edge, Node } from "@xyflow/react";
 import type {
   FamilyMember,
@@ -9,10 +10,11 @@ import type { MemberNodeData } from "@/components/family-tree/nodes/MemberNode";
 import type { PlaceholderNodeData } from "@/components/family-tree/nodes/PlaceholderNode";
 import type { RelationshipEdgeData } from "@/components/family-tree/edges/RelationshipEdge";
 
-const GEN_GAP_Y = 180;
-const NODE_GAP_X = 280;
-const BASE_X = 80;
-const BASE_Y = 40;
+/** Kích thước ước lượng cho dagre (tránh overlap) */
+const BASE_NODE_WIDTH = 200;
+const BASE_NODE_HEIGHT = 88;
+const SPOUSE_ROW_HEIGHT = 44;
+const PLACEHOLDER_HEIGHT = 96;
 
 export type FamilyFlowNode = Node<MemberNodeData | PlaceholderNodeData>;
 export type FamilyFlowEdge = Edge<RelationshipEdgeData>;
@@ -21,42 +23,108 @@ export function memberNodeType(member: FamilyMember): "member" | "placeholder" {
   return member.status.is_placeholder ? "placeholder" : "member";
 }
 
-/** Layout theo đời: mỗi generation một hàng */
+function estimateNodeSize(member: FamilyMember): { width: number; height: number } {
+  if (member.status.is_placeholder) {
+    return { width: 168, height: PLACEHOLDER_HEIGHT };
+  }
+  const spouseCount = member.spouses.length;
+  return {
+    width: BASE_NODE_WIDTH,
+    height: BASE_NODE_HEIGHT + spouseCount * SPOUSE_ROW_HEIGHT,
+  };
+}
+
+/**
+ * Dagre TB layout: phân cấp đời từ trên xuống, nodesep/ranksep đều,
+ * không overlap. Tọa độ chuyển sang React Flow (top-left).
+ */
+export function layoutWithDagre(
+  nodes: FamilyFlowNode[],
+  edges: FamilyFlowEdge[],
+  sizeById: Map<string, { width: number; height: number }>,
+): FamilyFlowNode[] {
+  const g = new dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({
+    rankdir: "TB",
+    align: "UL",
+    nodesep: 72,
+    ranksep: 110,
+    marginx: 48,
+    marginy: 48,
+    edgesep: 24,
+  });
+
+  for (const node of nodes) {
+    const size = sizeById.get(node.id) ?? {
+      width: BASE_NODE_WIDTH,
+      height: BASE_NODE_HEIGHT,
+    };
+    g.setNode(node.id, { width: size.width, height: size.height });
+  }
+
+  for (const edge of edges) {
+    if (g.hasNode(edge.source) && g.hasNode(edge.target)) {
+      g.setEdge(edge.source, edge.target);
+    }
+  }
+
+  dagre.layout(g);
+
+  return nodes.map((node) => {
+    const laid = g.node(node.id);
+    const size = sizeById.get(node.id) ?? {
+      width: BASE_NODE_WIDTH,
+      height: BASE_NODE_HEIGHT,
+    };
+    if (!laid) {
+      return node;
+    }
+    return {
+      ...node,
+      position: {
+        x: laid.x - size.width / 2,
+        y: laid.y - size.height / 2,
+      },
+      // Giúp React Flow đo đúng khi virtualize
+      width: size.width,
+      height: size.height,
+    };
+  });
+}
+
+/** @deprecated dùng layoutWithDagre qua buildFlowGraph */
 export function layoutMembers(
   members: FamilyMember[],
 ): Map<string, { x: number; y: number }> {
-  const byGen = new Map<number, FamilyMember[]>();
-
-  for (const m of members) {
-    const gen = memberGeneration(m);
-    const list = byGen.get(gen) ?? [];
-    list.push(m);
-    byGen.set(gen, list);
-  }
-
-  const positions = new Map<string, { x: number; y: number }>();
-
-  for (const [generation, list] of byGen) {
-    list.forEach((member, index) => {
-      const spouseBonus = member.spouses.length > 0 ? 40 : 0;
-      positions.set(member.id, {
-        x: BASE_X + index * NODE_GAP_X + spouseBonus,
-        y: BASE_Y + (generation - 1) * GEN_GAP_Y,
-      });
-    });
-  }
-
-  return positions;
+  const graph = buildFlowGraph({
+    clan_name: "",
+    members,
+    relations: members
+      .filter((m) => m.tree_logic.parent_id)
+      .map((m, i) => ({
+        id: `tmp-${i}`,
+        family_id: m.family_id,
+        branch_id: m.tree_logic.branch_id,
+        source: m.tree_logic.parent_id!,
+        target: m.id,
+        relationship_type: m.tree_logic.relationship_type,
+      })),
+  });
+  return new Map(
+    graph.nodes.map((n) => [n.id, { x: n.position.x, y: n.position.y }]),
+  );
 }
 
 export function buildFlowGraph(data: FamilyTreeData): {
   nodes: FamilyFlowNode[];
   edges: FamilyFlowEdge[];
 } {
-  const positions = layoutMembers(data.members);
+  const sizeById = new Map<string, { width: number; height: number }>();
 
-  const nodes: FamilyFlowNode[] = data.members.map((member) => {
-    const position = positions.get(member.id) ?? { x: 0, y: 0 };
+  const rawNodes: FamilyFlowNode[] = data.members.map((member) => {
+    const size = estimateNodeSize(member);
+    sizeById.set(member.id, size);
     const type = memberNodeType(member);
     const generation = memberGeneration(member);
     const path = member.tree_logic.path;
@@ -65,7 +133,7 @@ export function buildFlowGraph(data: FamilyTreeData): {
       return {
         id: member.id,
         type: "placeholder",
-        position,
+        position: { x: 0, y: 0 },
         data: {
           memberId: member.id,
           generation,
@@ -77,7 +145,7 @@ export function buildFlowGraph(data: FamilyTreeData): {
     return {
       id: member.id,
       type: "member",
-      position,
+      position: { x: 0, y: 0 },
       data: {
         memberId: member.id,
         fullName: member.full_name,
@@ -99,6 +167,28 @@ export function buildFlowGraph(data: FamilyTreeData): {
     relationToEdge(relation),
   );
 
+  // Nếu thiếu relation nhưng có parent_id — bổ sung cạnh tạm để dagre xếp đúng đời
+  const edgeKeys = new Set(edges.map((e) => `${e.source}→${e.target}`));
+  for (const member of data.members) {
+    const parentId = member.tree_logic.parent_id;
+    if (!parentId) continue;
+    const key = `${parentId}→${member.id}`;
+    if (edgeKeys.has(key)) continue;
+    if (!sizeById.has(parentId)) continue;
+    edges.push(
+      relationToEdge({
+        id: `auto-${parentId}-${member.id}`,
+        family_id: member.family_id,
+        branch_id: member.tree_logic.branch_id,
+        source: parentId,
+        target: member.id,
+        relationship_type: member.tree_logic.relationship_type,
+      }),
+    );
+    edgeKeys.add(key);
+  }
+
+  const nodes = layoutWithDagre(rawNodes, edges, sizeById);
   return { nodes, edges };
 }
 

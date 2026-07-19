@@ -4,6 +4,7 @@ export { PlaceholderNode, type PlaceholderNodeData } from "./nodes/PlaceholderNo
 export { RelationshipEdge, type RelationshipEdgeData } from "./edges/RelationshipEdge";
 export { SmartSearch } from "./SmartSearch";
 export {
+  traceRoute,
   highlightPath,
   type PathHighlightResult,
 } from "@/lib/genealogy/highlight-path";

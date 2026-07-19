@@ -88,16 +88,16 @@ function FamilyTreePageInner() {
           <button
             type="button"
             className="rounded-lg border border-stone-400/50 bg-white px-3 py-1.5 text-sm font-semibold text-[#1c1410]"
-            onClick={() => treeRef.current?.highlightPath("m8")}
+            onClick={() => treeRef.current?.traceRoute("m8")}
           >
-            Highlight Đức
+            Trace Đức
           </button>
           <button
             type="button"
             className="rounded-lg border border-stone-400/50 bg-white px-3 py-1.5 text-sm font-semibold text-[#1c1410]"
-            onClick={() => treeRef.current?.highlightPath("m6")}
+            onClick={() => treeRef.current?.traceRoute("m6")}
           >
-            Highlight Bình
+            Trace Bình
           </button>
           <button
             type="button"

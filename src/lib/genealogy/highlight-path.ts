@@ -2,7 +2,7 @@ import type { FamilyMember, FamilyRelation } from "@/types/genealogy";
 import { edgeIdsOnPath, extractPathIds } from "./build-flow";
 
 export type PathHighlightResult = {
-  /** Id thành viên trên đường Thủy tổ → target (từ `member.path`) */
+  /** Id thành viên trên đường Thủy tổ → target (từ `tree_logic.path`) */
   pathNodeIds: string[];
   /** Id cạnh thuộc path */
   pathEdgeIds: Set<string>;
@@ -14,10 +14,9 @@ export type PathHighlightResult = {
 };
 
 /**
- * Trace Route: nhận `target_id`, trích `path` của thành viên đó,
- * trả về tập node/edge cần highlight (đỏ/vàng) vs làm mờ (0.2).
+ * Trace Route: nhận `target_id`, trích `path`, trả về tập highlight / dim.
  */
-export function highlightPath(
+export function traceRoute(
   targetId: string,
   members: FamilyMember[],
   relations: FamilyRelation[],
@@ -35,3 +34,6 @@ export function highlightPath(
     isEdgeHighlighted: (edgeId) => pathEdgeIds.has(edgeId),
   };
 }
+
+/** @deprecated dùng `traceRoute` */
+export const highlightPath = traceRoute;

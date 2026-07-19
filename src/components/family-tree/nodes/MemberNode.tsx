@@ -59,7 +59,7 @@ export function MemberNode({ data }: NodeProps<MemberFlowNode>) {
     >
       <Handle type="target" position={Position.Top} className="ft-handle" />
 
-      <div className="ft-member__row">
+      <div className="ft-member__stack">
         <div className="ft-member__main">
           <div className="ft-member__meta">
             <span className="ft-member__gen">Đời thứ {data.generation}</span>

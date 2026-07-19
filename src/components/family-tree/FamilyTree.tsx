@@ -36,7 +36,7 @@ import {
   type FamilyFlowEdge,
   type FamilyFlowNode,
 } from "@/lib/genealogy/build-flow";
-import { highlightPath as resolveHighlightPath } from "@/lib/genealogy/highlight-path";
+import { traceRoute as resolveTraceRoute } from "@/lib/genealogy/highlight-path";
 import { MemberNode } from "./nodes/MemberNode";
 import { PlaceholderNode } from "./nodes/PlaceholderNode";
 import { RelationshipEdge } from "./edges/RelationshipEdge";
@@ -75,7 +75,12 @@ const edgeTypes = {
 } satisfies EdgeTypes;
 
 export type FamilyTreeHandle = {
-  /** Highlight đường dẫn Thủy tổ → target_id, làm mờ phần còn lại, center camera. */
+  /**
+   * Trace Route: trích `path`, mờ node/edge ngoài path (opacity 0.2),
+   * tô sáng path, fitView/setCenter tới target.
+   */
+  traceRoute: (targetId: string) => void;
+  /** @deprecated dùng `traceRoute` */
   highlightPath: (targetId: string) => void;
   clearHighlight: () => void;
   fitView: () => void;
@@ -126,7 +131,7 @@ function applyHighlight(
     };
   }
 
-  const route = resolveHighlightPath(targetId, members, relations);
+  const route = resolveTraceRoute(targetId, members, relations);
 
   return {
     nodes: nodes.map((n) => ({
@@ -257,31 +262,40 @@ function FamilyTreeInner({
     [centerOnTarget],
   );
 
-  const highlightPath = useCallback(
+  const traceRoute = useCallback(
     (targetId: string) => {
       setHighlightId(targetId);
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => centerOnTarget(targetId));
+        requestAnimationFrame(() => {
+          const node = getNode(targetId);
+          if (node) {
+            centerOnTarget(targetId);
+          } else {
+            void fitView({ ...fitViewOptions, duration: 400 });
+          }
+        });
       });
     },
-    [centerOnTarget],
+    [centerOnTarget, fitView, fitViewOptions, getNode],
   );
 
   const clearHighlight = useCallback(() => {
     setHighlightId(null);
-  }, []);
+    void fitView({ ...fitViewOptions, duration: 400 });
+  }, [fitView, fitViewOptions]);
 
   useImperativeHandle(
     treeRef,
     () => ({
-      highlightPath,
+      traceRoute,
+      highlightPath: traceRoute,
       clearHighlight,
       focusMember,
       fitView: () => {
         void fitView({ ...fitViewOptions, duration: 400 });
       },
     }),
-    [highlightPath, clearHighlight, focusMember, fitView, fitViewOptions],
+    [traceRoute, clearHighlight, focusMember, fitView, fitViewOptions],
   );
 
   /** Mobile: khởi động Fit View vừa màn hình */
@@ -325,7 +339,7 @@ function FamilyTreeInner({
             members={data.members}
             onSelect={(id) => {
               focusMember(id);
-              highlightPath(id);
+              traceRoute(id);
             }}
           />
           <button type="button" onClick={() => clearHighlight()}>
@@ -339,7 +353,7 @@ function FamilyTreeInner({
                   <button
                     key={id}
                     type="button"
-                    onClick={() => highlightPath(id)}
+                    onClick={() => traceRoute(id)}
                     title={`Trace: ${m.full_name || id}`}
                   >
                     Trace {m.full_name || id}

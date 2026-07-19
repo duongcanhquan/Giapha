@@ -82,14 +82,14 @@
     0 0 0 5px rgba(185, 28, 28, 0.2);
 }
 
-.ft-member__row {
+.ft-member__stack {
   display: flex;
-  align-items: stretch;
+  flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
 .ft-member__main {
-  flex: 1;
   min-width: 0;
 }
 
@@ -146,12 +146,12 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-left: 8px;
-  border-left: 1px dashed rgba(138, 106, 58, 0.45);
+  padding-top: 8px;
+  border-top: 1px dashed rgba(138, 106, 58, 0.45);
 }
 
 .ft-member--deceased .ft-member__spouses {
-  border-left-color: rgba(232, 212, 138, 0.35);
+  border-top-color: rgba(232, 212, 138, 0.35);
 }
 
 .ft-spouse {
