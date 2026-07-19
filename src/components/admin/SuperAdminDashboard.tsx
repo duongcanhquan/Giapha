@@ -167,12 +167,6 @@ export function SuperAdminDashboard() {
                       >
                         Quản lý
                       </Link>
-                      <Link
-                        href={`/tree/${encodeURIComponent(family.id)}`}
-                        className="rounded-[var(--gp-radius-sm)] border border-white/25 px-2.5 py-1 text-xs font-semibold hover:bg-white/10"
-                      >
-                        Tra cứu công khai
-                      </Link>
                     </div>
                   </td>
                 </tr>

@@ -73,8 +73,8 @@ export function FamilyAdminWorkspace({
                 Dòng họ {tree.clan_name}
               </h1>
               <p className="gp-lede mt-1.5 max-w-xl text-sm">
-                Tra cứu trên cây, double-click để cập nhật. Bảng bên dưới hỗ trợ thêm /
-                sửa / xoá nhanh.
+                Đây là gia phả nhà bạn sau khi đăng nhập. Double-click để cập nhật; bảng
+                bên dưới để thêm / sửa / xoá.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

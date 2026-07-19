@@ -101,8 +101,8 @@ export function StoryLanding() {
               {clanStory.heroCaption}
             </h2>
             <p className="gp-lede mt-2 max-w-lg text-sm">
-              Link cây công khai do chủ dòng họ tự copy và gửi trong họ hàng. Không có
-              bản demo chung — mỗi sổ gia phả là một không gian riêng.
+              Ai thuộc dòng họ nào thì đăng nhập là vào đúng gia phả nhà mình. Chưa có sổ
+              thì đăng ký — không có trang tra cứu chung.
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">

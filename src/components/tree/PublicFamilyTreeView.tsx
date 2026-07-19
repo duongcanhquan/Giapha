@@ -88,7 +88,7 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
             </h1>
             <p className="gp-lede mt-1.5 max-w-xl text-sm">
               {family?.settings.description ||
-                "Bản xem công khai — tra cứu tên trên cây. Muốn quản trị? Đăng nhập bằng tài khoản chủ dòng họ."}
+                "Bạn đang xem bản được chia sẻ. Thành viên quản trị hãy đăng nhập để vào đúng gia phả nhà mình."}
             </p>
           </div>
 
@@ -98,8 +98,8 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
               className="gp-btn gp-btn-primary"
               style={{ background: primary }}
             />
-            <Link href={`/dashboard/${familyId}`} className="gp-btn gp-btn-ghost">
-              Quản trị
+            <Link href="/login" className="gp-btn gp-btn-ghost">
+              Đăng nhập
             </Link>
           </div>
         </div>
