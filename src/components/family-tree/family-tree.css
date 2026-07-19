@@ -204,11 +204,15 @@
   transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.ft-placeholder:hover,
-.ft-placeholder:focus-visible {
+.ft-placeholder:not(.ft-placeholder--readonly):hover,
+.ft-placeholder:not(.ft-placeholder--readonly):focus-visible {
   border-color: var(--ft-lacquer);
   background: rgba(255, 253, 248, 0.85);
   outline: none;
+}
+
+.ft-placeholder--readonly {
+  cursor: default;
 }
 
 .ft-placeholder--highlighted {

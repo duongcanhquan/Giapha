@@ -72,6 +72,11 @@ export type FamilyTreeProps = {
   showBackground?: boolean;
   /** Tắt pan/zoom/drag — dùng khi xuất PDF */
   interactive?: boolean;
+  /**
+   * Chế độ khách (public tree): ẩn Thêm/Sửa/Xóa & form placeholder.
+   * Vẫn cho phép pan/zoom/minimap và xem hồ sơ (double-click).
+   */
+  readOnly?: boolean;
 };
 
 function applyHighlight(
@@ -123,7 +128,8 @@ function applyHighlight(
 
 function attachPlaceholderHandler(
   nodes: FamilyFlowNode[],
-  onOpenUpdate: (memberId: string) => void,
+  onOpenUpdate: ((memberId: string) => void) | undefined,
+  readOnly: boolean,
 ): FamilyFlowNode[] {
   return nodes.map((node) => {
     if (node.type !== "placeholder") return node;
@@ -131,7 +137,8 @@ function attachPlaceholderHandler(
       ...node,
       data: {
         ...node.data,
-        onOpenUpdate,
+        readOnly,
+        onOpenUpdate: readOnly ? undefined : onOpenUpdate,
       },
     };
   });
@@ -152,6 +159,7 @@ function FamilyTreeInner({
   showControls = true,
   showBackground = true,
   interactive = true,
+  readOnly = false,
   treeRef,
 }: InnerProps) {
   const { fitView, setCenter, getNode } = useReactFlow();
@@ -161,13 +169,18 @@ function FamilyTreeInner({
   );
 
   const openUpdate = useCallback((memberId: string) => {
+    if (readOnly) return;
     setEditingId(memberId);
-  }, []);
+  }, [readOnly]);
 
   const baseGraph = useMemo(() => buildFlowGraph(data), [data]);
 
   const seeded = useMemo(() => {
-    const withHandlers = attachPlaceholderHandler(baseGraph.nodes, openUpdate);
+    const withHandlers = attachPlaceholderHandler(
+      baseGraph.nodes,
+      openUpdate,
+      readOnly,
+    );
     return applyHighlight(
       withHandlers,
       baseGraph.edges,
@@ -175,7 +188,7 @@ function FamilyTreeInner({
       data.relations,
       highlightId,
     );
-  }, [baseGraph, data.members, data.relations, highlightId, openUpdate]);
+  }, [baseGraph, data.members, data.relations, highlightId, openUpdate, readOnly]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(seeded.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(seeded.edges);
@@ -314,7 +327,7 @@ function FamilyTreeInner({
         {showControls ? <Controls showInteractive={false} /> : null}
       </ReactFlow>
 
-      {editingMember ? (
+      {!readOnly && editingMember ? (
         <div className="ft-modal-backdrop" role="presentation">
           <form
             className="ft-modal"

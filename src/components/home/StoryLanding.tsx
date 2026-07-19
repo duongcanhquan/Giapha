@@ -32,8 +32,8 @@ export function StoryLanding() {
           <a href="#timeline" className="hover:text-white">
             Cột mốc
           </a>
-          <Link href="/cay" className="hover:text-white">
-            Cây gia phả
+          <Link href="/tree/family-demo-nguyen" className="hover:text-white">
+            Cây công khai
           </Link>
           <Link href="/register" className="hover:text-white">
             Đăng ký
@@ -97,7 +97,7 @@ export function StoryLanding() {
               Tạo gia phả của bạn
             </Link>
             <Link
-              href="/cay"
+              href="/tree/family-demo-nguyen"
               className="inline-flex items-center border border-[#fffdf8]/45 px-5 py-3 text-sm font-semibold text-[#fffdf8] transition hover:bg-[#fffdf8]/10"
             >
               Xem bản demo
@@ -125,10 +125,10 @@ export function StoryLanding() {
             </p>
           </div>
           <Link
-            href="/cay"
+            href="/tree/family-demo-nguyen"
             className="inline-flex shrink-0 bg-[#1c1410] px-5 py-3 text-sm font-semibold text-[#fffdf8]"
           >
-            Vào cây tương tác
+            Vào cây công khai
           </Link>
         </div>
       </section>

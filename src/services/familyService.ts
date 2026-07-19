@@ -5,12 +5,20 @@ import {
   getDocs,
   query,
   serverTimestamp,
+  updateDoc,
   where,
   writeBatch,
   type DocumentReference,
 } from "firebase/firestore";
 import { getDb, getFirebaseAuth } from "@/lib/firebase/client";
-import type { CreateFamilyInput, Family } from "@/types/family";
+import type {
+  CreateFamilyInput,
+  Family,
+  FamilyBranch,
+  FamilyTheme,
+  UpdateFamilyAppearanceInput,
+  UpdateFamilyBranchesInput,
+} from "@/types/family";
 
 const FAMILIES = "families";
 const FAMILY_MEMBERS = "family_members";
@@ -52,12 +60,28 @@ export async function createFamily(input: CreateFamilyInput): Promise<Family> {
   };
 
   const batch = writeBatch(getDb());
+  const defaultBranches: FamilyBranch[] = [
+    {
+      id: DEFAULT_BRANCH,
+      name: "Chi chính",
+      description: "Nhánh hương hỏa mặc định",
+    },
+  ];
+  const defaultTheme: FamilyTheme = {
+    primary_color: "#7a1f1f",
+    accent_color: "#c9a227",
+    surface_color: "#e9eef3",
+    background_image: null,
+  };
+
   batch.set(ref, {
     name: family.name,
     description: family.description,
     owner_id: family.owner_id,
     created_at: serverTimestamp(),
     default_branch_id: DEFAULT_BRANCH,
+    branches: defaultBranches,
+    theme: defaultTheme,
   });
 
   batch.set(founderRef, {
@@ -93,7 +117,30 @@ export async function getFamily(familyId: string): Promise<Family | null> {
     description: String(data.description ?? ""),
     owner_id: String(data.owner_id ?? ""),
     created_at: data.created_at?.toDate?.()?.toISOString?.() ?? null,
+    default_branch_id: String(data.default_branch_id ?? DEFAULT_BRANCH),
+    theme: (data.theme as FamilyTheme) ?? undefined,
+    branches: (data.branches as FamilyBranch[]) ?? undefined,
   };
+}
+
+export async function updateFamilyAppearance(
+  familyId: string,
+  input: UpdateFamilyAppearanceInput,
+): Promise<void> {
+  await updateDoc(familyRef(familyId), {
+    theme: input.theme,
+    updated_at: serverTimestamp(),
+  });
+}
+
+export async function updateFamilyBranches(
+  familyId: string,
+  input: UpdateFamilyBranchesInput,
+): Promise<void> {
+  await updateDoc(familyRef(familyId), {
+    branches: input.branches,
+    updated_at: serverTimestamp(),
+  });
 }
 
 /** Các dòng họ mà user hiện tại là owner (Admin) */

@@ -48,7 +48,12 @@ npm run dev
 | `/` | Landing kể chuyện |
 | `/register` · `/login` | Auth |
 | `/onboarding/create-family` | Tạo gia phả (Admin dòng họ) |
-| `/cay` | Cây demo / cây theo `?family_id=` |
+| `/tree/[familyId]` | **Public** — FamilyTree read-only + Copy Link Chia Sẻ |
+| `/dashboard/[familyId]` | **Admin** — Auth Guard (Owner / Branch Admin) |
+| `/dashboard/[familyId]/members` | Quản lý thành viên |
+| `/dashboard/[familyId]/branches` | Quản lý nhánh |
+| `/dashboard/[familyId]/appearance` | Ảnh nền & màu sắc dòng họ |
+| `/cay` | Bản demo nội bộ (legacy) |
 
 ## Services
 

@@ -33,8 +33,8 @@ export function CreateFamilyForm() {
 
     try {
       const family = await createFamily({ name, description });
-      // Admin dòng họ = owner_id trên document families (Security Rules)
-      router.replace(`/cay?family_id=${encodeURIComponent(family.id)}`);
+      // Admin dòng họ = owner_id → vào dashboard quản trị
+      router.replace(`/dashboard/${encodeURIComponent(family.id)}`);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Không tạo được gia phả.";

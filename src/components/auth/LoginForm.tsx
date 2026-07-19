@@ -25,7 +25,7 @@ export function LoginForm() {
       if (owned.length === 0) {
         router.replace("/onboarding/create-family");
       } else {
-        router.replace(`/cay?family_id=${encodeURIComponent(owned[0].id)}`);
+        router.replace(`/dashboard/${encodeURIComponent(owned[0].id)}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Đăng nhập thất bại.");

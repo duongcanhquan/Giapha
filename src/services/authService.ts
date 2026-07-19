@@ -6,7 +6,7 @@ import {
   updateProfile,
   type User,
 } from "firebase/auth";
-import { getFirebaseAuth } from "@/lib/firebase/client";
+import { getFirebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
 
 export type RegisterInput = {
   email: string;
@@ -15,6 +15,9 @@ export type RegisterInput = {
 };
 
 export async function registerWithEmail(input: RegisterInput): Promise<User> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase chưa cấu hình — không thể đăng ký.");
+  }
   const auth = getFirebaseAuth();
   const cred = await createUserWithEmailAndPassword(
     auth,
@@ -31,19 +34,31 @@ export async function signInWithEmail(
   email: string,
   password: string,
 ): Promise<User> {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase chưa cấu hình — không thể đăng nhập.");
+  }
   const auth = getFirebaseAuth();
   const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
   return cred.user;
 }
 
 export async function signOutUser(): Promise<void> {
+  if (!isFirebaseConfigured()) return;
   await signOut(getFirebaseAuth());
 }
 
 export function getCurrentUser(): User | null {
+  if (!isFirebaseConfigured()) return null;
   return getFirebaseAuth().currentUser;
 }
 
+/**
+ * Subscribe auth. Nếu Firebase chưa cấu hình → gọi callback(null) một lần.
+ */
 export function subscribeAuth(callback: (user: User | null) => void): () => void {
+  if (!isFirebaseConfigured()) {
+    callback(null);
+    return () => undefined;
+  }
   return onAuthStateChanged(getFirebaseAuth(), callback);
 }
