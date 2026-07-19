@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { buildMaterializedPath } from "./materialized-path.ts";
+import { buildMaterializedPath } from "./materialized-path";
 
 function run() {
   const parentPath = ["m1", "m2", "placeholder-x"];
