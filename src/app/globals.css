@@ -24,8 +24,10 @@
   --gp-scroll-edge: rgba(125, 101, 64, 0.28);
   --gp-mist: #d8ddd8;
 
-  --gp-living: #2d6b48;
-  --gp-living-glow: rgba(45, 107, 72, 0.4);
+  --gp-living: #3d7a58;
+  --gp-living-glow: rgba(61, 122, 88, 0.22);
+  --gp-deceased: #6b6460;
+  --gp-deceased-soft: rgba(107, 100, 96, 0.14);
   --gp-path: #a31818;
 
   --gp-seal: #9f1d1d;
@@ -217,7 +219,7 @@ body {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  min-height: min(68vh, 640px);
+  min-height: min(52vh, 520px);
   height: calc(100dvh - 11.5rem);
   border-radius: var(--gp-radius-lg);
   overflow: hidden;
@@ -228,7 +230,7 @@ body {
   flex: 1 1 auto;
   width: 100%;
   height: 100% !important;
-  min-height: 480px;
+  min-height: 360px;
 }
 
 .gp-panel-inset {

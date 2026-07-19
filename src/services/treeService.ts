@@ -105,39 +105,31 @@ function mapRelation(id: string, data: Record<string, unknown>): FamilyRelation 
   };
 }
 
-function emptyTree(familyId: string): {
-  family: Family | null;
-  tree: FamilyTreeData;
-} {
-  return {
-    family: null,
-    tree: {
-      family_id: familyId,
-      clan_name: "Chưa có dữ liệu",
-      members: [],
-      relations: [],
-      branches: [],
-    },
-  };
-}
-
 export async function fetchFamilyTree(
   familyId: string,
 ): Promise<{ family: Family | null; tree: FamilyTreeData }> {
+  if (!familyId.trim()) {
+    throw new Error("Thiếu mã dòng họ trên link chia sẻ.");
+  }
+
   if (!isFirebaseConfigured()) {
-    return emptyTree(familyId);
+    throw new Error(
+      "Ứng dụng chưa cấu hình Firebase — không tải được cây công khai.",
+    );
   }
 
   try {
     const family = await getFamily(familyId);
     const db = getDb();
 
-    const membersSnap = await getDocs(
-      query(collection(db, MEMBERS), where("family_id", "==", familyId)),
-    );
-    const relationsSnap = await getDocs(
-      query(collection(db, RELATIONS), where("family_id", "==", familyId)),
-    );
+    const [membersSnap, relationsSnap] = await Promise.all([
+      getDocs(
+        query(collection(db, MEMBERS), where("family_id", "==", familyId)),
+      ),
+      getDocs(
+        query(collection(db, RELATIONS), where("family_id", "==", familyId)),
+      ),
+    ]);
 
     const members = membersSnap.docs.map((d) =>
       mapMember(d.id, d.data() as Record<string, unknown>),
@@ -147,7 +139,7 @@ export async function fetchFamilyTree(
     );
 
     if (!family && members.length === 0) {
-      return emptyTree(familyId);
+      throw new Error("Không tìm thấy dòng họ hoặc link đã hết hiệu lực.");
     }
 
     return {
@@ -162,6 +154,7 @@ export async function fetchFamilyTree(
     };
   } catch (error) {
     console.warn("fetchFamilyTree:", error);
-    return emptyTree(familyId);
+    if (error instanceof Error) throw error;
+    throw new Error("Không tải được cây gia phả. Thử lại sau.");
   }
 }

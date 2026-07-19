@@ -659,7 +659,8 @@ function FamilyTreeInner({
         onNodesChange={interactive ? onNodesChange : undefined}
         onEdgesChange={interactive ? onEdgesChange : undefined}
         onNodeClick={(_, node) => {
-          if (!interactive) return;
+          // Cho phép xem / tìm / highlight cả khi readOnly (link chia sẻ công khai)
+          if (!interactive && !onMemberOpen) return;
           if (clickTimerRef.current != null) {
             window.clearTimeout(clickTimerRef.current);
           }
@@ -676,6 +677,10 @@ function FamilyTreeInner({
             clickTimerRef.current = null;
           }
           revealAndFocus(node.id);
+          if (readOnly) {
+            onMemberOpen?.(node.id);
+            return;
+          }
           if (onMemberDoubleClick) onMemberDoubleClick(node.id);
           else onMemberOpen?.(node.id);
         }}
@@ -701,7 +706,7 @@ function FamilyTreeInner({
         panOnDrag={interactive}
         zoomOnScroll={interactive}
         zoomOnPinch={interactive}
-        nodesDraggable={interactive && !isMobile}
+        nodesDraggable={interactive && !readOnly && !isMobile}
         nodesConnectable={false}
         elementsSelectable={interactive}
         selectionOnDrag={false}
@@ -718,7 +723,7 @@ function FamilyTreeInner({
             nodeColor={(node) => {
               if (node.type === "placeholder") return "#a8a29a";
               const status = (node.data as { lifeStatus?: string }).lifeStatus;
-              return status === "DECEASED" ? "#5a4a35" : "#1f7a45";
+              return status === "DECEASED" ? "#6b6460" : "#3d7a58";
             }}
           />
         ) : null}
