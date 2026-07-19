@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useRef, useState } from "react";
 import { FamilyTree, type FamilyTreeHandle } from "@/components/family-tree";
 import { ExportTreeButton } from "@/components/export/ExportTreeButton";
 import { ProfileModal } from "@/components/profile/ProfileModal";
 import { sampleFamilyTree } from "@/data/sample-family";
 import type { FamilyMember, FamilyTreeData, PlaceholderUpdatePayload } from "@/types/genealogy";
 
-export default function FamilyTreePage() {
+function FamilyTreePageInner() {
+  const searchParams = useSearchParams();
+  const familyId = searchParams.get("family_id");
   const treeRef = useRef<FamilyTreeHandle>(null);
   const [data, setData] = useState<FamilyTreeData>(sampleFamilyTree);
   const [profileMember, setProfileMember] = useState<FamilyMember | null>(null);
@@ -58,6 +61,20 @@ export default function FamilyTreePage() {
             <p className="mt-1 max-w-2xl text-sm text-stone-600">
               Double-click một người để xem hồ sơ · Trace route · Xuất PDF khổ A0 để in ấn.
             </p>
+            {familyId ? (
+              <p className="mt-2 text-xs font-medium text-[#7a1f1f]">
+                Tenant <code className="rounded bg-white/80 px-1">{familyId}</code>
+                {" · "}đang xem bản demo UI; nối Firestore query theo family_id ở phase tiếp.
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-stone-500">
+                Bản demo công khai.{" "}
+                <Link href="/register" className="font-semibold text-[#7a1f1f] hover:underline">
+                  Đăng ký
+                </Link>{" "}
+                để tạo gia phả riêng.
+              </p>
+            )}
           </div>
           <ExportTreeButton
             data={data}
@@ -112,5 +129,19 @@ export default function FamilyTreePage() {
         onOpenChange={setProfileOpen}
       />
     </main>
+  );
+}
+
+export default function FamilyTreePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-screen place-items-center text-sm text-stone-500">
+          Đang tải cây gia phả…
+        </main>
+      }
+    >
+      <FamilyTreePageInner />
+    </Suspense>
   );
 }

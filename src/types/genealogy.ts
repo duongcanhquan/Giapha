@@ -1,6 +1,5 @@
 /**
- * Phase 1 — Cấu trúc dữ liệu gia phả (Vietnamese genealogy).
- * Các type này là nền cho FamilyTree (React Flow), Security Rules và Services.
+ * Cấu trúc dữ liệu gia phả — multi-tenant (cách ly theo `family_id`).
  */
 
 /** Trạng thái sinh tồn của thành viên */
@@ -12,8 +11,12 @@ export type RelationshipType = "BLOOD" | "ADOPTED";
 /** Giới tính (tuỳ chọn, phục vụ hiển thị) */
 export type Gender = "MALE" | "FEMALE" | "UNKNOWN";
 
-/** Vai trò trong custom claims Firebase Auth */
-export type AuthRole = "super_admin" | "branch_admin" | "member";
+/**
+ * Vai trò Auth:
+ * - family owner: xác định qua `families.owner_id` (không cần claim)
+ * - branch_admin: custom claims `{ role, family_id, branch_id }`
+ */
+export type AuthRole = "branch_admin" | "member";
 
 /** Vợ/chồng gắn kèm người chính trên node */
 export interface SpouseInfo {
@@ -25,7 +28,7 @@ export interface SpouseInfo {
 
 /**
  * Thông tin liên hệ nhạy cảm.
- * Lưu ở subcollection `members/{id}/sensitive/contact` — khách không đọc được.
+ * Lưu ở `family_members/{id}/sensitive/contact` — khách không đọc được.
  */
 export interface MemberContact {
   phone?: string | null;
@@ -34,11 +37,10 @@ export interface MemberContact {
   notes?: string | null;
 }
 
-/** Logic vị trí trên cây / phân nhánh quản trị */
+/** Logic vị trí trên cây / phân nhánh (bổ sung cho UI) */
 export interface TreeLogic {
-  /** Id nhánh do branch_admin quản lý */
+  /** Đồng bộ với `branch_id` top-level */
   branch_id: string;
-  /** Tọa độ / thứ tự hiển thị trên cây (công khai cho khách) */
   position?: {
     x?: number;
     y?: number;
@@ -48,75 +50,64 @@ export interface TreeLogic {
 
 /** Các loại tên trong truyền thống gia phả */
 export interface MemberNames {
-  /** Tên húy (tên thật khi còn sống) */
   huy?: string | null;
-  /** Tên thụy / thụy hiệu (sau khi mất) */
   thuy?: string | null;
-  /** Tên thường gọi / tự */
   tu?: string | null;
 }
 
 /**
- * Thành viên trong cây gia phả (document công khai trên `members/{id}`).
- * KHÔNG chứa `contact` — contact nằm ở subcollection riêng.
- * `path`: chuỗi id từ Thủy tổ → bản thân (Materialized Path).
+ * Document trên collection `family_members`.
+ * BẮT BUỘC có `family_id` + `branch_id` để cách ly SaaS / phân quyền trưởng nhánh.
  */
 export interface FamilyMember {
   id: string;
+  /** Tenant — id document trong collection `families` */
+  family_id: string;
+  /** Nhánh quản trị (top-level, dùng trong Security Rules) */
+  branch_id: string;
   full_name: string;
-  /** Đời thứ mấy (Thủy tổ = 1) */
   generation: number;
   life_status: LifeStatus;
   gender?: Gender;
-  /** Người giữ hương hỏa */
   is_huong_hoa?: boolean;
-  /** Khuyết danh — render PlaceholderNode */
   is_placeholder: boolean;
   spouses: SpouseInfo[];
-  /** Id cha/mẹ trực tiếp (0–2) */
   parent_ids: string[];
-  /**
-   * Đường dẫn từ Thủy tổ đến người này (gồm cả `id` ở cuối).
-   * Ví dụ: ["founder", "gen2-a", "self"]
-   */
   path: string[];
   tree_logic: TreeLogic;
   names?: MemberNames;
-  /** Tiểu sử ngắn */
   biography?: string | null;
   birth_year?: number | null;
   death_year?: number | null;
-  /** Ngày mất dương lịch ISO `YYYY-MM-DD` */
   death_date?: string | null;
-  /** Ngày giỗ âm lịch (đã dịch), dạng `YYYY-M-D` */
   lunar_death_date?: string | null;
   notes?: string;
   created_at?: string;
   updated_at?: string;
 }
 
-/** Document đầy đủ khi admin đã load thêm contact */
 export interface FamilyMemberWithContact extends FamilyMember {
   contact?: MemberContact | null;
 }
 
-/** Cạnh quan hệ cha mẹ → con trên cây */
+/** Cạnh trên collection `family_relations` */
 export interface FamilyRelation {
   id: string;
+  family_id: string;
+  branch_id: string;
   source: string;
   target: string;
   relationship_type: RelationshipType;
   tree_logic?: Pick<TreeLogic, "branch_id">;
 }
 
-/** Toàn bộ dữ liệu một dòng họ để render cây */
 export interface FamilyTreeData {
+  family_id?: string;
   clan_name: string;
   members: FamilyMember[];
   relations: FamilyRelation[];
 }
 
-/** Payload khi cập nhật placeholder (khuyết danh → có tên) */
 export interface PlaceholderUpdatePayload {
   id: string;
   full_name: string;
@@ -126,10 +117,9 @@ export interface PlaceholderUpdatePayload {
   death_year?: number | null;
 }
 
-/** Input tạo thành viên mới (id do service sinh nếu bỏ trống) */
 export type AddMemberInput = {
+  family_id: string;
   full_name: string;
-  /** Cha/mẹ để nối Materialized Path (có thể là PlaceholderNode) */
   parent_id: string;
   life_status?: LifeStatus;
   gender?: Gender;
@@ -137,17 +127,18 @@ export type AddMemberInput = {
   spouses?: SpouseInfo[];
   relationship_type?: RelationshipType;
   contact?: MemberContact;
+  branch_id?: string;
   tree_logic?: Partial<TreeLogic>;
   birth_year?: number | null;
   death_year?: number | null;
   notes?: string;
-  /** Tuỳ chọn: truyền id cố định; mặc định dùng doc id Firestore */
   id?: string;
 };
 
-/** Input tạo PlaceholderNode (khuyết danh) */
 export type AddPlaceholderInput = {
+  family_id: string;
   parent_id: string;
+  branch_id?: string;
   tree_logic?: Partial<TreeLogic>;
   relationship_type?: RelationshipType;
   generation?: number;
@@ -155,9 +146,8 @@ export type AddPlaceholderInput = {
   id?: string;
 };
 
-/** Input cập nhật thành viên (không cho ghi đè `path` / `id` tuỳ tiện từ client thường) */
 export type UpdateMemberInput = Partial<
-  Omit<FamilyMember, "id" | "path" | "created_at">
+  Omit<FamilyMember, "id" | "path" | "family_id" | "created_at">
 > & {
   contact?: MemberContact | null;
 };

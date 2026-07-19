@@ -1,109 +1,148 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    /* ─── Helpers ─────────────────────────────────────────────── */
+    /* ─── Auth helpers ───────────────────────────────────────── */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isSuperAdmin() {
-      return isSignedIn() && request.auth.token.role == 'super_admin';
+    function familyDoc(familyId) {
+      return get(/databases/$(database)/documents/families/$(familyId)).data;
     }
 
-    function isBranchAdmin() {
-      return isSignedIn() && request.auth.token.role == 'branch_admin';
-    }
-
-    function managedBranchId() {
-      return request.auth.token.managed_branch_id;
-    }
-
-    function memberBranchId(data) {
-      return data.tree_logic.branch_id;
-    }
-
-    function managesResourceBranch() {
-      return isBranchAdmin()
-        && memberBranchId(resource.data) == managedBranchId();
-    }
-
-    function managesRequestBranch() {
-      return isBranchAdmin()
-        && memberBranchId(request.resource.data) == managedBranchId();
+    /** Admin dòng họ = owner của document families/{familyId} */
+    function isFamilyOwner(familyId) {
+      return isSignedIn()
+        && familyDoc(familyId).owner_id == request.auth.uid;
     }
 
     /**
-     * Document công khai không được chứa object `contact`.
-     * Contact chỉ được lưu ở subcollection `sensitive/contact`.
+     * Branch Admin (Trưởng nhánh): custom claims
+     * - request.auth.token.family_id
+     * - request.auth.token.branch_id
      */
-    function hasNoContactOnMember() {
+    function isBranchAdmin() {
+      return isSignedIn()
+        && request.auth.token.role == 'branch_admin'
+        && request.auth.token.family_id is string
+        && request.auth.token.branch_id is string;
+    }
+
+    function branchAdminMatches(data) {
+      return isBranchAdmin()
+        && data.family_id == request.auth.token.family_id
+        && data.branch_id == request.auth.token.branch_id;
+    }
+
+    function hasFamilyId(data) {
+      return data.keys().hasAll(['family_id'])
+        && data.family_id is string
+        && data.family_id.size() > 0;
+    }
+
+    function hasNoContactField() {
       return !request.resource.data.keys().hasAny(['contact']);
     }
 
-    /**
-     * Trưởng nhánh không được xoá người có path dài hơn 2
-     * (tránh đứt gãy cây dưới đời thứ 2).
-     */
     function pathTooDeepToDelete() {
       return resource.data.keys().hasAll(['path'])
         && resource.data.path is list
         && resource.data.path.size() > 2;
     }
 
-    function branchAdminCanDelete() {
-      return managesResourceBranch() && !pathTooDeepToDelete();
-    }
+    /* ─── families ───────────────────────────────────────────── */
 
-    /* ─── Members (public tree fields) ────────────────────────── */
-
-    match /members/{memberId} {
+    match /families/{familyId} {
       /**
-       * Khách (chưa login): chỉ đọc document công khai
-       * (tên, trạng thái sinh tử, vị trí cây / tree_logic, path, …).
-       * Không có field `contact` trên document này.
+       * Public read: ai cũng đọc được metadata dòng họ
+       * (cần biết / có family_id để truy cập sâu hơn ở client).
        */
       allow read: if true;
 
-      allow create: if isSuperAdmin()
-        || (managesRequestBranch() && hasNoContactOnMember());
+      /** Đăng ký onboarding: user tự tạo dòng họ với chính mình là owner */
+      allow create: if isSignedIn()
+        && request.resource.data.owner_id == request.auth.uid
+        && request.resource.data.keys().hasAll(['name', 'owner_id']);
 
-      allow update: if isSuperAdmin()
-        || (managesResourceBranch()
-            && managesRequestBranch()
-            && hasNoContactOnMember());
+      allow update, delete: if isFamilyOwner(familyId);
+    }
 
-      allow delete: if isSuperAdmin() || branchAdminCanDelete();
+    /* ─── family_members (bắt buộc có family_id) ─────────────── */
 
-      /**
-       * Contact nhạy cảm (sđt, địa chỉ) — tách subcollection.
-       * Khách: DENY. Super admin: full. Branch admin: cùng branch_id.
-       */
+    match /family_members/{memberId} {
+      /** Public read khi document có family_id (cách ly theo tenant ở tầng dữ liệu) */
+      allow read: if hasFamilyId(resource.data);
+
+      allow create: if hasFamilyId(request.resource.data)
+        && hasNoContactField()
+        && (
+          isFamilyOwner(request.resource.data.family_id)
+          || branchAdminMatches(request.resource.data)
+        );
+
+      allow update: if hasFamilyId(resource.data)
+        && hasFamilyId(request.resource.data)
+        && request.resource.data.family_id == resource.data.family_id
+        && hasNoContactField()
+        && (
+          isFamilyOwner(resource.data.family_id)
+          || (
+            branchAdminMatches(resource.data)
+            && branchAdminMatches(request.resource.data)
+          )
+        );
+
+      allow delete: if hasFamilyId(resource.data)
+        && (
+          isFamilyOwner(resource.data.family_id)
+          || (branchAdminMatches(resource.data) && !pathTooDeepToDelete())
+        );
+
+      /* Contact nhạy cảm — không public */
       match /sensitive/{docId} {
-        allow read: if isSuperAdmin()
-          || (isBranchAdmin()
-              && get(/databases/$(database)/documents/members/$(memberId))
-                    .data.tree_logic.branch_id == managedBranchId());
-
-        allow write: if isSuperAdmin()
-          || (isBranchAdmin()
-              && get(/databases/$(database)/documents/members/$(memberId))
-                    .data.tree_logic.branch_id == managedBranchId());
+        allow read, write: if isSignedIn()
+          && hasFamilyId(
+            get(/databases/$(database)/documents/family_members/$(memberId)).data
+          )
+          && (
+            isFamilyOwner(
+              get(/databases/$(database)/documents/family_members/$(memberId))
+                .data.family_id
+            )
+            || branchAdminMatches(
+              get(/databases/$(database)/documents/family_members/$(memberId)).data
+            )
+          );
       }
     }
 
-    /* ─── Relations (parent → child edges) ────────────────────── */
+    /* ─── family_relations ───────────────────────────────────── */
 
-    match /relations/{relationId} {
-      allow read: if true;
+    match /family_relations/{relationId} {
+      allow read: if hasFamilyId(resource.data);
 
-      allow create, update: if isSuperAdmin()
-        || (isBranchAdmin()
-            && request.resource.data.tree_logic.branch_id == managedBranchId());
+      allow create: if hasFamilyId(request.resource.data)
+        && (
+          isFamilyOwner(request.resource.data.family_id)
+          || branchAdminMatches(request.resource.data)
+        );
 
-      allow delete: if isSuperAdmin()
-        || (isBranchAdmin()
-            && resource.data.tree_logic.branch_id == managedBranchId());
+      allow update: if hasFamilyId(resource.data)
+        && request.resource.data.family_id == resource.data.family_id
+        && (
+          isFamilyOwner(resource.data.family_id)
+          || (
+            branchAdminMatches(resource.data)
+            && branchAdminMatches(request.resource.data)
+          )
+        );
+
+      allow delete: if hasFamilyId(resource.data)
+        && (
+          isFamilyOwner(resource.data.family_id)
+          || branchAdminMatches(resource.data)
+        );
     }
   }
 }

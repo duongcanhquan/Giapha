@@ -35,6 +35,9 @@ export function StoryLanding() {
           <Link href="/cay" className="hover:text-white">
             Cây gia phả
           </Link>
+          <Link href="/register" className="hover:text-white">
+            Đăng ký
+          </Link>
         </nav>
       </header>
 
@@ -88,17 +91,17 @@ export function StoryLanding() {
             transition={{ duration: 0.55, delay: 0.28 }}
           >
             <Link
-              href="/cay"
+              href="/register"
               className="inline-flex items-center bg-[#7a1f1f] px-5 py-3 text-sm font-semibold text-[#fffdf8] transition hover:bg-[#5e1717]"
             >
-              Xem cây gia phả
+              Tạo gia phả của bạn
             </Link>
-            <a
-              href="#timeline"
+            <Link
+              href="/cay"
               className="inline-flex items-center border border-[#fffdf8]/45 px-5 py-3 text-sm font-semibold text-[#fffdf8] transition hover:bg-[#fffdf8]/10"
             >
-              Đọc cột mốc
-            </a>
+              Xem bản demo
+            </Link>
           </motion.div>
         </div>
       </section>

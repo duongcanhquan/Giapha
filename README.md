@@ -1,88 +1,71 @@
 # Giapha
 
-Ứng dụng cây gia phả tiếng Việt — types, React Flow `FamilyTree`, Firebase Rules & Services.
+Nền tảng SaaS cây gia phả tiếng Việt — nhiều dòng họ, React Flow, Firebase Auth/Firestore.
 
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind
 - [`@xyflow/react`](https://reactflow.dev/) (React Flow v12)
-- Framer Motion (fade / highlight)
-- Firebase Auth + Firestore
-- Lucide icons (hương hỏa, hoa sen)
+- Framer Motion · Firebase Auth + Firestore · lunar-javascript · html2canvas/jspdf
 
-## Cấu trúc chính
+## Collections (multi-tenant)
 
-| Path | Mô tả |
-|------|--------|
-| `src/types/genealogy.ts` | Types: `FamilyMember`, `tree_logic`, `path`, `MemberContact`, … |
-| `src/components/family-tree/` | `FamilyTree`, `MemberNode`, `PlaceholderNode`, `RelationshipEdge` |
-| `src/services/memberService.ts` | CRUD: `addMember`, `updateMember`, `addPlaceholderNode` |
-| `firestore.rules` | Security Rules (guest / super_admin / branch_admin) |
-| `src/lib/firebase/client.ts` | Firebase client init |
-| `src/data/sample-family.ts` | Dữ liệu mẫu để demo |
+| Collection | Mô tả |
+|------------|--------|
+| `families` | `{ id, name, description, owner_id, created_at }` |
+| `family_members` | Thành viên — **bắt buộc** `family_id` + `branch_id` |
+| `family_relations` | Cạnh cha→con — có `family_id` + `branch_id` |
+| `family_members/{id}/sensitive/contact` | SĐT/địa chỉ — không public |
 
-## Chạy local
+## Security Rules
 
-```bash
-npm install
-npm run dev
-```
-
-- `/` — landing kể chuyện dòng họ (scroll timeline)
-- `/cay` — cây gia phả, Profile Modal (double-click), xuất PDF A0
-
-## FamilyTree API
-
-```tsx
-const ref = useRef<FamilyTreeHandle>(null);
-
-<FamilyTree
-  ref={ref}
-  data={familyTreeData}
-  onPlaceholderUpdate={(payload) => { /* ... */ }}
-/>
-
-ref.current?.highlightPath("member-id"); // mờ node/edge ngoài path, tô đỏ/vàng đường Thủy tổ → target, center camera
-ref.current?.clearHighlight();
-```
-
-### Custom nodes & edges
-
-- **MemberNode** — tên, đời thứ N, icon hương hỏa; đang sống (viền sáng) / đã mất (nền đồng + hoa sen); spouses cạnh người chính.
-- **PlaceholderNode** — `is_placeholder === true`: viền dashed, opacity 0.5, `? Khuyết danh`, click mở form cập nhật.
-- **RelationshipEdge** — `relationship_type === 'ADOPTED'`: nét đứt animated.
-
-## Firebase Security & Services
-
-### Roles (custom claims)
-
-| Claim | Quyền |
-|-------|--------|
-| *(chưa login)* | Read document `members` công khai (tên, sinh tử, `tree_logic`, `path`). **Không** đọc `members/{id}/sensitive/contact`. |
-| `role == 'super_admin'` | Full Read/Write |
-| `role == 'branch_admin'` | Create/Update khi `tree_logic.branch_id == managed_branch_id`. Delete bị chặn nếu `path.size() > 2`. |
-
-Deploy rules:
+| Ai | Quyền |
+|----|--------|
+| Public | Read `families` + `family_members` / `family_relations` khi có `family_id` |
+| Family Owner (`families.owner_id == auth.uid`) | Full CRUD mọi `family_members` của `family_id` đó |
+| Branch Admin (claims `role`, `family_id`, `branch_id`) | Write khi `family_id` + `branch_id` khớp; delete chặn nếu `path.size() > 2` |
 
 ```bash
 firebase deploy --only firestore:rules
 ```
 
-### memberService
+## Onboarding
 
-```ts
-import { addMember, updateMember, addPlaceholderNode } from "@/services/memberService";
+1. `/register` — Firebase Auth (email/password)
+2. Tự chuyển `/onboarding/create-family`
+3. Submit → tạo `families` (owner = UID) + seed Thủy tổ → `/cay?family_id=…`
 
-// path = parent.path + [newId] — kể cả khi parent là PlaceholderNode
-await addMember({ full_name: "Nguyễn Văn A", parent_id: "parent-or-placeholder-id" });
-await addPlaceholderNode({ parent_id: "parent-id" });
-await updateMember("id", { full_name: "Tên mới", contact: { phone: "..." } });
+## Chạy local
+
+```bash
+cp .env.example .env.local   # điền NEXT_PUBLIC_FIREBASE_*
+npm install
+npm run dev
 ```
 
-Copy `.env.example` → `.env.local` và điền Firebase config.
+| Route | Nội dung |
+|-------|----------|
+| `/` | Landing kể chuyện |
+| `/register` · `/login` | Auth |
+| `/onboarding/create-family` | Tạo gia phả (Admin dòng họ) |
+| `/cay` | Cây demo / cây theo `?family_id=` |
 
-## Trải nghiệm văn hóa
+## Services
 
-- **Profile Modal** (shadcn Dialog): double-click node → tên húy/thụy, tiểu sử, form tính ngày giỗ.
-- **Âm lịch**: `src/lib/lunar/death-date.ts` dùng `lunar-javascript` dịch `death_date` → `lunar_death_date`.
-- **Xuất in ấn**: `ExportTreeButton` clone cây, ẩn control/minimap/grid, xuất PDF khổ A0 (`html2canvas` + `jspdf`).
+```ts
+import { createFamily } from "@/services/familyService";
+import { addMember, addPlaceholderNode, updateMember } from "@/services/memberService";
+
+await createFamily({ name: "Nguyễn", description: "…" });
+await addMember({
+  family_id: "…",
+  full_name: "Nguyễn Văn A",
+  parent_id: "founder-or-placeholder-id",
+});
+```
+
+## FamilyTree & văn hóa
+
+- Trace route, PlaceholderNode, ADOPTED dashed edges
+- Double-click → Profile Modal (húy/thụy, tiểu sử, lịch giỗ âm)
+- `ExportTreeButton` → PDF khổ A0

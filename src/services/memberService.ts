@@ -23,8 +23,8 @@ import type {
 
 export { buildMaterializedPath } from "@/lib/genealogy/materialized-path";
 
-const MEMBERS = "members";
-const RELATIONS = "relations";
+const MEMBERS = "family_members";
+const RELATIONS = "family_relations";
 const SENSITIVE = "sensitive";
 const CONTACT_DOC = "contact";
 
@@ -62,7 +62,11 @@ async function writeContact(
 ): Promise<void> {
   if (contact === undefined) return;
   if (contact === null) {
-    await setDoc(contactRef(memberId), { phone: null, address: null, email: null });
+    await setDoc(contactRef(memberId), {
+      phone: null,
+      address: null,
+      email: null,
+    });
     return;
   }
   await setDoc(
@@ -77,29 +81,25 @@ async function writeContact(
   );
 }
 
-function publicMemberPayload(
-  member: Omit<FamilyMember, "created_at" | "updated_at"> & {
-    created_at?: string;
-    updated_at?: string;
-  },
-): Record<string, unknown> {
-  // Không bao giờ ghi `contact` lên document công khai (Security Rules).
-  const { ...rest } = member;
+function publicMemberPayload(member: FamilyMember): Record<string, unknown> {
   return {
-    ...rest,
+    ...member,
     updated_at: nowIso(),
   };
 }
 
 async function createRelation(params: {
+  familyId: string;
+  branchId: string;
   parentId: string;
   childId: string;
   relationshipType: RelationshipType;
-  branchId: string;
 }): Promise<FamilyRelation> {
   const ref = doc(relationsCol());
   const relation: FamilyRelation = {
     id: ref.id,
+    family_id: params.familyId,
+    branch_id: params.branchId,
     source: params.parentId,
     target: params.childId,
     relationship_type: params.relationshipType,
@@ -110,24 +110,36 @@ async function createRelation(params: {
 }
 
 /**
- * Thêm thành viên mới vào cây.
- * Tự tính `path` = path(parent_id) + [newId] — kể cả khi nối qua PlaceholderNode.
+ * Thêm thành viên — bắt buộc `family_id`.
+ * `path` = path(parent) + [newId] (kể cả qua PlaceholderNode).
  */
 export async function addMember(
   input: AddMemberInput,
 ): Promise<{ member: FamilyMember; relation: FamilyRelation }> {
+  if (!input.family_id) {
+    throw new Error("family_id là bắt buộc khi thêm thành viên.");
+  }
+
   const parent = await loadParent(input.parent_id);
+  if (parent.family_id !== input.family_id) {
+    throw new Error("parent_id không thuộc cùng family_id.");
+  }
+
   const ref = input.id ? memberRef(input.id) : doc(membersCol());
   const id = ref.id;
-
   const branchId =
-    input.tree_logic?.branch_id ?? parent.tree_logic.branch_id;
+    input.branch_id ??
+    input.tree_logic?.branch_id ??
+    parent.branch_id ??
+    parent.tree_logic.branch_id;
 
   const path = buildMaterializedPath(parent.path, id);
   const generation = parent.generation + 1;
 
   const member: FamilyMember = {
     id,
+    family_id: input.family_id,
+    branch_id: branchId,
     full_name: input.full_name,
     generation,
     life_status: input.life_status ?? "LIVING",
@@ -158,6 +170,8 @@ export async function addMember(
   const relationRef = doc(relationsCol());
   const relation: FamilyRelation = {
     id: relationRef.id,
+    family_id: input.family_id,
+    branch_id: branchId,
     source: input.parent_id,
     target: id,
     relationship_type: input.relationship_type ?? "BLOOD",
@@ -173,10 +187,6 @@ export async function addMember(
   return { member, relation };
 }
 
-/**
- * Cập nhật thành viên. Không cho client ghi đè `path` / `id`.
- * `contact` (nếu có) ghi vào subcollection sensitive — không lên document công khai.
- */
 export async function updateMember(
   memberId: string,
   input: UpdateMemberInput,
@@ -193,10 +203,15 @@ export async function updateMember(
     updated_at: serverTimestamp(),
   };
 
-  // Chặn ghi đè Materialized Path / identity từ payload
   delete patch.id;
   delete patch.path;
+  delete patch.family_id;
   delete patch.contact;
+
+  // Giữ branch_id và tree_logic.branch_id đồng bộ nếu cập nhật một trong hai
+  if (typeof patch.branch_id === "string") {
+    patch["tree_logic.branch_id"] = patch.branch_id;
+  }
 
   if (Object.keys(publicFields).length > 0) {
     await updateDoc(ref, patch);
@@ -221,22 +236,31 @@ export async function updateMember(
   return { id: next.id, ...(next.data() as Omit<FamilyMember, "id">) };
 }
 
-/**
- * Tạo PlaceholderNode (khuyết danh) gắn dưới `parent_id`.
- * Vẫn duy trì Materialized Path đầy đủ để sau này `addMember` / cập nhật không đứt cây.
- */
 export async function addPlaceholderNode(
   input: AddPlaceholderInput,
 ): Promise<{ member: FamilyMember; relation: FamilyRelation }> {
+  if (!input.family_id) {
+    throw new Error("family_id là bắt buộc khi tạo PlaceholderNode.");
+  }
+
   const parent = await loadParent(input.parent_id);
+  if (parent.family_id !== input.family_id) {
+    throw new Error("parent_id không thuộc cùng family_id.");
+  }
+
   const ref = input.id ? memberRef(input.id) : doc(membersCol());
   const id = ref.id;
   const branchId =
-    input.tree_logic?.branch_id ?? parent.tree_logic.branch_id;
+    input.branch_id ??
+    input.tree_logic?.branch_id ??
+    parent.branch_id ??
+    parent.tree_logic.branch_id;
   const path = buildMaterializedPath(parent.path, id);
 
   const member: FamilyMember = {
     id,
+    family_id: input.family_id,
+    branch_id: branchId,
     full_name: "",
     generation: input.generation ?? parent.generation + 1,
     life_status: "DECEASED",
@@ -264,16 +288,16 @@ export async function addPlaceholderNode(
   });
 
   const relation = await createRelation({
+    familyId: input.family_id,
+    branchId,
     parentId: input.parent_id,
     childId: id,
     relationshipType: input.relationship_type ?? "BLOOD",
-    branchId,
   });
 
   return { member, relation };
 }
 
-/** Đọc contact (chỉ thành công khi rules cho phép — admin). */
 export async function getMemberContact(
   memberId: string,
 ): Promise<MemberContact | null> {

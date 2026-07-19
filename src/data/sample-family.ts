@@ -2,10 +2,15 @@ import type { FamilyTreeData } from "@/types/genealogy";
 
 /** Dữ liệu mẫu — dòng họ Nguyễn (minh hoạ Phase 2 FamilyTree) */
 export const sampleFamilyTree: FamilyTreeData = {
+  family_id: "family-demo-nguyen",
   clan_name: "Nguyễn",
   members: [
     {
       id: "m1",
+
+      family_id: "family-demo-nguyen",
+
+      branch_id: "branch-main",
       full_name: "Nguyễn Văn Tổ",
       generation: 1,
       life_status: "DECEASED",
@@ -32,6 +37,10 @@ export const sampleFamilyTree: FamilyTreeData = {
     },
     {
       id: "m2",
+
+      family_id: "family-demo-nguyen",
+
+      branch_id: "branch-main",
       full_name: "Nguyễn Văn Thành",
       generation: 2,
       life_status: "DECEASED",
@@ -57,6 +66,10 @@ export const sampleFamilyTree: FamilyTreeData = {
     },
     {
       id: "m3",
+
+      family_id: "family-demo-nguyen",
+
+      branch_id: "branch-main",
       full_name: "Nguyễn Văn Minh",
       generation: 2,
       life_status: "DECEASED",
@@ -74,6 +87,10 @@ export const sampleFamilyTree: FamilyTreeData = {
     },
     {
       id: "m4",
+
+      family_id: "family-demo-nguyen",
+
+      branch_id: "branch-main",
       full_name: "Nguyễn Văn An",
       generation: 3,
       life_status: "LIVING",
@@ -94,6 +111,10 @@ export const sampleFamilyTree: FamilyTreeData = {
     },
     {
       id: "m5",
+
+      family_id: "family-demo-nguyen",
+
+      branch_id: "branch-main",
       full_name: "",
       generation: 3,
       life_status: "DECEASED",
@@ -106,6 +127,10 @@ export const sampleFamilyTree: FamilyTreeData = {
     },
     {
       id: "m6",
+
+      family_id: "family-demo-nguyen",
+
+      branch_id: "branch-main",
       full_name: "Nguyễn Văn Bình",
       generation: 3,
       life_status: "LIVING",
@@ -125,6 +150,10 @@ export const sampleFamilyTree: FamilyTreeData = {
     },
     {
       id: "m7",
+
+      family_id: "family-demo-nguyen",
+
+      branch_id: "branch-main",
       full_name: "Nguyễn Thị Hương",
       generation: 4,
       life_status: "LIVING",
@@ -138,6 +167,10 @@ export const sampleFamilyTree: FamilyTreeData = {
     },
     {
       id: "m8",
+
+      family_id: "family-demo-nguyen",
+
+      branch_id: "branch-main",
       full_name: "Nguyễn Văn Đức",
       generation: 4,
       life_status: "LIVING",
@@ -158,12 +191,12 @@ export const sampleFamilyTree: FamilyTreeData = {
     },
   ],
   relations: [
-    { id: "r1", source: "m1", target: "m2", relationship_type: "BLOOD" },
-    { id: "r2", source: "m1", target: "m3", relationship_type: "BLOOD" },
-    { id: "r3", source: "m2", target: "m4", relationship_type: "BLOOD" },
-    { id: "r4", source: "m2", target: "m5", relationship_type: "BLOOD" },
-    { id: "r5", source: "m3", target: "m6", relationship_type: "ADOPTED" },
-    { id: "r6", source: "m4", target: "m7", relationship_type: "BLOOD" },
-    { id: "r7", source: "m4", target: "m8", relationship_type: "BLOOD" },
+    { id: "r1", family_id: "family-demo-nguyen", branch_id: "branch-main", source: "m1", target: "m2", relationship_type: "BLOOD" },
+    { id: "r2", family_id: "family-demo-nguyen", branch_id: "branch-main", source: "m1", target: "m3", relationship_type: "BLOOD" },
+    { id: "r3", family_id: "family-demo-nguyen", branch_id: "branch-main", source: "m2", target: "m4", relationship_type: "BLOOD" },
+    { id: "r4", family_id: "family-demo-nguyen", branch_id: "branch-main", source: "m2", target: "m5", relationship_type: "BLOOD" },
+    { id: "r5", family_id: "family-demo-nguyen", branch_id: "branch-main", source: "m3", target: "m6", relationship_type: "ADOPTED" },
+    { id: "r6", family_id: "family-demo-nguyen", branch_id: "branch-main", source: "m4", target: "m7", relationship_type: "BLOOD" },
+    { id: "r7", family_id: "family-demo-nguyen", branch_id: "branch-main", source: "m4", target: "m8", relationship_type: "BLOOD" },
   ],
 };
