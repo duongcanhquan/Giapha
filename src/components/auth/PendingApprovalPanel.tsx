@@ -114,10 +114,17 @@ export function PendingApprovalPanel() {
             <dt className="text-[var(--gp-muted)]">Địa chỉ</dt>
             <dd className="max-w-[60%] text-right font-medium">{latest.address}</dd>
           </div>
-          {latest.status === "rejected" && latest.reject_reason ? (
-            <p className="rounded-[var(--gp-radius)] bg-[var(--gp-lacquer-soft)] px-3 py-2 text-[var(--gp-lacquer)]">
-              Lý do từ chối: {latest.reject_reason}
-            </p>
+          {latest.status === "rejected" ? (
+            <div className="space-y-3">
+              {latest.reject_reason ? (
+                <p className="rounded-[var(--gp-radius)] bg-[var(--gp-lacquer-soft)] px-3 py-2 text-[var(--gp-lacquer)]">
+                  Lý do từ chối: {latest.reject_reason}
+                </p>
+              ) : null}
+              <Link href="/register" className="gp-btn gp-btn-primary inline-flex">
+                Gửi lại hồ sơ đăng ký
+              </Link>
+            </div>
           ) : null}
           {latest.duplicate_hints && latest.duplicate_hints.length > 0 ? (
             <ul className="rounded-[var(--gp-radius)] border border-[var(--gp-gold)]/35 bg-[var(--gp-gold)]/10 px-3 py-2 text-xs">

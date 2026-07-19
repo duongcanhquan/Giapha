@@ -80,9 +80,12 @@ service cloud.firestore {
 
     match /registration_keys/{key} {
       allow read: if true;
-      allow create: if isSignedIn()
-        && request.resource.data.keys().hasAll(['registration_id', 'status'])
-        && request.resource.data.status == 'pending';
+      allow create: if isSuperAdmin()
+        || (
+          isSignedIn()
+          && request.resource.data.keys().hasAll(['registration_id', 'status'])
+          && request.resource.data.status == 'pending'
+        );
       /** Super Admin cập nhật khi duyệt/từ chối; applicant tái dùng key đã rejected */
       allow update: if isSuperAdmin()
         || (
@@ -109,7 +112,17 @@ service cloud.firestore {
         ]);
 
       allow update: if isSuperAdmin();
-      allow delete: if isSuperAdmin();
+      /** Super Admin xoá; applicant rollback hồ sơ pending chưa có family */
+      allow delete: if isSuperAdmin()
+        || (
+          isSignedIn()
+          && resource.data.applicant_uid == request.auth.uid
+          && resource.data.status == 'pending'
+          && (
+            !('family_id' in resource.data)
+            || resource.data.family_id == null
+          )
+        );
     }
 
     /* ─── families ───────────────────────────────────────────── */
@@ -124,10 +137,10 @@ service cloud.firestore {
       allow update, delete: if isSuperAdmin() || isFamilyOwner(familyId);
 
       match /staff/{uid} {
+        /** Mọi staff / owner / SA đọc được danh sách nhân sự (tránh list query fail) */
         allow read: if isSuperAdmin()
           || isFamilyOwner(familyId)
-          || (isFamilyStaff(familyId) && staffRole(familyId) == 'truong_ho')
-          || (isSignedIn() && request.auth.uid == uid);
+          || isFamilyStaff(familyId);
 
         allow write: if isSuperAdmin()
           || isFamilyOwner(familyId)

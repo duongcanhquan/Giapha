@@ -72,16 +72,22 @@ export async function upsertFamilyStaff(input: {
   const uid = input.uid.trim();
   if (!uid) throw new Error("Thiếu UID người được uỷ quyền.");
 
+  const ref = staffRef(input.familyId, uid);
+  const prev = await getDoc(ref);
   await setDoc(
-    staffRef(input.familyId, uid),
+    ref,
     {
       email: input.email.trim().toLowerCase(),
       display_name: input.display_name.trim(),
       role: input.role,
       branch_id: input.branch_id ?? null,
-      created_at: serverTimestamp(),
-      created_by: actor.uid,
-      updated_at: serverTimestamp(),
+      ...(prev.exists()
+        ? { updated_at: serverTimestamp() }
+        : {
+            created_at: serverTimestamp(),
+            created_by: actor.uid,
+            updated_at: serverTimestamp(),
+          }),
     },
     { merge: true },
   );

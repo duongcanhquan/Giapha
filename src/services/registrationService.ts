@@ -1,17 +1,23 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
   where,
   type DocumentReference,
 } from "firebase/firestore";
+import { updateProfile, type User } from "firebase/auth";
 import { getDb, getFirebaseAuth } from "@/lib/firebase/client";
-import { stripVietnameseDiacritics } from "@/lib/search/normalize";
+import {
+  normalizeKey,
+  normalizePhone,
+} from "@/lib/registration/normalize";
 import { createFamilyForOwner } from "@/services/familyService";
 import { registerWithEmail } from "@/services/authService";
 import { upsertFamilyStaff } from "@/services/staffService";
@@ -20,6 +26,8 @@ import type {
   RegistrationStatus,
   SubmitFamilyRegistrationInput,
 } from "@/types/genealogy";
+
+export { normalizeKey, normalizePhone } from "@/lib/registration/normalize";
 
 const REGISTRATIONS = "family_registrations";
 const LOOKUP_KEYS = "registration_keys";
@@ -34,14 +42,6 @@ function regRef(id: string): DocumentReference {
 
 function lookupRef(kind: "email" | "phone", value: string) {
   return doc(getDb(), LOOKUP_KEYS, `${kind}_${value}`);
-}
-
-export function normalizePhone(phone: string): string {
-  return phone.replace(/\D/g, "");
-}
-
-export function normalizeKey(value: string): string {
-  return stripVietnameseDiacritics(value).replace(/\s+/g, " ").trim();
 }
 
 function mapRegistration(
@@ -82,6 +82,10 @@ function mapRegistration(
   };
 }
 
+function isHardDuplicateHint(hint: string): boolean {
+  return hint.includes("Trùng email") || hint.includes("Trùng SĐT");
+}
+
 /** Tra cứu khoá công khai email/SĐT + (nếu có quyền) quét họ/tên gia phả */
 export async function findRegistrationDuplicates(input: {
   email: string;
@@ -101,7 +105,8 @@ export async function findRegistrationDuplicates(input: {
     if (emailSnap.exists()) {
       const data = emailSnap.data() as Record<string, unknown>;
       const status = String(data.status ?? "pending");
-      if (status !== "rejected" && data.registration_id !== input.excludeId) {
+      const regId = String(data.registration_id ?? "");
+      if (status !== "rejected" && regId !== (input.excludeId ?? "")) {
         hints.push(`Trùng email với hồ sơ ${status}`);
       }
     }
@@ -112,13 +117,14 @@ export async function findRegistrationDuplicates(input: {
     if (phoneSnap.exists()) {
       const data = phoneSnap.data() as Record<string, unknown>;
       const status = String(data.status ?? "pending");
-      if (status !== "rejected" && data.registration_id !== input.excludeId) {
+      const regId = String(data.registration_id ?? "");
+      if (status !== "rejected" && regId !== (input.excludeId ?? "")) {
         hints.push(`Trùng SĐT với hồ sơ ${status}`);
       }
     }
   }
 
-  // Soft filters (họ / tên gia phả) — Super Admin hoặc user đã login có quyền list
+  // Soft filters — Super Admin list được toàn bộ; applicant thường bị rules chặn
   try {
     const snap = await getDocs(regsCol());
     for (const d of snap.docs) {
@@ -133,31 +139,116 @@ export async function findRegistrationDuplicates(input: {
       }
     }
   } catch {
-    /* applicant chưa đọc được toàn bộ collection — bỏ soft filter */
+    /* bỏ soft filter khi không đủ quyền list */
   }
 
   return [...new Set(hints)];
 }
 
-async function writeLookupKeys(
+/**
+ * Giữ khoá email/SĐT atomically — không ghi đè pending/approved của hồ sơ khác.
+ */
+async function claimLookupKey(
+  kind: "email" | "phone",
+  value: string,
+  registrationId: string,
+  status: RegistrationStatus,
+): Promise<void> {
+  if (!value) return;
+  const ref = lookupRef(kind, value);
+  await runTransaction(getDb(), async (tx) => {
+    const snap = await tx.get(ref);
+    if (snap.exists()) {
+      const data = snap.data() as Record<string, unknown>;
+      const prevStatus = String(data.status ?? "pending");
+      const prevReg = String(data.registration_id ?? "");
+      const sameReg = prevReg === registrationId;
+      const reusable = prevStatus === "rejected";
+      if (!sameReg && !reusable && status === "pending") {
+        throw new Error(
+          kind === "email"
+            ? "Email đã được đăng ký. Vui lòng đăng nhập hoặc dùng email khác."
+            : "Số điện thoại đã được đăng ký. Vui lòng dùng số khác hoặc liên hệ Super Admin.",
+        );
+      }
+      if (!sameReg && !reusable && (status === "approved" || status === "rejected")) {
+        // Super Admin cập nhật key của đúng hồ sơ; nếu lệch id thì vẫn cho SA ghi đè khi duyệt/từ chối cùng value
+        if (prevReg && prevReg !== registrationId && prevStatus !== "rejected") {
+          throw new Error(
+            `Không cập nhật được khoá ${kind}: đang gắn hồ sơ khác (${prevStatus}).`,
+          );
+        }
+      }
+    }
+    tx.set(ref, {
+      registration_id: registrationId,
+      status,
+      updated_at: serverTimestamp(),
+    });
+  });
+}
+
+async function claimLookupKeys(
   registrationId: string,
   normEmail: string,
   normPhone: string,
   status: RegistrationStatus,
 ): Promise<void> {
-  const payload = {
-    registration_id: registrationId,
-    status,
-    updated_at: serverTimestamp(),
-  };
-  await setDoc(lookupRef("email", normEmail), payload);
-  if (normPhone) {
-    await setDoc(lookupRef("phone", normPhone), payload);
+  await claimLookupKey("email", normEmail, registrationId, status);
+  await claimLookupKey("phone", normPhone, registrationId, status);
+}
+
+async function ensureApplicantUser(
+  email: string,
+  password: string | undefined,
+  fullName: string,
+): Promise<User> {
+  const auth = getFirebaseAuth();
+  const existing = auth.currentUser;
+
+  if (existing) {
+    const currentEmail = (existing.email ?? "").trim().toLowerCase();
+    if (currentEmail && currentEmail !== email) {
+      throw new Error(
+        "Bạn đang đăng nhập bằng email khác. Đăng xuất rồi đăng ký lại, hoặc dùng đúng email tài khoản hiện tại.",
+      );
+    }
+    if (fullName.trim() && existing.displayName !== fullName.trim()) {
+      try {
+        await updateProfile(existing, { displayName: fullName.trim() });
+      } catch {
+        /* không chặn gửi hồ sơ */
+      }
+    }
+    return existing;
+  }
+
+  if (!password || password.length < 6) {
+    throw new Error("Mật khẩu phải có ít nhất 6 ký tự.");
+  }
+
+  try {
+    return await registerWithEmail({
+      email,
+      password,
+      displayName: fullName,
+    });
+  } catch (err) {
+    const code =
+      err && typeof err === "object" && "code" in err
+        ? String((err as { code: unknown }).code)
+        : "";
+    if (code === "auth/email-already-in-use") {
+      throw new Error(
+        "Email đã có tài khoản. Hãy đăng nhập, rồi gửi lại hồ sơ (nếu bị từ chối) tại trang Đăng ký.",
+      );
+    }
+    throw err instanceof Error ? err : new Error("Đăng ký Auth thất bại.");
   }
 }
 
 /**
- * Đăng ký tài khoản + gửi hồ sơ tạo gia phả (status=pending).
+ * Đăng ký tài khoản (nếu chưa) + gửi hồ sơ tạo gia phả (status=pending).
  * Không tạo `families` cho đến khi Super Admin duyệt.
  */
 export async function submitFamilyRegistration(
@@ -173,7 +264,9 @@ export async function submitFamilyRegistration(
   if (!full_name || !family_surname || !email || !phone || !address || !family_name) {
     throw new Error("Vui lòng điền đầy đủ thông tin bắt buộc.");
   }
-  if (normalizePhone(phone).length < 9) {
+
+  const norm_phone = normalizePhone(phone);
+  if (norm_phone.length < 9 || norm_phone.length > 11) {
     throw new Error("Số điện thoại không hợp lệ.");
   }
 
@@ -184,27 +277,25 @@ export async function submitFamilyRegistration(
     family_name,
   });
 
-  // Chặn cứng trùng email / SĐT đã approved hoặc đang pending
-  const hardBlock = duplicates.some(
-    (h) => h.includes("Trùng email") || h.includes("Trùng SĐT"),
-  );
-  if (hardBlock) {
+  if (duplicates.some(isHardDuplicateHint)) {
     throw new Error(
       "Email hoặc số điện thoại đã được đăng ký. Vui lòng đăng nhập hoặc liên hệ Super Admin.",
     );
   }
 
-  await registerWithEmail({
-    email,
-    password: input.password,
-    displayName: full_name,
-  });
+  const user = await ensureApplicantUser(email, input.password, full_name);
 
-  const user = getFirebaseAuth().currentUser;
-  if (!user) throw new Error("Đăng ký Auth thất bại.");
+  const mine = await getMyRegistrations(user.uid);
+  if (mine.some((r) => r.status === "pending")) {
+    throw new Error(
+      "Bạn đã có hồ sơ đang chờ duyệt. Vào trang chờ duyệt để xem trạng thái.",
+    );
+  }
+  if (mine.some((r) => r.status === "approved" && r.family_id)) {
+    throw new Error("Tài khoản này đã có gia phả được duyệt.");
+  }
 
   const norm_email = normalizeKey(email);
-  const norm_phone = normalizePhone(phone);
   const ref = doc(regsCol());
   const payload = {
     applicant_uid: user.uid,
@@ -229,7 +320,19 @@ export async function submitFamilyRegistration(
   };
 
   await setDoc(ref, payload);
-  await writeLookupKeys(ref.id, norm_email, norm_phone, "pending");
+
+  try {
+    await claimLookupKeys(ref.id, norm_email, norm_phone, "pending");
+  } catch (err) {
+    try {
+      await deleteDoc(ref);
+    } catch {
+      /* best effort rollback */
+    }
+    throw err instanceof Error
+      ? err
+      : new Error("Không giữ được khoá đăng ký (có thể bị trùng).");
+  }
 
   const registration = mapRegistration(ref.id, {
     ...payload,
@@ -288,12 +391,9 @@ export async function approveRegistration(
     family_name: reg.family_name,
     excludeId: reg.id,
   });
-  const hard = duplicates.some(
-    (h) => h.includes("Trùng email") || h.includes("Trùng SĐT"),
-  );
-  if (hard) {
+  if (duplicates.some(isHardDuplicateHint)) {
     throw new Error(
-      `Không duyệt được do trùng: ${duplicates.filter((d) => d.includes("Trùng email") || d.includes("Trùng SĐT")).join("; ")}`,
+      `Không duyệt được do trùng: ${duplicates.filter(isHardDuplicateHint).join("; ")}`,
     );
   }
 
@@ -304,15 +404,7 @@ export async function approveRegistration(
       `Gia phả họ ${reg.family_surname} — người tạo: ${reg.full_name}`,
   });
 
-  await upsertFamilyStaff({
-    familyId: family.id,
-    uid: reg.applicant_uid,
-    email: reg.email,
-    display_name: reg.full_name,
-    role: "truong_ho",
-    branch_id: null,
-  });
-
+  // Đánh dấu approved ngay sau khi tạo family — tránh duyệt lại tạo family thứ hai
   await updateDoc(ref, {
     status: "approved",
     family_id: family.id,
@@ -322,12 +414,25 @@ export async function approveRegistration(
     duplicate_hints: duplicates,
   });
 
-  await writeLookupKeys(
+  await claimLookupKeys(
     reg.id,
     reg.norm_email || normalizeKey(reg.email),
     reg.norm_phone || normalizePhone(reg.phone),
     "approved",
   );
+
+  try {
+    await upsertFamilyStaff({
+      familyId: family.id,
+      uid: reg.applicant_uid,
+      email: reg.email,
+      display_name: reg.full_name,
+      role: "truong_ho",
+      branch_id: null,
+    });
+  } catch {
+    // Owner vẫn vào được dashboard qua owner_id; staff có thể bổ sung sau
+  }
 
   return { familyId: family.id };
 }
@@ -355,7 +460,7 @@ export async function rejectRegistration(
     reviewed_by: admin.uid,
   });
 
-  await writeLookupKeys(
+  await claimLookupKeys(
     reg.id,
     reg.norm_email || normalizeKey(reg.email),
     reg.norm_phone || normalizePhone(reg.phone),

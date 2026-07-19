@@ -60,7 +60,8 @@ export type SubmitFamilyRegistrationInput = {
   address: string;
   family_name: string;
   description?: string;
-  password: string;
+  /** Bắt buộc khi chưa đăng nhập; bỏ qua nếu đã có session */
+  password?: string;
 };
 
 export interface FamilyStaffMember {

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { checkFamilyAdminAccess } from "@/services/accessService";
+import { subscribeAuth } from "@/services/authService";
 import { getFamily } from "@/services/familyService";
 import {
   listFamilyStaff,
@@ -20,6 +22,10 @@ const ROLE_LABEL: Record<FamilyStaffRole, string> = {
   editor: "Người cập nhật",
 };
 
+function canManageStaff(role: string | null | undefined): boolean {
+  return role === "super_admin" || role === "owner" || role === "truong_ho";
+}
+
 export function StaffManager({ familyId }: StaffManagerProps) {
   const [staff, setStaff] = useState<FamilyStaffMember[]>([]);
   const [branches, setBranches] = useState<FamilyBranch[]>([]);
@@ -27,29 +33,42 @@ export function StaffManager({ familyId }: StaffManagerProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [manage, setManage] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([listFamilyStaff(familyId), getFamily(familyId)])
-      .then(([list, family]) => {
+    const unsub = subscribeAuth((user) => {
+      void (async () => {
+        const access = await checkFamilyAdminAccess(familyId, user);
         if (cancelled) return;
-        setStaff(list);
-        setBranches(family?.settings.branches ?? []);
-        setError(null);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Không tải được nhân sự.");
-        setLoading(false);
-      });
+        setManage(canManageStaff(access.role));
+
+        try {
+          const [list, family] = await Promise.all([
+            listFamilyStaff(familyId),
+            getFamily(familyId),
+          ]);
+          if (cancelled) return;
+          setStaff(list);
+          setBranches(family?.settings.branches ?? []);
+          setError(null);
+        } catch (err) {
+          if (cancelled) return;
+          setError(err instanceof Error ? err.message : "Không tải được nhân sự.");
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      })();
+    });
     return () => {
       cancelled = true;
+      unsub();
     };
   }, [familyId, tick]);
 
   const onAdd = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!manage) return;
     setSaving(true);
     setError(null);
     const form = new FormData(event.currentTarget);
@@ -68,6 +87,7 @@ export function StaffManager({ familyId }: StaffManagerProps) {
       });
       appToast.success("Đã uỷ quyền", ROLE_LABEL[role]);
       event.currentTarget.reset();
+      setLoading(true);
       setTick((t) => t + 1);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Lưu thất bại.";
@@ -79,10 +99,12 @@ export function StaffManager({ familyId }: StaffManagerProps) {
   };
 
   const onRemove = async (uid: string) => {
+    if (!manage) return;
     if (!confirm("Gỡ quyền nhân sự này?")) return;
     try {
       await removeFamilyStaff(familyId, uid);
       appToast.success("Đã gỡ quyền");
+      setLoading(true);
       setTick((t) => t + 1);
     } catch (err) {
       appToast.error(
@@ -102,56 +124,62 @@ export function StaffManager({ familyId }: StaffManagerProps) {
         </p>
       </div>
 
-      <form
-        onSubmit={(e) => void onAdd(e)}
-        className="gp-panel grid gap-3 p-5 sm:grid-cols-2"
-      >
-        <label className="gp-label sm:col-span-2">
-          Họ tên
-          <input name="display_name" required className="gp-input mt-1 font-normal" />
-        </label>
-        <label className="gp-label">
-          Email
-          <input name="email" type="email" required className="gp-input mt-1 font-normal" />
-        </label>
-        <label className="gp-label">
-          UID Firebase (tài khoản đã đăng ký)
-          <input
-            name="uid"
-            required
-            className="gp-input mt-1 font-mono text-xs font-normal"
-            placeholder="uid từ Firebase Auth"
-          />
-        </label>
-        <label className="gp-label">
-          Vai trò
-          <select name="role" className="gp-input mt-1 font-normal" defaultValue="editor">
-            <option value="truong_ho">Trưởng họ</option>
-            <option value="truong_chi">Trưởng chi</option>
-            <option value="editor">Người cập nhật</option>
-          </select>
-        </label>
-        <label className="gp-label">
-          Chi (nếu trưởng chi)
-          <select name="branch_id" className="gp-input mt-1 font-normal" defaultValue="">
-            <option value="">—</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="sm:col-span-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="gp-btn gp-btn-primary disabled:opacity-60"
-          >
-            {saving ? "Đang lưu…" : "Thêm / cập nhật quyền"}
-          </button>
-        </div>
-      </form>
+      {manage ? (
+        <form
+          onSubmit={(e) => void onAdd(e)}
+          className="gp-panel grid gap-3 p-5 sm:grid-cols-2"
+        >
+          <label className="gp-label sm:col-span-2">
+            Họ tên
+            <input name="display_name" required className="gp-input mt-1 font-normal" />
+          </label>
+          <label className="gp-label">
+            Email
+            <input name="email" type="email" required className="gp-input mt-1 font-normal" />
+          </label>
+          <label className="gp-label">
+            UID Firebase (tài khoản đã đăng ký)
+            <input
+              name="uid"
+              required
+              className="gp-input mt-1 font-mono text-xs font-normal"
+              placeholder="uid từ Firebase Auth"
+            />
+          </label>
+          <label className="gp-label">
+            Vai trò
+            <select name="role" className="gp-input mt-1 font-normal" defaultValue="editor">
+              <option value="truong_ho">Trưởng họ</option>
+              <option value="truong_chi">Trưởng chi</option>
+              <option value="editor">Người cập nhật</option>
+            </select>
+          </label>
+          <label className="gp-label">
+            Chi (nếu trưởng chi)
+            <select name="branch_id" className="gp-input mt-1 font-normal" defaultValue="">
+              <option value="">—</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="gp-btn gp-btn-primary disabled:opacity-60"
+            >
+              {saving ? "Đang lưu…" : "Thêm / cập nhật quyền"}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <p className="rounded-[var(--gp-radius)] border border-[var(--gp-scroll-edge)] px-3 py-2 text-sm text-[var(--gp-muted)]">
+          Bạn chỉ xem danh sách. Chỉ Admin / Trưởng họ được uỷ quyền nhân sự.
+        </p>
+      )}
 
       {error ? (
         <p className="rounded-[var(--gp-radius)] bg-[var(--gp-lacquer-soft)] px-3 py-2 text-sm text-[var(--gp-lacquer)]">
@@ -192,13 +220,15 @@ export function StaffManager({ familyId }: StaffManagerProps) {
                         : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        className="text-xs font-semibold text-[var(--gp-lacquer)] hover:underline"
-                        onClick={() => void onRemove(s.uid)}
-                      >
-                        Gỡ
-                      </button>
+                      {manage ? (
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-[var(--gp-lacquer)] hover:underline"
+                          onClick={() => void onRemove(s.uid)}
+                        >
+                          Gỡ
+                        </button>
+                      ) : null}
                     </td>
                   </tr>
                 ))
