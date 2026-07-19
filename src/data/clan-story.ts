@@ -18,8 +18,7 @@ export type ClanMilestone = {
 
 /** Cột mốc mẫu — hành trình hương hỏa điển hình (không gắn họ cụ thể) */
 export const clanStory = {
-  tagline:
-    "Gìn giữ hương hỏa — mỗi gia đình một gia phả riêng, chỉ người trong nhà mới vào được.",
+  tagline: "Gìn giữ hương hoả gia tộc",
   heroCaption: "Đăng nhập để về đúng nhà mình. Chưa có? Đăng ký để mở sổ gia phả.",
   milestones: [
     {

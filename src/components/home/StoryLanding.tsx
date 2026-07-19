@@ -21,8 +21,8 @@ export function StoryLanding() {
   return (
     <div className="min-h-screen bg-[var(--gp-paper)] text-[var(--gp-ink)]">
       <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-5 py-5 md:px-10">
-        <p className="font-display text-base font-semibold tracking-[0.08em] text-[var(--gp-seal-ink)] md:text-lg">
-          Giapha
+        <p className="font-display text-base font-semibold tracking-[0.14em] text-[var(--gp-seal-ink)] md:text-lg">
+          GIA PHẢ
         </p>
         <nav className="flex items-center gap-5 text-sm font-medium text-[var(--gp-seal-ink)]/90">
           <a href="#cot-moc" className="hidden hover:text-white sm:inline">
@@ -60,12 +60,12 @@ export function StoryLanding() {
 
         <div className="relative z-10 w-full px-5 pb-16 pt-36 md:px-10 md:pb-24">
           <motion.h1
-            className="font-display max-w-4xl text-5xl font-semibold leading-[1.02] text-[var(--gp-seal-ink)] md:text-7xl"
+            className="font-display max-w-4xl text-5xl font-semibold uppercase tracking-[0.06em] leading-[1.02] text-[var(--gp-seal-ink)] md:text-7xl"
             initial={{ opacity: 0, y: 28 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
           >
-            Giapha
+            Gia phả
           </motion.h1>
           <motion.p
             className="mt-4 max-w-xl text-base text-[#f0e6d4]/92 md:text-lg"
@@ -82,7 +82,7 @@ export function StoryLanding() {
             transition={{ duration: 0.55, delay: 0.22 }}
           >
             <Link href="/login" className="gp-btn gp-btn-primary">
-              Đăng nhập vào gia phả nhà mình
+              Đăng nhập để vào gia phả
             </Link>
             <Link href="/register" className="gp-btn gp-btn-outline-light">
               Chưa có? Đăng ký ngay
