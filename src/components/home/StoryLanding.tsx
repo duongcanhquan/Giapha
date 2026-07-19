@@ -6,9 +6,8 @@ import { useRef } from "react";
 import { clanStory } from "@/data/clan-story";
 import { ClanTimeline } from "./ClanTimeline";
 
-/** Ảnh nhà thờ / đình làng Việt — full-bleed hero */
-const HALL_IMAGE =
-  "https://images.unsplash.com/photo-1583417319070-4a69db38a482?auto=format&fit=crop&w=2400&q=80";
+/** Chùa / kiến trúc tâm linh Việt — full-bleed hero (local asset) */
+const HALL_IMAGE = "/images/hero-pagoda.jpg";
 
 export function StoryLanding() {
   const heroRef = useRef<HTMLElement>(null);
@@ -26,11 +25,11 @@ export function StoryLanding() {
           Giapha
         </p>
         <nav className="flex items-center gap-5 text-sm font-medium text-[var(--gp-seal-ink)]/90">
-          <a href="#timeline" className="hidden hover:text-white sm:inline">
-            Cột mốc
+          <a href="#huong-hoa" className="hidden hover:text-white sm:inline">
+            Hương hỏa
           </a>
-          <Link href="/tree/family-demo-nguyen" className="hover:text-white">
-            Tra cứu cây
+          <Link href="/register" className="hover:text-white">
+            Đăng ký
           </Link>
           <Link href="/login" className="hover:text-white">
             Đăng nhập
@@ -46,8 +45,8 @@ export function StoryLanding() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={HALL_IMAGE}
-            alt="Không gian nhà thờ họ uy nghiêm"
-            className="h-[120%] w-full object-cover"
+            alt="Chùa Việt Nam — không gian tâm linh truyền thống"
+            className="h-[120%] w-full object-cover object-center"
           />
         </motion.div>
         <motion.div
@@ -74,7 +73,7 @@ export function StoryLanding() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.65, delay: 0.1 }}
           >
-            Gia phả số linh thiêng — tra cứu thông minh, giữ hương hỏa cho thế hệ sau.
+            {clanStory.tagline}
           </motion.p>
           <motion.div
             className="mt-9 flex flex-wrap gap-3"
@@ -82,41 +81,40 @@ export function StoryLanding() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.22 }}
           >
-            <Link href="/register" className="gp-btn gp-btn-primary">
-              Tạo gia phả của bạn
+            <Link href="/login" className="gp-btn gp-btn-primary">
+              Đăng nhập vào gia phả nhà mình
             </Link>
-            <Link
-              href="/tree/family-demo-nguyen"
-              className="gp-btn gp-btn-outline-light"
-            >
-              Xem bản demo dòng họ {clanStory.clanName}
+            <Link href="/register" className="gp-btn gp-btn-outline-light">
+              Chưa có? Đăng ký ngay
             </Link>
           </motion.div>
         </div>
       </section>
 
-      <div id="timeline">
+      <div id="huong-hoa">
         <ClanTimeline milestones={clanStory.milestones} />
       </div>
 
       <section className="border-t border-[var(--gp-scroll-edge)] px-5 py-16 md:px-10">
         <div className="mx-auto flex max-w-4xl flex-col items-start justify-between gap-6 md:flex-row md:items-center">
           <div>
-            <p className="gp-eyebrow">Dòng họ {clanStory.clanName}</p>
+            <p className="gp-eyebrow">Của riêng từng nhà</p>
             <h2 className="gp-title mt-2 text-2xl md:text-3xl">
               {clanStory.heroCaption}
             </h2>
             <p className="gp-lede mt-2 max-w-lg text-sm">
-              Gõ tên húy, thụy hoặc họ tên — cây phóng to tới đúng người. Double-click
-              để xem tiểu sử và ngày giỗ âm lịch.
+              Link cây công khai do chủ dòng họ tự copy và gửi trong họ hàng. Không có
+              bản demo chung — mỗi sổ gia phả là một không gian riêng.
             </p>
           </div>
-          <Link
-            href="/tree/family-demo-nguyen"
-            className="gp-btn gp-btn-secondary shrink-0"
-          >
-            Vào cây công khai
-          </Link>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Link href="/login" className="gp-btn gp-btn-primary">
+              Đăng nhập
+            </Link>
+            <Link href="/register" className="gp-btn gp-btn-ghost">
+              Đăng ký
+            </Link>
+          </div>
         </div>
       </section>
     </div>

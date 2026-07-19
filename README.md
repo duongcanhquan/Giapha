@@ -55,9 +55,10 @@ npm run dev
 
 | Route | Vai trò |
 |-------|---------|
-| `/tree/[familyId]` | Khách — read-only + share link |
+| `/` | Landing — đăng nhập / đăng ký |
+| `/login` · `/register` | Vào đúng gia phả nhà mình hoặc tạo mới |
+| `/tree/[familyId]` | Khách — chỉ xem khi có link chia sẻ |
 | `/dashboard/[familyId]` | Admin (Owner / Branch / Super) |
-| `/tree/family-demo-nguyen` | Demo không Firebase |
 
 ## Deploy (Vercel)
 

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SuperAdminBanner } from "@/components/admin/SuperAdminBanner";
 import { isFirebaseConfigured } from "@/lib/firebase/client";
-import { sampleFamilyTree } from "@/data/sample-family";
 import { checkSuperAdminAccess } from "@/services/accessService";
 import { subscribeAuth, signOutUser } from "@/services/authService";
 import { listAllFamilies } from "@/services/familyService";
@@ -24,24 +23,16 @@ export function SuperAdminDashboard() {
     const unsub = subscribeAuth((user) => {
       void (async () => {
         if (!user) {
-          if (!isFirebaseConfigured()) {
-            if (cancelled) return;
-            setEmail("demo@super-admin.local");
-            setFamilies([
-              {
-                id: sampleFamilyTree.family_id ?? "family-demo-nguyen",
-                name: sampleFamilyTree.clan_name,
-                owner_id: "demo",
-                created_at: null,
-                settings: {
-                  description: "Dòng họ demo (Firebase chưa cấu hình)",
-                },
-              },
-            ]);
-            setStatus("ready");
-            return;
-          }
           router.replace("/login");
+          return;
+        }
+
+        if (!isFirebaseConfigured()) {
+          if (!cancelled) {
+            setError("Firebase chưa cấu hình — không tải được danh sách dòng họ.");
+            setFamilies([]);
+            setStatus("ready");
+          }
           return;
         }
 
@@ -56,19 +47,7 @@ export function SuperAdminDashboard() {
         try {
           const all = await listAllFamilies();
           if (!cancelled) {
-            setFamilies(
-              all.length > 0
-                ? all
-                : [
-                    {
-                      id: sampleFamilyTree.family_id ?? "family-demo-nguyen",
-                      name: sampleFamilyTree.clan_name,
-                      owner_id: user.uid,
-                      created_at: null,
-                      settings: { description: "Fallback demo" },
-                    },
-                  ],
-            );
+            setFamilies(all);
             setError(null);
             setStatus("ready");
           }

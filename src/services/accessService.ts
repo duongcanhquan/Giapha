@@ -51,11 +51,8 @@ export async function checkFamilyAdminAccess(
     return { allowed: false, role: null };
   }
 
-  if (
-    !isFirebaseConfigured() &&
-    (familyId === "demo" || familyId === "family-demo-nguyen")
-  ) {
-    return { allowed: true, role: "owner" };
+  if (!isFirebaseConfigured()) {
+    return { allowed: false, role: null };
   }
 
   try {
