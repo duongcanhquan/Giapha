@@ -1,0 +1,304 @@
+@import "tailwindcss";
+
+/**
+ * Giapha design tokens — linh thiêng · sang trọng · dễ tra cứu
+ * Ấn son (lacquer) + vàng cổ + giấy sương — tránh palette AI tím/kem terracotta.
+ */
+:root {
+  --gp-ink: #1a1410;
+  --gp-ink-soft: #2c241c;
+  --gp-muted: #5f584f;
+  --gp-muted-soft: #7a7268;
+
+  --gp-lacquer: #7a1f1f;
+  --gp-lacquer-deep: #4c1212;
+  --gp-lacquer-soft: rgba(122, 31, 31, 0.12);
+
+  --gp-gold: #b8952d;
+  --gp-gold-bright: #d4af37;
+  --gp-gold-soft: rgba(184, 149, 45, 0.18);
+  --gp-bronze: #7d6540;
+
+  --gp-paper: #e4e8e5;
+  --gp-scroll: #f7f4ec;
+  --gp-scroll-edge: rgba(125, 101, 64, 0.28);
+  --gp-mist: #d8ddd8;
+
+  --gp-living: #2d6b48;
+  --gp-living-glow: rgba(45, 107, 72, 0.4);
+  --gp-path: #a31818;
+
+  --gp-seal: #9f1d1d;
+  --gp-seal-ink: #fff8f0;
+
+  --gp-radius-sm: 6px;
+  --gp-radius: 10px;
+  --gp-radius-lg: 16px;
+
+  --gp-shadow-soft: 0 10px 40px rgba(26, 20, 16, 0.08);
+  --gp-shadow-lift: 0 18px 48px rgba(26, 20, 16, 0.14);
+
+  --background: var(--gp-paper);
+  --foreground: var(--gp-ink);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-gp-ink: var(--gp-ink);
+  --color-gp-muted: var(--gp-muted);
+  --color-gp-lacquer: var(--gp-lacquer);
+  --color-gp-gold: var(--gp-gold);
+  --color-gp-bronze: var(--gp-bronze);
+  --color-gp-paper: var(--gp-paper);
+  --color-gp-scroll: var(--gp-scroll);
+  --color-gp-mist: var(--gp-mist);
+  --color-gp-living: var(--gp-living);
+  --font-sans: var(--font-be-vietnam);
+  --font-display: var(--font-literata);
+}
+
+body {
+  background:
+    radial-gradient(ellipse 90% 55% at 10% -10%, var(--gp-gold-soft), transparent 55%),
+    radial-gradient(ellipse 70% 45% at 100% 0%, var(--gp-lacquer-soft), transparent 50%),
+    var(--gp-paper);
+  color: var(--gp-ink);
+  font-family: var(--font-be-vietnam), "Be Vietnam Pro", sans-serif;
+  letter-spacing: 0.01em;
+}
+
+/* —— Typography —— */
+.font-display {
+  font-family: var(--font-literata), Literata, "Times New Roman", serif;
+}
+
+.gp-eyebrow {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gp-lacquer);
+}
+
+.gp-title {
+  font-family: var(--font-literata), Literata, "Times New Roman", serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--gp-ink);
+}
+
+.gp-lede {
+  color: var(--gp-muted);
+  line-height: 1.55;
+}
+
+/* —— Surfaces —— */
+.gp-panel {
+  background: var(--gp-scroll);
+  border: 1px solid var(--gp-scroll-edge);
+  border-radius: var(--gp-radius-lg);
+  box-shadow: var(--gp-shadow-soft);
+}
+
+.gp-panel-inset {
+  background: rgba(247, 244, 236, 0.72);
+  border: 1px solid var(--gp-scroll-edge);
+  border-radius: var(--gp-radius);
+}
+
+.gp-divider {
+  border-color: var(--gp-scroll-edge);
+}
+
+/* —— Buttons —— */
+.gp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--gp-radius-sm);
+  padding: 0.65rem 1.15rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.gp-btn:active {
+  transform: translateY(1px);
+}
+
+.gp-btn-primary {
+  background: var(--gp-lacquer);
+  color: var(--gp-seal-ink);
+}
+
+.gp-btn-primary:hover {
+  background: var(--gp-lacquer-deep);
+}
+
+.gp-btn-secondary {
+  background: var(--gp-ink);
+  color: var(--gp-seal-ink);
+}
+
+.gp-btn-secondary:hover {
+  background: var(--gp-ink-soft);
+}
+
+.gp-btn-ghost {
+  border: 1px solid var(--gp-scroll-edge);
+  background: var(--gp-scroll);
+  color: var(--gp-ink);
+}
+
+.gp-btn-ghost:hover {
+  border-color: rgba(122, 31, 31, 0.35);
+  background: rgba(122, 31, 31, 0.06);
+}
+
+.gp-btn-outline-light {
+  border: 1px solid rgba(255, 248, 240, 0.45);
+  color: var(--gp-seal-ink);
+  background: transparent;
+}
+
+.gp-btn-outline-light:hover {
+  background: rgba(255, 248, 240, 0.1);
+}
+
+/* —— Form controls —— */
+.gp-input {
+  width: 100%;
+  border-radius: var(--gp-radius);
+  border: 1px solid var(--gp-scroll-edge);
+  background: var(--gp-scroll);
+  padding: 0.55rem 0.75rem;
+  font-weight: 500;
+  color: var(--gp-ink);
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.gp-input:focus {
+  border-color: rgba(122, 31, 31, 0.55);
+  box-shadow: 0 0 0 3px var(--gp-lacquer-soft);
+}
+
+.gp-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gp-ink-soft);
+}
+
+/* —— Table —— */
+.gp-table-wrap {
+  overflow-x: auto;
+  border-radius: var(--gp-radius-lg);
+  border: 1px solid var(--gp-scroll-edge);
+  background: var(--gp-scroll);
+  box-shadow: var(--gp-shadow-soft);
+}
+
+.gp-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.gp-table thead {
+  border-bottom: 1px solid var(--gp-scroll-edge);
+  background: rgba(125, 101, 64, 0.06);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gp-muted);
+}
+
+.gp-table th,
+.gp-table td {
+  padding: 0.7rem 0.85rem;
+}
+
+.gp-table tbody tr {
+  border-bottom: 1px solid rgba(125, 101, 64, 0.1);
+  transition: background 140ms ease;
+}
+
+.gp-table tbody tr:last-child {
+  border-bottom: 0;
+}
+
+.gp-table tbody tr:hover {
+  background: rgba(122, 31, 31, 0.04);
+}
+
+/* —— Seal / ritual accents —— */
+.gp-seal-dot {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--gp-lacquer);
+  box-shadow: 0 0 0 3px var(--gp-lacquer-soft);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoom-in-95 {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes gp-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.fade-in-0 {
+  animation-name: fade-in;
+  animation-duration: 160ms;
+}
+
+.zoom-in-95 {
+  animation-name: zoom-in-95;
+  animation-duration: 160ms;
+}
+
+.data-\[state\=open\]\:animate-in[data-state="open"] {
+  animation-fill-mode: both;
+}
+
+.data-\[state\=closed\]\:animate-out[data-state="closed"] {
+  animation-fill-mode: both;
+}
