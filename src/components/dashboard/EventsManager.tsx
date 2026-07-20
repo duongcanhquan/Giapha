@@ -27,20 +27,25 @@ export function EventsManager({ familyId }: EventsManagerProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
-  const [typeFilter, setTypeFilter] = useState<FamilyEventType | "all" | "gio_auto">(
-    "all",
-  );
+  const [typeFilter, setTypeFilter] = useState<FamilyEventType | "all">("all");
   const [q, setQ] = useState("");
   const [saving, setSaving] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     if (!isFirebaseConfigured()) {
-      setEvents([]);
-      setLoading(false);
-      setError("Firebase chưa cấu hình — chưa tải được sự kiện đã lưu.");
-      return;
+      void Promise.resolve().then(() => {
+        if (cancelled) return;
+        setEvents([]);
+        setLoading(false);
+        setError("Firebase chưa cấu hình — chưa tải được sự kiện đã lưu.");
+      });
+      return () => {
+        cancelled = true;
+      };
     }
+
     void listFamilyEvents(familyId)
       .then((list) => {
         if (cancelled) return;
@@ -53,22 +58,27 @@ export function EventsManager({ familyId }: EventsManagerProps) {
         setError(err instanceof Error ? err.message : "Không tải được sự kiện.");
         setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
   }, [familyId, tick]);
 
-  const derivedGio = useMemo(
-    () => deriveGioEvents(tree?.members ?? []),
-    [tree?.members],
-  );
+  const derivedGio = useMemo(() => {
+    const raw = deriveGioEvents(tree?.members ?? []);
+    const claimed = new Set(
+      events
+        .filter((e) => e.type === "gio" && e.member_id)
+        .map((e) => e.member_id as string),
+    );
+    return raw.filter((e) => !e.member_id || !claimed.has(e.member_id));
+  }, [tree?.members, events]);
 
   const merged = useMemo(() => {
     const all = [...events, ...derivedGio];
     const needle = q.trim().toLowerCase();
     return all
       .filter((e) => {
-        if (typeFilter === "gio_auto") return e.derived && e.type === "gio";
         if (typeFilter !== "all" && e.type !== typeFilter) return false;
         if (!needle) return true;
         return (
@@ -81,10 +91,23 @@ export function EventsManager({ familyId }: EventsManagerProps) {
       );
   }, [events, derivedGio, typeFilter, q]);
 
+  const members = useMemo(
+    () =>
+      (tree?.members ?? [])
+        .filter((m) => !m.status.is_placeholder)
+        .sort((a, b) => a.full_name.localeCompare(b.full_name, "vi")),
+    [tree?.members],
+  );
+
   const onCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
     const form = new FormData(event.currentTarget);
+    const memberId = String(form.get("member_id") ?? "") || null;
+    const linked = memberId
+      ? members.find((m) => m.id === memberId) ?? null
+      : null;
+
     try {
       await createFamilyEvent({
         family_id: familyId,
@@ -92,13 +115,13 @@ export function EventsManager({ familyId }: EventsManagerProps) {
         type: String(form.get("type") ?? "khac") as FamilyEventType,
         date: String(form.get("date") ?? "") || null,
         lunar_date: String(form.get("lunar_date") ?? "") || null,
-        member_id: String(form.get("member_id") ?? "") || null,
-        branch_id: String(form.get("branch_id") ?? "") || null,
+        member_id: memberId,
+        branch_id: linked?.tree_logic.branch_id ?? null,
         description: String(form.get("description") ?? ""),
       });
       appToast.success("Đã thêm sự kiện");
       event.currentTarget.reset();
-      setLoading(true);
+      setFormOpen(false);
       setTick((t) => t + 1);
     } catch (err) {
       appToast.error(
@@ -127,87 +150,119 @@ export function EventsManager({ familyId }: EventsManagerProps) {
 
   if (treeLoading && loading) return <DashboardPanelSkeleton />;
 
-  const members = (tree?.members ?? []).filter((m) => !m.status.is_placeholder);
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="gp-title text-2xl">Sự kiện dòng họ</h1>
-        <p className="gp-lede mt-1 text-sm">
-          Giỗ, cưới hỏi, họp họ… Giỗ từ hồ sơ thành viên được liệt kê tự động;
-          bạn có thể thêm sự kiện riêng.
-        </p>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="gp-title text-2xl">Sự kiện dòng họ</h1>
+          <p className="gp-lede mt-1 text-sm">
+            {merged.length} sự kiện · giỗ từ hồ sơ thành viên hiện tự động; thêm
+            cưới hỏi, họp họ khi cần.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="gp-btn gp-btn-primary"
+          onClick={() => setFormOpen((v) => !v)}
+        >
+          {formOpen ? "Đóng form" : "+ Thêm sự kiện"}
+        </button>
       </div>
 
-      <form
-        onSubmit={(e) => void onCreate(e)}
-        className="gp-panel grid gap-3 p-5 sm:grid-cols-2"
-      >
-        <label className="gp-label sm:col-span-2">
-          Tiêu đề
-          <input name="title" required className="gp-input mt-1 font-normal" />
-        </label>
-        <label className="gp-label">
-          Loại
-          <select name="type" className="gp-input mt-1 font-normal" defaultValue="hop_ho">
-            {(Object.keys(EVENT_TYPE_LABEL) as FamilyEventType[]).map((t) => (
-              <option key={t} value={t}>
-                {EVENT_TYPE_LABEL[t]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="gp-label">
-          Ngày dương
-          <input name="date" type="date" className="gp-input mt-1 font-normal" />
-        </label>
-        <label className="gp-label">
-          Ngày / giỗ âm
-          <input
-            name="lunar_date"
-            className="gp-input mt-1 font-normal"
-            placeholder="VD: 2024-3-15"
-          />
-        </label>
-        <label className="gp-label">
-          Liên quan thành viên
-          <select name="member_id" className="gp-input mt-1 font-normal" defaultValue="">
-            <option value="">—</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.full_name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="gp-label sm:col-span-2">
-          Ghi chú
-          <textarea name="description" rows={2} className="gp-input mt-1 font-normal" />
-        </label>
-        <input type="hidden" name="branch_id" value="" />
-        <div className="sm:col-span-2">
-          <button
-            type="submit"
-            disabled={saving}
-            className="gp-btn gp-btn-primary disabled:opacity-60"
-          >
-            {saving ? "Đang lưu…" : "Thêm sự kiện"}
-          </button>
-        </div>
-      </form>
+      {formOpen ? (
+        <form
+          onSubmit={(e) => void onCreate(e)}
+          className="gp-panel grid gap-3 p-5 sm:grid-cols-2"
+        >
+          <label className="gp-label sm:col-span-2">
+            Tiêu đề
+            <input
+              name="title"
+              required
+              className="gp-input mt-1 font-normal"
+              placeholder="VD: Họp họ đầu năm"
+            />
+          </label>
+          <label className="gp-label">
+            Loại
+            <select
+              name="type"
+              className="gp-input mt-1 font-normal"
+              defaultValue="hop_ho"
+            >
+              {(Object.keys(EVENT_TYPE_LABEL) as FamilyEventType[]).map((t) => (
+                <option key={t} value={t}>
+                  {EVENT_TYPE_LABEL[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="gp-label">
+            Liên quan thành viên
+            <select
+              name="member_id"
+              className="gp-input mt-1 font-normal"
+              defaultValue=""
+            >
+              <option value="">—</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.full_name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="gp-label">
+            Ngày dương
+            <input name="date" type="date" className="gp-input mt-1 font-normal" />
+          </label>
+          <label className="gp-label">
+            Ngày / giỗ âm
+            <input
+              name="lunar_date"
+              className="gp-input mt-1 font-normal"
+              placeholder="VD: 2024-3-15"
+            />
+          </label>
+          <label className="gp-label sm:col-span-2">
+            Ghi chú
+            <textarea
+              name="description"
+              rows={2}
+              className="gp-input mt-1 font-normal"
+            />
+          </label>
+          <div className="flex flex-wrap gap-2 sm:col-span-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="gp-btn gp-btn-primary disabled:opacity-60"
+            >
+              {saving ? "Đang lưu…" : "Lưu sự kiện"}
+            </button>
+            <button
+              type="button"
+              className="gp-btn gp-btn-ghost"
+              onClick={() => setFormOpen(false)}
+            >
+              Huỷ
+            </button>
+          </div>
+        </form>
+      ) : null}
 
-      <div className="flex flex-wrap gap-3">
-        <label className="gp-label min-w-[160px] flex-1">
-          Tìm
+      <div className="gp-panel grid gap-3 p-4 sm:grid-cols-3">
+        <label className="gp-label sm:col-span-2">
+          Tìm sự kiện
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             className="gp-input mt-1 font-normal"
-            placeholder="Tên sự kiện…"
+            placeholder="Tên sự kiện, ghi chú…"
           />
         </label>
         <label className="gp-label">
-          Lọc loại
+          Loại
           <select
             value={typeFilter}
             onChange={(e) =>
@@ -216,7 +271,6 @@ export function EventsManager({ familyId }: EventsManagerProps) {
             className="gp-input mt-1 font-normal"
           >
             <option value="all">Tất cả</option>
-            <option value="gio_auto">Giỗ (tự động)</option>
             {(Object.keys(EVENT_TYPE_LABEL) as FamilyEventType[]).map((t) => (
               <option key={t} value={t}>
                 {EVENT_TYPE_LABEL[t]}
@@ -235,19 +289,23 @@ export function EventsManager({ familyId }: EventsManagerProps) {
       {loading ? (
         <p className="text-sm text-[var(--gp-muted)]">Đang tải sự kiện…</p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-2.5">
           {merged.map((ev) => (
             <li
               key={ev.id}
-              className="rounded-xl border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-4"
+              className="rounded-xl border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] px-4 py-3.5"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="font-display text-lg font-semibold">{ev.title}</p>
-                  <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-[var(--gp-lacquer)]">
-                    {EVENT_TYPE_LABEL[ev.type]}
-                    {ev.derived ? " · tự động" : ""}
-                  </p>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-display text-base font-semibold">
+                      {ev.title}
+                    </p>
+                    <span className="rounded-full bg-[var(--gp-lacquer-soft)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[var(--gp-lacquer)]">
+                      {EVENT_TYPE_LABEL[ev.type]}
+                      {ev.derived ? " · tự động" : ""}
+                    </span>
+                  </div>
                   <p className="mt-1 text-sm text-[var(--gp-muted)]">
                     {ev.date ? `Dương: ${ev.date}` : null}
                     {ev.lunar_date
@@ -256,7 +314,7 @@ export function EventsManager({ familyId }: EventsManagerProps) {
                     {!ev.date && !ev.lunar_date ? "Chưa có ngày" : null}
                   </p>
                   {ev.description ? (
-                    <p className="mt-2 text-sm text-[var(--gp-ink)]/80">
+                    <p className="mt-1.5 text-sm text-[var(--gp-ink)]/80">
                       {ev.description}
                     </p>
                   ) : null}

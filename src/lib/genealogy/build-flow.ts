@@ -447,12 +447,9 @@ export function buildFlowGraph(
     .sort((a, b) => a[0] - b[0])
     .map(([gen, bucket]) => {
       const avgY = bucket.sumY / bucket.count;
+      // Chỉ gợi ý chi khi cả cấp cùng một nhánh — tránh nhiễu "3 chi"
       const branchHint =
-        bucket.branches.size === 1
-          ? [...bucket.branches][0]
-          : bucket.branches.size > 1
-            ? `${bucket.branches.size} chi`
-            : null;
+        bucket.branches.size === 1 ? [...bucket.branches][0]! : null;
       return {
         id: `gen-label-${gen}`,
         type: "generationLabel" as const,

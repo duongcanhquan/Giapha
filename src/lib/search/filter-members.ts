@@ -68,6 +68,39 @@ export function toMemberListRow(
   };
 }
 
+export function hasActiveMemberFilters(filters: MemberListFilters): boolean {
+  return Boolean(
+    filters.query.trim() ||
+      filters.generation !== "all" ||
+      filters.branchId !== "all" ||
+      filters.life !== "all" ||
+      filters.includePlaceholders,
+  );
+}
+
+function matchesPlainQuery(
+  member: FamilyMember,
+  normQuery: string,
+  branches?: FamilyBranch[],
+): boolean {
+  const blob = stripVietnameseDiacritics(
+    [
+      member.full_name,
+      member.traditional_names.birth,
+      member.traditional_names.courtesy,
+      member.traditional_names.posthumous,
+      member.biography,
+      member.notes,
+      branchNameOf(member, branches),
+      ...member.spouses.map((s) => s.full_name),
+      member.id,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+  return blob.includes(normQuery);
+}
+
 /** Lọc + tìm kiếm danh sách thành viên (đời / chi / sống-mất / gõ tên). */
 export function filterMemberList(
   members: FamilyMember[],
@@ -96,21 +129,24 @@ export function filterMemberList(
 
   const q = filters.query.trim();
   if (q) {
-    const hits = searchMembers(pool, q, Math.max(pool.length, 50), branches);
-    const hitIds = new Set(hits.map((h) => h.member.id));
-    // Fallback: nếu Fuse bỏ sót id chính xác
     const norm = stripVietnameseDiacritics(q);
-    pool = pool.filter(
-      (m) =>
-        hitIds.has(m.id) ||
-        stripVietnameseDiacritics(m.full_name).includes(norm) ||
-        m.id === q,
-    );
-    // Giữ thứ tự gần đúng với điểm Fuse
+    const hits = searchMembers(pool, q, Math.max(pool.length, 80), branches);
     const order = new Map(hits.map((h, i) => [h.member.id, i]));
-    pool = [...pool].sort(
-      (a, b) => (order.get(a.id) ?? 9999) - (order.get(b.id) ?? 9999),
+
+    pool = pool.filter(
+      (m) => order.has(m.id) || matchesPlainQuery(m, norm, branches),
     );
+
+    pool = [...pool].sort((a, b) => {
+      const oa = order.get(a.id);
+      const ob = order.get(b.id);
+      if (oa !== undefined || ob !== undefined) {
+        return (oa ?? 9999) - (ob ?? 9999);
+      }
+      const ga = memberGeneration(a) - memberGeneration(b);
+      if (ga !== 0) return ga;
+      return a.full_name.localeCompare(b.full_name, "vi");
+    });
   } else {
     pool = [...pool].sort((a, b) => {
       const ga = memberGeneration(a) - memberGeneration(b);
@@ -127,7 +163,7 @@ export function groupMemberRows(
   groupBy: MemberListGroupBy,
 ): { key: string; label: string; rows: MemberListRow[] }[] {
   if (groupBy === "list") {
-    return [{ key: "all", label: "Tất cả", rows }];
+    return rows.length ? [{ key: "all", label: "Tất cả", rows }] : [];
   }
 
   const map = new Map<string, MemberListRow[]>();

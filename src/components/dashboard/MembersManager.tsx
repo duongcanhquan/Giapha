@@ -8,6 +8,7 @@ import { useFamilyTree } from "@/hooks/useFamilyTree";
 import {
   filterMemberList,
   groupMemberRows,
+  hasActiveMemberFilters,
   listGenerations,
   type MemberListGroupBy,
   type MemberListRow,
@@ -27,6 +28,12 @@ type MembersManagerProps = {
   exportSlot?: ReactNode;
 };
 
+const GROUP_OPTIONS: { id: MemberListGroupBy; label: string }[] = [
+  { id: "list", label: "Danh sách" },
+  { id: "generation", label: "Theo đời" },
+  { id: "branch", label: "Theo chi" },
+];
+
 function MemberActions({
   member,
   busy,
@@ -45,7 +52,7 @@ function MemberActions({
       {onAddChild && !member.status.is_placeholder ? (
         <button
           type="button"
-          className="inline-flex min-h-10 items-center rounded-md border border-[var(--gp-scroll-edge)] px-3 py-2 text-xs font-semibold text-[var(--gp-ink)] hover:bg-[var(--gp-paper)]"
+          className="inline-flex min-h-9 items-center rounded-md border border-[var(--gp-scroll-edge)] px-2.5 py-1.5 text-xs font-semibold text-[var(--gp-ink)] hover:bg-[var(--gp-paper)]"
           onClick={() => onAddChild(member)}
         >
           + Con
@@ -53,7 +60,7 @@ function MemberActions({
       ) : null}
       <button
         type="button"
-        className="inline-flex min-h-10 items-center rounded-md border border-[var(--gp-lacquer)]/30 px-3 py-2 text-xs font-semibold text-[var(--gp-lacquer)] hover:bg-[var(--gp-lacquer-soft)]"
+        className="inline-flex min-h-9 items-center rounded-md border border-[var(--gp-lacquer)]/30 px-2.5 py-1.5 text-xs font-semibold text-[var(--gp-lacquer)] hover:bg-[var(--gp-lacquer-soft)]"
         onClick={() => onEdit?.(member)}
       >
         Sửa
@@ -61,7 +68,7 @@ function MemberActions({
       <button
         type="button"
         disabled={busy}
-        className="inline-flex min-h-10 items-center rounded-md border border-[var(--gp-scroll-edge)] px-3 py-2 text-xs font-semibold text-[var(--gp-muted)] hover:bg-[var(--gp-paper)] disabled:opacity-50"
+        className="inline-flex min-h-9 items-center rounded-md border border-[var(--gp-scroll-edge)] px-2.5 py-1.5 text-xs font-semibold text-[var(--gp-muted)] hover:bg-[var(--gp-paper)] disabled:opacity-50"
         onClick={() => onDelete(member)}
       >
         {busy ? "…" : "Xoá"}
@@ -70,56 +77,91 @@ function MemberActions({
   );
 }
 
-function MemberInfoBlock({ row }: { row: MemberListRow }) {
+/** Mobile card — đủ thông tin */
+function MemberCard({ row }: { row: MemberListRow }) {
   const m = row.member;
   return (
-    <div className="min-w-0">
-      <div className="flex items-start gap-3">
-        <MemberAvatar
-          name={m.status.is_placeholder ? "?" : m.full_name}
-          photoUrl={m.photo_url}
-          size="sm"
-          deceased={!m.status.is_alive}
-        />
-        <div className="min-w-0">
-          <p className="font-display text-base font-semibold text-[var(--gp-ink)]">
-            {m.status.is_placeholder ? "? Khuyết danh" : m.full_name}
+    <div className="flex items-start gap-3">
+      <MemberAvatar
+        name={m.status.is_placeholder ? "?" : m.full_name}
+        photoUrl={m.photo_url}
+        size="sm"
+        deceased={!m.status.is_alive}
+      />
+      <div className="min-w-0">
+        <p className="font-display text-base font-semibold text-[var(--gp-ink)]">
+          {m.status.is_placeholder ? "? Khuyết danh" : m.full_name}
+        </p>
+        {row.aka ? (
+          <p className="mt-0.5 text-xs text-[var(--gp-muted)]">{row.aka}</p>
+        ) : null}
+        <p className="mt-1 text-xs text-[var(--gp-muted)]">
+          Đời {row.generation} · {row.branchName} ·{" "}
+          {m.status.is_alive ? "Đang sống" : "Đã mất"}
+          {m.gender === "MALE"
+            ? " · Nam"
+            : m.gender === "FEMALE"
+              ? " · Nữ"
+              : ""}
+          {m.is_huong_hoa ? " · Hương hỏa" : ""}
+        </p>
+        {row.spousesLabel ? (
+          <p className="mt-1 text-xs text-[var(--gp-muted-soft)]">
+            Phối ngẫu: {row.spousesLabel}
           </p>
-          {row.aka ? (
-            <p className="mt-0.5 text-xs text-[var(--gp-muted)]">{row.aka}</p>
-          ) : null}
-          <p className="mt-1 text-xs text-[var(--gp-muted)]">
-            Đời {row.generation} · {row.branchName} ·{" "}
-            {m.status.is_alive ? "Đang sống" : "Đã mất"}
-            {m.gender === "MALE"
-              ? " · Nam"
-              : m.gender === "FEMALE"
-                ? " · Nữ"
-                : ""}
-            {m.is_huong_hoa ? " · Hương hỏa" : ""}
+        ) : null}
+        {(m.dates.birth || m.dates.death || m.dates.lunar_death) && (
+          <p className="mt-1 text-xs text-[var(--gp-muted-soft)]">
+            {m.dates.birth ? `Sinh: ${m.dates.birth}` : null}
+            {m.dates.death
+              ? `${m.dates.birth ? " · " : ""}Mất: ${m.dates.death}`
+              : null}
+            {m.dates.lunar_death
+              ? `${m.dates.birth || m.dates.death ? " · " : ""}Giỗ âm: ${m.dates.lunar_death}`
+              : null}
           </p>
-          {row.spousesLabel ? (
-            <p className="mt-1 text-xs text-[var(--gp-muted-soft)]">
-              Phối ngẫu: {row.spousesLabel}
-            </p>
+        )}
+        {m.biography ? (
+          <p className="mt-1 line-clamp-2 text-xs text-[var(--gp-ink)]/75">
+            {m.biography}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/** Desktop table — gọn, không lặp cột đời/chi */
+function MemberTableCell({ row }: { row: MemberListRow }) {
+  const m = row.member;
+  return (
+    <div className="flex items-start gap-3">
+      <MemberAvatar
+        name={m.status.is_placeholder ? "?" : m.full_name}
+        photoUrl={m.photo_url}
+        size="sm"
+        deceased={!m.status.is_alive}
+      />
+      <div className="min-w-0">
+        <p className="font-display font-semibold text-[var(--gp-ink)]">
+          {m.status.is_placeholder ? "? Khuyết danh" : m.full_name}
+          {m.is_huong_hoa ? (
+            <span className="ml-1.5 text-[10px] font-semibold text-[var(--gp-lacquer)]">
+              HH
+            </span>
           ) : null}
-          {(m.dates.birth || m.dates.death || m.dates.lunar_death) && (
-            <p className="mt-1 text-xs text-[var(--gp-muted-soft)]">
-              {m.dates.birth ? `Sinh: ${m.dates.birth}` : null}
-              {m.dates.death
-                ? `${m.dates.birth ? " · " : ""}Mất: ${m.dates.death}`
-                : null}
-              {m.dates.lunar_death
-                ? `${m.dates.birth || m.dates.death ? " · " : ""}Giỗ âm: ${m.dates.lunar_death}`
-                : null}
-            </p>
-          )}
-          {m.biography ? (
-            <p className="mt-1 line-clamp-2 text-xs text-[var(--gp-ink)]/75">
-              {m.biography}
-            </p>
-          ) : null}
-        </div>
+        </p>
+        {row.aka ? (
+          <p className="mt-0.5 text-xs text-[var(--gp-muted)]">{row.aka}</p>
+        ) : null}
+        <p className="mt-0.5 text-xs text-[var(--gp-muted-soft)]">
+          {m.status.is_alive ? "Đang sống" : "Đã mất"}
+          {m.gender === "MALE"
+            ? " · Nam"
+            : m.gender === "FEMALE"
+              ? " · Nữ"
+              : ""}
+        </p>
       </div>
     </div>
   );
@@ -136,13 +178,12 @@ export function MembersManager({
   exportSlot,
 }: MembersManagerProps) {
   const dash = useDashboardAccessOptional();
-  const lockedBranchIds: string[] | null = dash?.isBranchAdmin
-    ? dash.access.branchIds?.length
-      ? dash.access.branchIds
-      : dash.access.branchId
-        ? [dash.access.branchId]
-        : []
-    : null;
+  const lockedBranchIds = useMemo((): string[] | null => {
+    if (!dash?.isBranchAdmin) return null;
+    if (dash.access.branchIds?.length) return dash.access.branchIds;
+    if (dash.access.branchId) return [dash.access.branchId];
+    return [];
+  }, [dash?.isBranchAdmin, dash?.access.branchIds, dash?.access.branchId]);
   const hook = useFamilyTree(treeProp ? null : familyId);
   const tree = treeProp ?? hook.tree;
   const isLoading = treeProp ? false : hook.isLoading;
@@ -164,20 +205,25 @@ export function MembersManager({
     return all.filter((m) => lockedBranchIds.includes(m.tree_logic.branch_id));
   }, [tree?.members, lockedBranchIds]);
 
-  const branches = tree?.branches ?? [];
+  const branches = useMemo(() => {
+    const all = tree?.branches ?? [];
+    if (lockedBranchIds === null) return all;
+    return all.filter((b) => lockedBranchIds.includes(b.id));
+  }, [tree?.branches, lockedBranchIds]);
+
   const generations = useMemo(
     () => listGenerations(scopedMembers),
     [scopedMembers],
   );
 
+  const filters = useMemo(
+    () => ({ query, generation, branchId, life, includePlaceholders }),
+    [query, generation, branchId, life, includePlaceholders],
+  );
+
   const filteredRows = useMemo(
-    () =>
-      filterMemberList(
-        scopedMembers,
-        { query, generation, branchId, life, includePlaceholders },
-        branches,
-      ),
-    [scopedMembers, query, generation, branchId, life, includePlaceholders, branches],
+    () => filterMemberList(scopedMembers, filters, branches),
+    [scopedMembers, filters, branches],
   );
 
   const groups = useMemo(
@@ -185,13 +231,23 @@ export function MembersManager({
     [filteredRows, groupBy],
   );
 
+  const filtersActive = hasActiveMemberFilters(filters);
+
+  const clearFilters = () => {
+    setQuery("");
+    setGeneration("all");
+    setBranchId("all");
+    setLife("all");
+    setIncludePlaceholders(false);
+  };
+
   if (isLoading && !tree) {
     return <DashboardPanelSkeleton />;
   }
 
   if (error) {
     return (
-      <p className="text-sm text-[#7a1f1f]">
+      <p className="text-sm text-[var(--gp-lacquer)]">
         {error.message}{" "}
         <button
           type="button"
@@ -230,8 +286,8 @@ export function MembersManager({
         <div>
           <h2 className="gp-title text-xl md:text-2xl">Danh sách thành viên</h2>
           <p className="gp-lede mt-1 text-sm">
-            {filteredRows.length}/{scopedMembers.length} người · tìm theo tên,
-            lọc đời / chi, xem theo danh sách hoặc nhóm.
+            {filteredRows.length}/{scopedMembers.length} người · tìm nhanh, lọc
+            đời / chi, nhóm theo nhu cầu.
           </p>
         </div>
         {!hideHeaderActions ? (
@@ -250,8 +306,8 @@ export function MembersManager({
         ) : null}
       </div>
 
-      <div className="gp-panel grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6">
-        <label className="gp-label sm:col-span-2 lg:col-span-2">
+      <div className="gp-panel space-y-3 p-4">
+        <label className="gp-label block">
           Tìm kiếm
           <input
             value={query}
@@ -260,72 +316,92 @@ export function MembersManager({
             placeholder="Tên, húy, tự, thụy, chi, phối ngẫu…"
           />
         </label>
-        <label className="gp-label">
-          Đời thứ
-          <select
-            value={generation === "all" ? "all" : String(generation)}
-            onChange={(e) =>
-              setGeneration(
-                e.target.value === "all" ? "all" : Number(e.target.value),
-              )
-            }
-            className="gp-input mt-1 font-normal"
-          >
-            <option value="all">Tất cả đời</option>
-            {generations.map((g) => (
-              <option key={g} value={g}>
-                Đời {g}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="gp-label">
-          Chi / nhánh
-          <select
-            value={branchId}
-            onChange={(e) => setBranchId(e.target.value)}
-            className="gp-input mt-1 font-normal"
-          >
-            <option value="all">Tất cả chi</option>
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="gp-label">
-          Trạng thái
-          <select
-            value={life}
-            onChange={(e) => setLife(e.target.value as typeof life)}
-            className="gp-input mt-1 font-normal"
-          >
-            <option value="all">Tất cả</option>
-            <option value="alive">Đang sống</option>
-            <option value="deceased">Đã mất</option>
-          </select>
-        </label>
-        <label className="gp-label">
-          Hiển thị
-          <select
-            value={groupBy}
-            onChange={(e) => setGroupBy(e.target.value as MemberListGroupBy)}
-            className="gp-input mt-1 font-normal"
-          >
-            <option value="list">Danh sách</option>
-            <option value="generation">Theo đời thứ</option>
-            <option value="branch">Theo chi</option>
-          </select>
-        </label>
-        <label className="flex items-center gap-2 text-sm text-[var(--gp-muted)] sm:col-span-2 lg:col-span-6">
-          <input
-            type="checkbox"
-            checked={includePlaceholders}
-            onChange={(e) => setIncludePlaceholders(e.target.checked)}
-          />
-          Hiện cả ô khuyết danh (placeholder)
-        </label>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="gp-label">
+            Đời thứ
+            <select
+              value={generation === "all" ? "all" : String(generation)}
+              onChange={(e) =>
+                setGeneration(
+                  e.target.value === "all" ? "all" : Number(e.target.value),
+                )
+              }
+              className="gp-input mt-1 font-normal"
+            >
+              <option value="all">Tất cả đời</option>
+              {generations.map((g) => (
+                <option key={g} value={g}>
+                  Đời {g}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="gp-label">
+            Chi / nhánh
+            <select
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className="gp-input mt-1 font-normal"
+            >
+              <option value="all">Tất cả chi</option>
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="gp-label">
+            Trạng thái
+            <select
+              value={life}
+              onChange={(e) => setLife(e.target.value as typeof life)}
+              className="gp-input mt-1 font-normal"
+            >
+              <option value="all">Tất cả</option>
+              <option value="alive">Đang sống</option>
+              <option value="deceased">Đã mất</option>
+            </select>
+          </label>
+          <div className="flex flex-col justify-end gap-2">
+            <label className="flex min-h-10 items-center gap-2 text-sm text-[var(--gp-muted)]">
+              <input
+                type="checkbox"
+                checked={includePlaceholders}
+                onChange={(e) => setIncludePlaceholders(e.target.checked)}
+              />
+              Hiện ô khuyết danh
+            </label>
+            {filtersActive ? (
+              <button
+                type="button"
+                className="text-left text-xs font-semibold text-[var(--gp-lacquer)] hover:underline"
+                onClick={clearFilters}
+              >
+                Xoá bộ lọc
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5 border-t border-[var(--gp-scroll-edge)] pt-3">
+          {GROUP_OPTIONS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setGroupBy(opt.id)}
+              className={[
+                "min-h-9 rounded-full px-3 text-xs font-semibold transition",
+                groupBy === opt.id
+                  ? "bg-[var(--gp-lacquer)] text-[var(--gp-seal-ink)]"
+                  : "border border-[var(--gp-scroll-edge)] text-[var(--gp-ink)] hover:bg-[var(--gp-lacquer-soft)]",
+              ].join(" ")}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {groups.map((group) => (
@@ -345,7 +421,7 @@ export function MembersManager({
                 key={row.member.id}
                 className="rounded-xl border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-3 shadow-[var(--gp-shadow-soft)]"
               >
-                <MemberInfoBlock row={row} />
+                <MemberCard row={row} />
                 <div className="mt-3">
                   <MemberActions
                     member={row.member}
@@ -381,7 +457,7 @@ export function MembersManager({
                       className="cursor-pointer align-top"
                     >
                       <td>
-                        <MemberInfoBlock row={row} />
+                        <MemberTableCell row={row} />
                       </td>
                       <td className="whitespace-nowrap font-semibold">
                         {row.generation}
@@ -425,7 +501,21 @@ export function MembersManager({
 
       {filteredRows.length === 0 ? (
         <p className="rounded-xl border border-dashed border-[var(--gp-scroll-edge)] px-4 py-10 text-center text-sm text-[var(--gp-muted)]">
-          Không có thành viên khớp bộ lọc. Thử xoá tìm kiếm hoặc đổi đời/chi.
+          {scopedMembers.length === 0
+            ? "Chưa có thành viên — nhấn Thêm thành viên để bắt đầu."
+            : "Không có thành viên khớp bộ lọc. Thử xoá tìm kiếm hoặc đổi đời/chi."}
+          {filtersActive ? (
+            <>
+              {" "}
+              <button
+                type="button"
+                className="font-semibold text-[var(--gp-lacquer)] underline"
+                onClick={clearFilters}
+              >
+                Xoá bộ lọc
+              </button>
+            </>
+          ) : null}
         </p>
       ) : null}
     </div>

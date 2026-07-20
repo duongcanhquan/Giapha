@@ -73,6 +73,9 @@ function run() {
   const grouped = groupMemberRows(byGen2, "branch");
   assert.equal(grouped.length, 2);
 
+  const emptyGrouped = groupMemberRows([], "list");
+  assert.equal(emptyGrouped.length, 0);
+
   console.log("filter-members.test: ok");
 }
 

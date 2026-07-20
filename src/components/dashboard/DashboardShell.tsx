@@ -193,10 +193,14 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
       }}
     >
       <div className="flex min-h-screen flex-col bg-[var(--gp-paper)] text-[var(--gp-ink)]">
-        {isSuperAdmin ? <SuperAdminBanner familyName={family?.name} /> : null}
+        {isSuperAdmin ? (
+          <div className="print:hidden">
+            <SuperAdminBanner familyName={family?.name} />
+          </div>
+        ) : null}
 
         {/* Thanh trên: tên người dùng + đăng xuất — luôn thấy trên mobile & desktop */}
-        <header className="sticky top-0 z-30 border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)]/95 px-3 py-2.5 backdrop-blur-sm md:px-5">
+        <header className="sticky top-0 z-30 border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)]/95 px-3 py-2.5 backdrop-blur-sm print:hidden md:px-5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <Link
@@ -263,7 +267,7 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
         </header>
 
         <div className="flex min-h-0 flex-1">
-          <aside className="hidden w-60 shrink-0 border-r border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-5 md:block">
+          <aside className="hidden w-60 shrink-0 border-r border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-5 print:hidden md:block">
             <p className="gp-eyebrow">Menu quản trị</p>
             <nav className="mt-4 flex flex-col gap-1">
               {nav.map((item) => {
@@ -302,7 +306,7 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
           </aside>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <nav className="flex gap-1 overflow-x-auto border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] px-2 py-2 md:hidden">
+            <nav className="flex gap-1 overflow-x-auto border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] px-2 py-2 print:hidden md:hidden">
               {nav.map((item) => {
                 const href = `${base}${item.href}`;
                 const active =
@@ -326,7 +330,7 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
               })}
             </nav>
 
-            <main className="flex min-h-0 flex-1 flex-col p-3 md:p-5">
+            <main className="flex min-h-0 flex-1 flex-col p-3 print:p-0 md:p-5">
               {children}
             </main>
           </div>

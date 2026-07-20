@@ -471,3 +471,17 @@ body {
 .data-\[state\=closed\]\:animate-out[data-state="closed"] {
   animation-fill-mode: both;
 }
+
+/* —— In sách gia phả —— */
+@media print {
+  body {
+    background: #fff !important;
+  }
+
+  .gp-book-print {
+    max-width: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+}

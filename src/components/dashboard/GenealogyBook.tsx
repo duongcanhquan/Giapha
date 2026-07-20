@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MemberAvatar } from "@/components/ui/MemberAvatar";
+import { useDashboardAccessOptional } from "@/components/dashboard/DashboardAccessContext";
 import { DashboardPanelSkeleton } from "@/components/ui/skeleton";
 import { useFamilyTree } from "@/hooks/useFamilyTree";
 import {
@@ -23,24 +24,46 @@ function branchName(
 }
 
 export function GenealogyBook({ familyId }: GenealogyBookProps) {
+  const dash = useDashboardAccessOptional();
+  const lockedBranchIds = useMemo((): string[] | null => {
+    if (!dash?.isBranchAdmin) return null;
+    if (dash.access.branchIds?.length) return dash.access.branchIds;
+    if (dash.access.branchId) return [dash.access.branchId];
+    return [];
+  }, [dash?.isBranchAdmin, dash?.access.branchIds, dash?.access.branchId]);
+
   const { tree, isLoading, error, mutate } = useFamilyTree(familyId);
   const [branchId, setBranchId] = useState<string | "all">("all");
   const [query, setQuery] = useState("");
 
-  const rows = useMemo(() => {
-    if (!tree) return [];
-    return filterMemberList(
-      tree.members,
-      {
-        query,
-        generation: "all",
-        branchId,
-        life: "all",
-        includePlaceholders: false,
-      },
-      tree.branches,
-    );
-  }, [tree, query, branchId]);
+  const scopedMembers = useMemo(() => {
+    const all = tree?.members ?? [];
+    if (lockedBranchIds === null) return all;
+    if (lockedBranchIds.length === 0) return [];
+    return all.filter((m) => lockedBranchIds.includes(m.tree_logic.branch_id));
+  }, [tree?.members, lockedBranchIds]);
+
+  const branches = useMemo(() => {
+    const all = tree?.branches ?? [];
+    if (lockedBranchIds === null) return all;
+    return all.filter((b) => lockedBranchIds.includes(b.id));
+  }, [tree?.branches, lockedBranchIds]);
+
+  const rows = useMemo(
+    () =>
+      filterMemberList(
+        scopedMembers,
+        {
+          query,
+          generation: "all",
+          branchId,
+          life: "all",
+          includePlaceholders: false,
+        },
+        branches,
+      ),
+    [scopedMembers, query, branchId, branches],
+  );
 
   const chapters = useMemo(
     () => groupMemberRows(rows, "generation"),
@@ -48,8 +71,8 @@ export function GenealogyBook({ familyId }: GenealogyBookProps) {
   );
 
   const generations = useMemo(
-    () => listGenerations(tree?.members ?? []),
-    [tree?.members],
+    () => listGenerations(rows.map((r) => r.member)),
+    [rows],
   );
 
   if (isLoading && !tree) return <DashboardPanelSkeleton />;
@@ -65,21 +88,20 @@ export function GenealogyBook({ familyId }: GenealogyBookProps) {
     );
   }
 
-  const clanName = tree?.clan_name || tree?.family_id || "Gia phả";
+  const clanName = tree?.clan_name || "Gia phả";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 print:hidden sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="gp-title text-2xl md:text-3xl">Sách gia phả</h1>
           <p className="gp-lede mt-1 text-sm">
-            {clanName} · trình bày theo đời thứ, đủ tên húy / tự / thụy, phối
-            ngẫu và tiểu sử.
+            {clanName} · theo đời thứ, đủ húy / tự / thụy, phối ngẫu và tiểu sử.
           </p>
         </div>
         <button
           type="button"
-          className="gp-btn gp-btn-primary print:hidden"
+          className="gp-btn gp-btn-primary"
           onClick={() => window.print()}
         >
           In / lưu PDF
@@ -104,7 +126,7 @@ export function GenealogyBook({ familyId }: GenealogyBookProps) {
             className="gp-input mt-1 font-normal"
           >
             <option value="all">Tất cả chi</option>
-            {(tree?.branches ?? []).map((b) => (
+            {branches.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
               </option>
@@ -113,7 +135,7 @@ export function GenealogyBook({ familyId }: GenealogyBookProps) {
         </label>
       </div>
 
-      <article className="mx-auto max-w-3xl rounded-[var(--gp-radius-lg)] border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] px-5 py-8 shadow-[var(--gp-shadow-soft)] md:px-10 print:border-0 print:shadow-none">
+      <article className="gp-book-print mx-auto max-w-3xl rounded-[var(--gp-radius-lg)] border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] px-5 py-8 shadow-[var(--gp-shadow-soft)] md:px-10">
         <header className="border-b border-[var(--gp-lacquer)]/30 pb-6 text-center">
           <p className="gp-eyebrow">Gia phả hương hỏa</p>
           <h2 className="font-display mt-2 text-3xl font-semibold text-[var(--gp-lacquer)]">
@@ -122,7 +144,7 @@ export function GenealogyBook({ familyId }: GenealogyBookProps) {
           <p className="mt-2 text-sm text-[var(--gp-muted)]">
             {rows.length} thành viên · {generations.length} đời
             {branchId !== "all"
-              ? ` · ${branchName(branchId, tree?.branches)}`
+              ? ` · ${branchName(branchId, branches)}`
               : ""}
           </p>
         </header>
@@ -131,6 +153,9 @@ export function GenealogyBook({ familyId }: GenealogyBookProps) {
           <section key={chapter.key} className="mt-8 break-inside-avoid">
             <h3 className="font-display border-b border-[var(--gp-gold)]/40 pb-2 text-xl font-semibold text-[var(--gp-ink)]">
               {chapter.label}
+              <span className="ml-2 text-sm font-normal text-[var(--gp-muted)]">
+                ({chapter.rows.length})
+              </span>
             </h3>
             <ol className="mt-4 space-y-5">
               {chapter.rows.map((row, index) => {
@@ -210,7 +235,7 @@ export function GenealogyBook({ familyId }: GenealogyBookProps) {
 
         {chapters.length === 0 ? (
           <p className="mt-8 text-center text-sm text-[var(--gp-muted)]">
-            Chưa có dữ liệu để lập sách — thêm thành viên trước.
+            Chưa có dữ liệu để lập sách — thêm thành viên hoặc nới bộ lọc.
           </p>
         ) : null}
       </article>
