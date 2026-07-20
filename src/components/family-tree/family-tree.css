@@ -30,10 +30,44 @@
   font-family: var(--font-be-vietnam), "Be Vietnam Pro", sans-serif;
   color: var(--ft-ink);
   touch-action: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
-.ft-root--mobile .react-flow__minimap {
+/* CSS overlay fullscreen — iOS Safari thường không hỗ trợ Fullscreen API ổn định */
+.ft-root--immersive {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 220;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  max-height: none !important;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.ft-root--immersive .react-flow {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+.ft-root .react-flow,
+.ft-root .react-flow__pane,
+.ft-root .react-flow__viewport {
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+/* Chỉ ẩn minimap trên điện thoại hẹp; iPad / immersive vẫn hiện để kéo theo dõi */
+.ft-root--phone:not(.ft-root--immersive) .react-flow__minimap {
   display: none;
+}
+
+.ft-root--immersive .react-flow__minimap {
+  display: block !important;
 }
 
 .ft-root .react-flow__minimap {
@@ -416,6 +450,7 @@
 .ft-root--mobile .ft-toolbar {
   max-height: min(46vh, 360px);
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .ft-root--mobile .ft-toolbar--collapsed .ft-toolbar__extra {
@@ -437,6 +472,49 @@
   right: 10px !important;
   left: auto !important;
   scale: 0.92;
+}
+
+.ft-toolbar__immersive {
+  border: 1px solid rgba(122, 31, 31, 0.45) !important;
+  background: rgba(122, 31, 31, 0.08) !important;
+  color: var(--ft-lacquer) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
+
+.ft-root--immersive .ft-toolbar__immersive {
+  background: var(--ft-lacquer) !important;
+  color: #fffdf8 !important;
+  border-color: transparent !important;
+}
+
+.ft-immersive-exit {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 12;
+  display: none;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 253, 248, 0.35);
+  background: rgba(26, 20, 16, 0.78);
+  color: #fffdf8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+
+.ft-root--immersive .ft-immersive-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ft-root--immersive .ft-toolbar {
+  max-width: calc(100vw - 7.5rem);
 }
 
 .ft-smart-search {

@@ -192,7 +192,15 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
         isBranchAdmin,
       }}
     >
-      <div className="flex min-h-screen flex-col bg-[var(--gp-paper)] text-[var(--gp-ink)]">
+      <div
+        className={[
+          "flex flex-col bg-[var(--gp-paper)] text-[var(--gp-ink)]",
+          /* Trang cây cần chiều cao viewport cố định để canvas pan được hết */
+          pathname === base
+            ? "h-dvh max-h-dvh overflow-hidden"
+            : "min-h-screen",
+        ].join(" ")}
+      >
         {isSuperAdmin ? (
           <div className="print:hidden">
             <SuperAdminBanner familyName={family?.name} />
@@ -330,7 +338,15 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
               })}
             </nav>
 
-            <main className="flex min-h-0 flex-1 flex-col p-3 print:p-0 md:p-5">
+            <main
+              className={[
+                "flex min-h-0 flex-1 flex-col p-3 print:p-0 md:p-5",
+                /* Trang cây: khoá scroll trang để touch pan thuộc React Flow (iPad) */
+                pathname === base
+                  ? "overflow-hidden overscroll-none"
+                  : "overflow-auto",
+              ].join(" ")}
+            >
               {children}
             </main>
           </div>

@@ -57,26 +57,28 @@ import { RelationshipEdge } from "./edges/RelationshipEdge";
 import { SmartSearch } from "./SmartSearch";
 import "./family-tree.css";
 
-function subscribeMobile(onStoreChange: () => void): () => void {
-  const mq = window.matchMedia("(max-width: 768px)");
+function subscribeMediaQuery(query: string, onStoreChange: () => void): () => void {
+  const mq = window.matchMedia(query);
   mq.addEventListener("change", onStoreChange);
   return () => mq.removeEventListener("change", onStoreChange);
 }
 
-function getMobileSnapshot(): boolean {
-  return window.matchMedia("(max-width: 768px)").matches;
-}
-
-function getServerMobileSnapshot(): boolean {
-  return false;
-}
-
-function useIsMobileViewport(): boolean {
+function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
-    subscribeMobile,
-    getMobileSnapshot,
-    getServerMobileSnapshot,
+    (onStoreChange) => subscribeMediaQuery(query, onStoreChange),
+    () => window.matchMedia(query).matches,
+    () => false,
   );
+}
+
+/** Toolbar gọn (iPad portrait / điện thoại) */
+function useIsMobileViewport(): boolean {
+  return useMediaQuery("(max-width: 768px)");
+}
+
+/** Điện thoại hẹp — ẩn minimap khi không immersive */
+function useIsPhoneViewport(): boolean {
+  return useMediaQuery("(max-width: 640px)");
 }
 
 const nodeTypes = {
@@ -251,6 +253,8 @@ function FamilyTreeInner({
 }: InnerProps) {
   const { fitView, getNode } = useReactFlow();
   const isMobile = useIsMobileViewport();
+  const isPhone = useIsPhoneViewport();
+  const [immersive, setImmersive] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(
     initialHighlightId,
@@ -290,6 +294,35 @@ function FamilyTreeInner({
     },
     [],
   );
+
+  const exitImmersive = useCallback(() => {
+    setImmersive(false);
+  }, []);
+
+  const toggleImmersive = useCallback(() => {
+    setImmersive((v) => {
+      if (!v) setToolbarOpen(false);
+      return !v;
+    });
+  }, []);
+
+  // Khoá scroll trang + Escape thoát khi xem toàn màn hình
+  useEffect(() => {
+    if (!immersive) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevTouch = document.body.style.touchAction;
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setImmersive(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.style.touchAction = prevTouch;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [immersive]);
 
   const childrenIndex = useMemo(
     () => buildChildrenIndex(data.members),
@@ -623,6 +656,11 @@ function FamilyTreeInner({
     fitOverview(true);
   }, [fitOverview]);
 
+  // Vào/thoát toàn màn hình: đợi layout xong rồi fit lại khung
+  useEffect(() => {
+    scheduleFit(() => fitOverview(false), immersive ? 80 : 120);
+  }, [immersive, scheduleFit, fitOverview]);
+
   useImperativeHandle(
     treeRef,
     () => ({
@@ -687,7 +725,8 @@ function FamilyTreeInner({
       : branches;
   const visibleCount = visibleData.members.length;
   const totalCount = data.members.length;
-  const showMiniMapEffective = showMiniMap && !isMobile;
+  const showMiniMapEffective =
+    showMiniMap && (immersive || !isPhone);
   const instantOpen =
     isMobile || readOnly || typeof onMemberDoubleClick !== "function";
 
@@ -696,11 +735,24 @@ function FamilyTreeInner({
       className={[
         "ft-root",
         isMobile ? "ft-root--mobile" : "",
+        isPhone ? "ft-root--phone" : "",
+        immersive ? "ft-root--immersive" : "",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
+      {immersive ? (
+        <button
+          type="button"
+          className="ft-immersive-exit"
+          onClick={exitImmersive}
+          aria-label="Thoát toàn màn hình"
+        >
+          Thu nhỏ
+        </button>
+      ) : null}
+
       {showToolbar ? (
         <div
           className={[
@@ -719,6 +771,20 @@ function FamilyTreeInner({
               onMemberOpen?.(id);
             }}
           />
+
+          <button
+            type="button"
+            className="ft-toolbar__immersive"
+            onClick={toggleImmersive}
+            aria-pressed={immersive}
+            title={
+              immersive
+                ? "Thoát toàn màn hình (Esc)"
+                : "Mở cây toàn màn hình — dễ kéo và theo dõi"
+            }
+          >
+            {immersive ? "Thu nhỏ" : "Toàn màn hình"}
+          </button>
 
           {isMobile ? (
             <button
@@ -888,17 +954,19 @@ function FamilyTreeInner({
         minZoom={0.01}
         maxZoom={2.5}
         panOnScroll={interactive}
-        panOnDrag={interactive}
+        /* Mọi nút chuột + touch — tránh iPad mất pan dọc khi gesture bị trang chiếm */
+        panOnDrag={interactive ? [0, 1, 2] : false}
         zoomOnScroll={interactive}
         zoomOnPinch={interactive}
+        zoomOnDoubleClick={false}
         preventScrolling={interactive}
-        nodesDraggable={interactive && !readOnly && !isMobile}
+        nodesDraggable={interactive && !readOnly && !isMobile && !immersive}
         nodesConnectable={false}
         elementsSelectable={interactive}
         selectionOnDrag={false}
         proOptions={{ hideAttribution: true }}
       >
-        {showBackground && !isMobile ? (
+        {showBackground && (!isPhone || immersive) ? (
           <Background gap={22} size={1} color="rgba(138, 106, 58, 0.22)" />
         ) : null}
         {showMiniMapEffective ? (

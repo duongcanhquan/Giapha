@@ -162,7 +162,7 @@ export function FamilyAdminWorkspace({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-2 md:gap-3">
+    <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden overscroll-none md:gap-3">
       <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
         <div>
           <p className="gp-eyebrow">Quản trị hương hỏa</p>
@@ -181,8 +181,8 @@ export function FamilyAdminWorkspace({
               </>
             ) : (
               <>
-                Cây ưu tiên toàn khung — mặc định gom nhánh để nhìn rõ. Tìm tên →
-                mờ phần khác, sáng đường huyết thống.{" "}
+                Vuốt để kéo cây · nút <strong>Toàn màn hình</strong> để xem rộng
+                trên iPad. Mặc định gom nhánh — tìm tên để sáng đường huyết thống.{" "}
               </>
             )}
             Bảng chi tiết:{" "}
@@ -270,7 +270,7 @@ export function FamilyAdminWorkspace({
 
       <section
         id="clan-tree-canvas"
-        className="clan-tree-stage"
+        className="clan-tree-stage min-h-[min(70dvh,100%)]"
         aria-label="Cây hương hỏa"
       >
         <FamilyTree
