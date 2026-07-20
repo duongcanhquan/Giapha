@@ -25,12 +25,16 @@ function branchName(
 
 export function GenealogyBook({ familyId }: GenealogyBookProps) {
   const dash = useDashboardAccessOptional();
+  const lockedKey = dash?.isBranchAdmin
+    ? (dash.access.branchIds?.length
+        ? dash.access.branchIds.join("|")
+        : dash.access.branchId || "__empty__")
+    : null;
   const lockedBranchIds = useMemo((): string[] | null => {
-    if (!dash?.isBranchAdmin) return null;
-    if (dash.access.branchIds?.length) return dash.access.branchIds;
-    if (dash.access.branchId) return [dash.access.branchId];
-    return [];
-  }, [dash?.isBranchAdmin, dash?.access.branchIds, dash?.access.branchId]);
+    if (lockedKey === null) return null;
+    if (lockedKey === "__empty__") return [];
+    return lockedKey.split("|");
+  }, [lockedKey]);
 
   const { tree, isLoading, error, mutate } = useFamilyTree(familyId);
   const [branchId, setBranchId] = useState<string | "all">("all");
