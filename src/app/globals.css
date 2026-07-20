@@ -214,18 +214,27 @@ body {
   color: var(--gp-muted);
 }
 
+.clan-tree-page {
+  min-height: 0;
+}
+
 .clan-tree-stage {
   position: relative;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  /* iPad/Safari: % height trong flex hay sụp — dùng min-height dvh + absolute fill */
-  min-height: min(70dvh, 100%);
+  min-height: 0;
   height: auto;
-  border-radius: var(--gp-radius-lg);
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: none;
+}
+
+/* Mặc định trang quản trị: cây full-bleed, không “khung thẻ” */
+.clan-tree-stage--expanded {
+  flex: 1 1 auto;
+  min-height: 0;
+  border-radius: 0;
 }
 
 .clan-tree-stage__canvas.ft-root,
@@ -237,6 +246,13 @@ body {
   height: auto !important;
   min-height: 0;
   max-height: none;
+}
+
+.clan-tree-stage--expanded .ft-root,
+.clan-tree-stage--expanded .clan-tree-stage__canvas.ft-root {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .gp-panel-inset {

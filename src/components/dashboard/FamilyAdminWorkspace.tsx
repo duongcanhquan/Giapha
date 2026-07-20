@@ -48,6 +48,8 @@ export function FamilyAdminWorkspace({
     lockedBranchId,
   );
   const [statsOpen, setStatsOpen] = useState(false);
+  /** Thu gọn tiêu đề/infographic để cây chiếm gần hết vùng nội dung */
+  const [chromeCollapsed, setChromeCollapsed] = useState(true);
 
   useEffect(() => {
     if (lockedBranchId) setTreeBranchFilter(lockedBranchId);
@@ -162,115 +164,128 @@ export function FamilyAdminWorkspace({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col gap-2 overflow-hidden overscroll-none md:gap-3">
-      <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="gp-eyebrow">Quản trị hương hỏa</p>
-          <h1 className="gp-title mt-1 text-2xl md:text-3xl">
-            Cây dòng họ {tree.clan_name}
-          </h1>
-          <p className="gp-lede mt-1 max-w-2xl text-sm">
-            {lockedBranchIds?.length ? (
-              <>
-                Bạn đang quản lý{" "}
-                <strong>
-                  {dash?.access.branchNames?.filter(Boolean).join(", ") ||
-                    lockedBranchIds.join(", ")}
-                </strong>{" "}
-                — chỉ thêm/sửa người thuộc các chi này.{" "}
-              </>
+    <div className="clan-tree-page flex h-full min-h-0 flex-1 flex-col overflow-hidden overscroll-none">
+      <header
+        className={[
+          "clan-tree-page__chrome shrink-0 border-b border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)]/95",
+          chromeCollapsed ? "clan-tree-page__chrome--compact" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 md:px-4">
+          <div className="min-w-0">
+            <h1 className="gp-title truncate text-lg md:text-xl">
+              Cây dòng họ {tree.clan_name}
+            </h1>
+            {!chromeCollapsed ? (
+              <p className="gp-lede mt-0.5 max-w-2xl text-xs md:text-sm">
+                {lockedBranchIds?.length ? (
+                  <>
+                    Quản lý{" "}
+                    <strong>
+                      {dash?.access.branchNames?.filter(Boolean).join(", ") ||
+                        lockedBranchIds.join(", ")}
+                    </strong>
+                    .{" "}
+                  </>
+                ) : null}
+                Vuốt để kéo · <strong>Toàn màn hình</strong> để xem rộng.{" "}
+                <Link
+                  href={`/dashboard/${familyId}/members`}
+                  className="font-semibold text-[var(--gp-lacquer)] underline-offset-2 hover:underline"
+                >
+                  Thành viên
+                </Link>
+              </p>
             ) : (
-              <>
-                Vuốt để kéo cây · nút <strong>Toàn màn hình</strong> để xem rộng
-                trên iPad. Mặc định gom nhánh — tìm tên để sáng đường huyết thống.{" "}
-              </>
+              <p className="truncate text-[11px] text-[var(--gp-muted)]">
+                {tree.members.length} người · {tree.branches?.length ?? 1} chi
+                {lockedBranchIds?.length
+                  ? ` · ${dash?.access.branchNames?.filter(Boolean).join(", ") || lockedBranchIds.join(", ")}`
+                  : ""}
+              </p>
             )}
-            Bảng chi tiết:{" "}
-            <Link
-              href={`/dashboard/${familyId}/members`}
-              className="font-semibold text-[var(--gp-lacquer)] underline-offset-2 hover:underline"
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              className="gp-btn gp-btn-ghost !min-h-9 !px-2.5 text-xs"
+              onClick={() => setChromeCollapsed((v) => !v)}
+              aria-pressed={chromeCollapsed}
+              title={
+                chromeCollapsed
+                  ? "Hiện thêm tiêu đề / số liệu"
+                  : "Thu gọn để cây rộng hơn"
+              }
             >
-              Thành viên
-            </Link>
-            .
-          </p>
+              {chromeCollapsed ? (
+                <>
+                  <ChevronDown size={15} aria-hidden /> Chi tiết
+                </>
+              ) : (
+                <>
+                  <ChevronUp size={15} aria-hidden /> Mở rộng cây
+                </>
+              )}
+            </button>
+            {!chromeCollapsed ? (
+              <button
+                type="button"
+                className="gp-btn gp-btn-ghost !min-h-9 !px-2.5 text-xs"
+                onClick={() => setStatsOpen((v) => !v)}
+                aria-expanded={statsOpen}
+              >
+                {statsOpen ? "Thu số liệu" : "Infographic"}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="gp-btn gp-btn-primary !min-h-9 !px-3 text-xs"
+              onClick={() => openCreate()}
+            >
+              + Thêm
+            </button>
+            {!chromeCollapsed ? (
+              <ExportTreeButton
+                data={tree}
+                label="Xuất"
+                className="gp-btn gp-btn-ghost !min-h-9 !px-2.5 text-xs disabled:opacity-60"
+              />
+            ) : null}
+          </div>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-          <button
-            type="button"
-            className="gp-btn gp-btn-ghost w-full sm:w-auto"
-            onClick={() => setStatsOpen((v) => !v)}
-            aria-expanded={statsOpen}
-          >
-            {statsOpen ? (
-              <>
-                <ChevronUp size={16} aria-hidden /> Thu số liệu
-              </>
-            ) : (
-              <>
-                <ChevronDown size={16} aria-hidden /> Infographic
-              </>
-            )}
-          </button>
-          <button
-            type="button"
-            className="gp-btn gp-btn-primary w-full sm:w-auto"
-            onClick={() => openCreate()}
-          >
-            + Thêm thành viên
-          </button>
-          <ExportTreeButton
-            data={tree}
-            label="Xuất Infographic"
-            className="gp-btn gp-btn-ghost w-full disabled:opacity-60 sm:w-auto"
-          />
-        </div>
-      </header>
 
-      {statsOpen ? (
-        <div className="max-h-[40vh] shrink-0 overflow-auto">
-          <ClanOverviewInfographic
-            tree={tree}
-            onFocusMember={(id) => {
-              openProfile(id);
-              focusOnTree(id);
-            }}
-            onFilterBranch={(branchId) => {
-              if (lockedBranchIds?.length === 1) {
-                setTreeBranchFilter(lockedBranchIds[0]!);
-                return;
-              }
-              if (
-                lockedBranchIds?.length &&
-                branchId &&
-                !lockedBranchIds.includes(branchId)
-              ) {
-                return;
-              }
-              setTreeBranchFilter(branchId);
-            }}
-          />
-        </div>
-      ) : (
-        <div className="clan-infographic-mini shrink-0">
-          <span>
-            <strong>{tree.members.length}</strong> người ·{" "}
-            <strong>{tree.branches?.length ?? 1}</strong> chi · mặc định{" "}
-            <strong>Gom nhánh</strong>
-          </span>
-          <button
-            type="button"
-            className="text-xs font-semibold text-[var(--gp-lacquer)] underline-offset-2 hover:underline"
-            onClick={() => setStatsOpen(true)}
-          >
-            Mở infographic
-          </button>
-        </div>
-      )}
+        {!chromeCollapsed && statsOpen ? (
+          <div className="max-h-[32vh] overflow-auto border-t border-[var(--gp-scroll-edge)] px-3 py-2 md:px-4">
+            <ClanOverviewInfographic
+              tree={tree}
+              onFocusMember={(id) => {
+                openProfile(id);
+                focusOnTree(id);
+              }}
+              onFilterBranch={(branchId) => {
+                if (lockedBranchIds?.length === 1) {
+                  setTreeBranchFilter(lockedBranchIds[0]!);
+                  return;
+                }
+                if (
+                  lockedBranchIds?.length &&
+                  branchId &&
+                  !lockedBranchIds.includes(branchId)
+                ) {
+                  return;
+                }
+                setTreeBranchFilter(branchId);
+              }}
+            />
+          </div>
+        ) : null}
+      </header>
 
       <section
         id="clan-tree-canvas"
-        className="clan-tree-stage min-h-[min(70dvh,100%)]"
+        className="clan-tree-stage clan-tree-stage--expanded"
         aria-label="Cây hương hỏa"
       >
         <FamilyTree

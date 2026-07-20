@@ -340,11 +340,11 @@ export function DashboardShell({ familyId, children }: DashboardShellProps) {
 
             <main
               className={[
-                "flex min-h-0 flex-1 flex-col p-3 print:p-0 md:p-5",
-                /* Trang cây: khoá scroll trang để touch pan thuộc React Flow (iPad) */
+                "flex min-h-0 flex-1 flex-col print:p-0",
                 pathname === base
-                  ? "overflow-hidden overscroll-none"
-                  : "overflow-auto",
+                  ? /* Cây: full-bleed, không khung padding — để canvas mở rộng tối đa */
+                    "overflow-hidden overscroll-none p-0"
+                  : "overflow-auto p-3 md:p-5",
               ].join(" ")}
             >
               {children}

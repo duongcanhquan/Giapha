@@ -115,14 +115,14 @@ export function PublicFamilyTreeView({ familyId }: PublicFamilyTreeViewProps) {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col p-2 md:p-3">
+      <div className="flex min-h-0 flex-1 flex-col">
         {tree.members.length === 0 ? (
           <div className="gp-panel grid flex-1 place-items-center text-sm text-[var(--gp-muted)]">
             Dòng họ chưa có thành viên công khai.
           </div>
         ) : (
           <section
-            className="clan-tree-stage min-h-0 flex-1"
+            className="clan-tree-stage clan-tree-stage--expanded min-h-0 flex-1"
             aria-label="Cây hương hỏa công khai"
           >
             <FamilyTree

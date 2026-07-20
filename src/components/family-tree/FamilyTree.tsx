@@ -426,12 +426,13 @@ function FamilyTreeInner({
 
   const fitViewOptions = useMemo(
     () => ({
-      padding: 0.16,
+      /* padding nhỏ hơn → cây chiếm khung rộng hơn, đỡ bị “thu nhỏ trong thẻ” */
+      padding: immersive ? 0.06 : 0.1,
       minZoom: 0.01,
-      maxZoom: 1.15,
+      maxZoom: 1.35,
       duration: isMobile ? 0 : 200,
     }),
-    [isMobile],
+    [isMobile, immersive],
   );
 
   const openUpdate = useCallback(
@@ -521,13 +522,13 @@ function FamilyTreeInner({
     (animated = false) => {
       // Cho phép zoom rất nhỏ để 500 node vẫn vào khung — tránh canvas trắng
       void fitView({
-        padding: 0.16,
+        padding: immersive ? 0.06 : 0.1,
         minZoom: 0.01,
-        maxZoom: 1.15,
+        maxZoom: 1.35,
         duration: animated ? 380 : 0,
       });
     },
-    [fitView],
+    [fitView, immersive],
   );
 
   const fitToPath = useCallback(
@@ -942,9 +943,9 @@ function FamilyTreeInner({
         onInit={(instance) => {
           scheduleFit(() => {
             void instance.fitView({
-              padding: 0.16,
+              padding: 0.1,
               minZoom: 0.01,
-              maxZoom: 1.15,
+              maxZoom: 1.35,
               duration: 0,
             });
             overviewDoneRef.current = true;
@@ -954,7 +955,6 @@ function FamilyTreeInner({
         minZoom={0.01}
         maxZoom={2.5}
         panOnScroll={interactive}
-        /* Mọi nút chuột + touch — tránh iPad mất pan dọc khi gesture bị trang chiếm */
         panOnDrag={interactive ? [0, 1, 2] : false}
         zoomOnScroll={interactive}
         zoomOnPinch={interactive}
