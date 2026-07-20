@@ -52,6 +52,7 @@ import {
 import { MemberNode } from "./nodes/MemberNode";
 import { PlaceholderNode } from "./nodes/PlaceholderNode";
 import { SpouseNode, type SpouseNodeData } from "./nodes/SpouseNode";
+import { GenerationLabelNode } from "./nodes/GenerationLabelNode";
 import { RelationshipEdge } from "./edges/RelationshipEdge";
 import { SmartSearch } from "./SmartSearch";
 import "./family-tree.css";
@@ -82,6 +83,7 @@ const nodeTypes = {
   member: MemberNode,
   placeholder: PlaceholderNode,
   spouse: SpouseNode,
+  generationLabel: GenerationLabelNode,
 } satisfies NodeTypes;
 
 const edgeTypes = {
@@ -905,6 +907,7 @@ function FamilyTreeInner({
             zoomable
             nodeStrokeWidth={2}
             nodeColor={(node) => {
+              if (node.type === "generationLabel") return "#c4a35a";
               if (node.type === "placeholder") return "#a8a29a";
               if (node.type === "spouse") {
                 const role = (node.data as SpouseNodeData).role;

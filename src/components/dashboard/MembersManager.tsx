@@ -1,21 +1,26 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { MemberAvatar } from "@/components/ui/MemberAvatar";
 import { useDashboardAccessOptional } from "@/components/dashboard/DashboardAccessContext";
 import { DashboardPanelSkeleton } from "@/components/ui/skeleton";
 import { useFamilyTree } from "@/hooks/useFamilyTree";
+import {
+  filterMemberList,
+  groupMemberRows,
+  listGenerations,
+  type MemberListGroupBy,
+  type MemberListRow,
+} from "@/lib/search/filter-members";
 import { appToast } from "@/lib/toast";
 import { deleteMember } from "@/services/memberService";
 import type { FamilyMember, FamilyTreeData } from "@/types/genealogy";
-import { memberGeneration } from "@/types/genealogy";
 
 type MembersManagerProps = {
   familyId: string;
-  /** Nếu đã fetch sẵn từ workspace cha */
   tree?: FamilyTreeData | null;
   onRefresh?: () => void;
   onCreate?: () => void;
-  /** Thêm con trực tiếp dưới Cha/Mẹ (nối cây) đã chọn */
   onAddChild?: (parent: FamilyMember) => void;
   onEdit?: (member: FamilyMember) => void;
   hideHeaderActions?: boolean;
@@ -65,6 +70,61 @@ function MemberActions({
   );
 }
 
+function MemberInfoBlock({ row }: { row: MemberListRow }) {
+  const m = row.member;
+  return (
+    <div className="min-w-0">
+      <div className="flex items-start gap-3">
+        <MemberAvatar
+          name={m.status.is_placeholder ? "?" : m.full_name}
+          photoUrl={m.photo_url}
+          size="sm"
+          deceased={!m.status.is_alive}
+        />
+        <div className="min-w-0">
+          <p className="font-display text-base font-semibold text-[var(--gp-ink)]">
+            {m.status.is_placeholder ? "? Khuyết danh" : m.full_name}
+          </p>
+          {row.aka ? (
+            <p className="mt-0.5 text-xs text-[var(--gp-muted)]">{row.aka}</p>
+          ) : null}
+          <p className="mt-1 text-xs text-[var(--gp-muted)]">
+            Đời {row.generation} · {row.branchName} ·{" "}
+            {m.status.is_alive ? "Đang sống" : "Đã mất"}
+            {m.gender === "MALE"
+              ? " · Nam"
+              : m.gender === "FEMALE"
+                ? " · Nữ"
+                : ""}
+            {m.is_huong_hoa ? " · Hương hỏa" : ""}
+          </p>
+          {row.spousesLabel ? (
+            <p className="mt-1 text-xs text-[var(--gp-muted-soft)]">
+              Phối ngẫu: {row.spousesLabel}
+            </p>
+          ) : null}
+          {(m.dates.birth || m.dates.death || m.dates.lunar_death) && (
+            <p className="mt-1 text-xs text-[var(--gp-muted-soft)]">
+              {m.dates.birth ? `Sinh: ${m.dates.birth}` : null}
+              {m.dates.death
+                ? `${m.dates.birth ? " · " : ""}Mất: ${m.dates.death}`
+                : null}
+              {m.dates.lunar_death
+                ? `${m.dates.birth || m.dates.death ? " · " : ""}Giỗ âm: ${m.dates.lunar_death}`
+                : null}
+            </p>
+          )}
+          {m.biography ? (
+            <p className="mt-1 line-clamp-2 text-xs text-[var(--gp-ink)]/75">
+              {m.biography}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MembersManager({
   familyId,
   tree: treeProp,
@@ -90,6 +150,41 @@ export function MembersManager({
   const mutate = onRefresh ?? (() => void hook.mutate());
   const [busyId, setBusyId] = useState<string | null>(null);
 
+  const [query, setQuery] = useState("");
+  const [generation, setGeneration] = useState<number | "all">("all");
+  const [branchId, setBranchId] = useState<string | "all">("all");
+  const [life, setLife] = useState<"all" | "alive" | "deceased">("all");
+  const [groupBy, setGroupBy] = useState<MemberListGroupBy>("list");
+  const [includePlaceholders, setIncludePlaceholders] = useState(false);
+
+  const scopedMembers = useMemo(() => {
+    const all = tree?.members ?? [];
+    if (lockedBranchIds === null) return all;
+    if (lockedBranchIds.length === 0) return [];
+    return all.filter((m) => lockedBranchIds.includes(m.tree_logic.branch_id));
+  }, [tree?.members, lockedBranchIds]);
+
+  const branches = tree?.branches ?? [];
+  const generations = useMemo(
+    () => listGenerations(scopedMembers),
+    [scopedMembers],
+  );
+
+  const filteredRows = useMemo(
+    () =>
+      filterMemberList(
+        scopedMembers,
+        { query, generation, branchId, life, includePlaceholders },
+        branches,
+      ),
+    [scopedMembers, query, generation, branchId, life, includePlaceholders, branches],
+  );
+
+  const groups = useMemo(
+    () => groupMemberRows(filteredRows, groupBy),
+    [filteredRows, groupBy],
+  );
+
   if (isLoading && !tree) {
     return <DashboardPanelSkeleton />;
   }
@@ -108,12 +203,6 @@ export function MembersManager({
       </p>
     );
   }
-
-  const members = (tree?.members ?? []).filter((m) => {
-    if (lockedBranchIds === null) return true;
-    if (lockedBranchIds.length === 0) return false;
-    return lockedBranchIds.includes(m.tree_logic.branch_id);
-  });
 
   const handleDelete = async (member: FamilyMember) => {
     const label = member.status.is_placeholder
@@ -139,9 +228,10 @@ export function MembersManager({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
         <div>
-          <h2 className="gp-title text-xl md:text-2xl">Quản lý Thành viên</h2>
+          <h2 className="gp-title text-xl md:text-2xl">Danh sách thành viên</h2>
           <p className="gp-lede mt-1 text-sm">
-            {members.length} người · nhấn Sửa hoặc (máy tính) double-click hàng.
+            {filteredRows.length}/{scopedMembers.length} người · tìm theo tên,
+            lọc đời / chi, xem theo danh sách hoặc nhóm.
           </p>
         </div>
         {!hideHeaderActions ? (
@@ -160,106 +250,184 @@ export function MembersManager({
         ) : null}
       </div>
 
-      {/* Mobile: card list — dễ chạm hơn bảng rộng */}
-      <ul className="space-y-3 md:hidden">
-        {members.map((m) => (
-          <li
-            key={m.id}
-            className="rounded-xl border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-3 shadow-[var(--gp-shadow-soft)]"
+      <div className="gp-panel grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6">
+        <label className="gp-label sm:col-span-2 lg:col-span-2">
+          Tìm kiếm
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="gp-input mt-1 font-normal"
+            placeholder="Tên, húy, tự, thụy, chi, phối ngẫu…"
+          />
+        </label>
+        <label className="gp-label">
+          Đời thứ
+          <select
+            value={generation === "all" ? "all" : String(generation)}
+            onChange={(e) =>
+              setGeneration(
+                e.target.value === "all" ? "all" : Number(e.target.value),
+              )
+            }
+            className="gp-input mt-1 font-normal"
           >
-            <p className="font-display text-base font-semibold text-[var(--gp-ink)]">
-              {m.status.is_placeholder ? "? Khuyết danh" : m.full_name}
-            </p>
-            <p className="mt-1 text-xs text-[var(--gp-muted)]">
-              Đời {memberGeneration(m)} · {m.tree_logic.branch_id} ·{" "}
-              {m.status.is_alive ? "Đang sống" : "Đã mất"}
-              {m.status.is_placeholder ? " · Placeholder" : ""}
-            </p>
-            {m.dates.death || m.dates.lunar_death ? (
-              <p className="mt-1 text-xs text-[var(--gp-muted-soft)]">
-                {m.dates.death ? `Mất: ${m.dates.death}` : null}
-                {m.dates.lunar_death
-                  ? `${m.dates.death ? " · " : ""}Âm: ${m.dates.lunar_death}`
-                  : null}
-              </p>
-            ) : null}
-            <div className="mt-3">
-              <MemberActions
-                member={m}
-                busy={busyId === m.id}
-                onAddChild={onAddChild}
-                onEdit={onEdit}
-                onDelete={(member) => void handleDelete(member)}
-              />
-            </div>
-          </li>
-        ))}
-        {members.length === 0 ? (
-          <li className="rounded-xl border border-dashed border-[var(--gp-scroll-edge)] px-4 py-10 text-center text-sm text-[var(--gp-muted)]">
-            Chưa có thành viên — nhấn Thêm thành viên để bắt đầu.
-          </li>
-        ) : null}
-      </ul>
+            <option value="all">Tất cả đời</option>
+            {generations.map((g) => (
+              <option key={g} value={g}>
+                Đời {g}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="gp-label">
+          Chi / nhánh
+          <select
+            value={branchId}
+            onChange={(e) => setBranchId(e.target.value)}
+            className="gp-input mt-1 font-normal"
+          >
+            <option value="all">Tất cả chi</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="gp-label">
+          Trạng thái
+          <select
+            value={life}
+            onChange={(e) => setLife(e.target.value as typeof life)}
+            className="gp-input mt-1 font-normal"
+          >
+            <option value="all">Tất cả</option>
+            <option value="alive">Đang sống</option>
+            <option value="deceased">Đã mất</option>
+          </select>
+        </label>
+        <label className="gp-label">
+          Hiển thị
+          <select
+            value={groupBy}
+            onChange={(e) => setGroupBy(e.target.value as MemberListGroupBy)}
+            className="gp-input mt-1 font-normal"
+          >
+            <option value="list">Danh sách</option>
+            <option value="generation">Theo đời thứ</option>
+            <option value="branch">Theo chi</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm text-[var(--gp-muted)] sm:col-span-2 lg:col-span-6">
+          <input
+            type="checkbox"
+            checked={includePlaceholders}
+            onChange={(e) => setIncludePlaceholders(e.target.checked)}
+          />
+          Hiện cả ô khuyết danh (placeholder)
+        </label>
+      </div>
 
-      <div className="gp-table-wrap hidden md:block">
-        <table className="gp-table">
-          <thead>
-            <tr>
-              <th>Tên</th>
-              <th>Đời</th>
-              <th>Nhánh</th>
-              <th>Trạng thái</th>
-              <th>Placeholder</th>
-              <th>Ngày mất / giỗ</th>
-              <th>Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {members.map((m) => (
-              <tr
-                key={m.id}
-                onDoubleClick={() => onEdit?.(m)}
-                className="cursor-pointer"
+      {groups.map((group) => (
+        <section key={group.key} className="space-y-3">
+          {groupBy !== "list" ? (
+            <h3 className="font-display text-lg font-semibold text-[var(--gp-lacquer)]">
+              {group.label}{" "}
+              <span className="text-sm font-normal text-[var(--gp-muted)]">
+                ({group.rows.length})
+              </span>
+            </h3>
+          ) : null}
+
+          <ul className="space-y-3 md:hidden">
+            {group.rows.map((row) => (
+              <li
+                key={row.member.id}
+                className="rounded-xl border border-[var(--gp-scroll-edge)] bg-[var(--gp-scroll)] p-3 shadow-[var(--gp-shadow-soft)]"
               >
-                <td className="font-display font-semibold">
-                  {m.status.is_placeholder ? "? Khuyết danh" : m.full_name}
-                </td>
-                <td>{memberGeneration(m)}</td>
-                <td>{m.tree_logic.branch_id}</td>
-                <td>{m.status.is_alive ? "Đang sống" : "Đã mất"}</td>
-                <td>{m.status.is_placeholder ? "Có" : "—"}</td>
-                <td className="text-xs text-[var(--gp-muted)]">
-                  {m.dates.death || "—"}
-                  {m.dates.lunar_death ? (
-                    <span className="block text-[var(--gp-muted-soft)]">
-                      Âm: {m.dates.lunar_death}
-                    </span>
-                  ) : null}
-                </td>
-                <td onDoubleClick={(e) => e.stopPropagation()}>
+                <MemberInfoBlock row={row} />
+                <div className="mt-3">
                   <MemberActions
-                    member={m}
-                    busy={busyId === m.id}
+                    member={row.member}
+                    busy={busyId === row.member.id}
                     onAddChild={onAddChild}
                     onEdit={onEdit}
                     onDelete={(member) => void handleDelete(member)}
                   />
-                </td>
-              </tr>
+                </div>
+              </li>
             ))}
-            {members.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="py-8 text-center text-[var(--gp-muted)]"
-                >
-                  Chưa có thành viên — nhấn Thêm thành viên để bắt đầu.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+          </ul>
+
+          <div className="gp-table-wrap hidden md:block">
+            <table className="gp-table">
+              <thead>
+                <tr>
+                  <th>Thành viên</th>
+                  <th>Đời</th>
+                  <th>Chi</th>
+                  <th>Phối ngẫu</th>
+                  <th>Ngày tháng</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {group.rows.map((row) => {
+                  const m = row.member;
+                  return (
+                    <tr
+                      key={m.id}
+                      onDoubleClick={() => onEdit?.(m)}
+                      className="cursor-pointer align-top"
+                    >
+                      <td>
+                        <MemberInfoBlock row={row} />
+                      </td>
+                      <td className="whitespace-nowrap font-semibold">
+                        {row.generation}
+                      </td>
+                      <td>{row.branchName}</td>
+                      <td className="max-w-[200px] text-xs text-[var(--gp-muted)]">
+                        {row.spousesLabel ?? "—"}
+                      </td>
+                      <td className="text-xs text-[var(--gp-muted)]">
+                        {m.dates.birth ? (
+                          <span className="block">Sinh: {m.dates.birth}</span>
+                        ) : null}
+                        {m.dates.death || m.dates.lunar_death ? (
+                          <span className="block">
+                            {m.dates.death ? `Mất: ${m.dates.death}` : null}
+                            {m.dates.lunar_death
+                              ? `${m.dates.death ? " · " : ""}Âm: ${m.dates.lunar_death}`
+                              : null}
+                          </span>
+                        ) : !m.dates.birth ? (
+                          "—"
+                        ) : null}
+                      </td>
+                      <td onDoubleClick={(e) => e.stopPropagation()}>
+                        <MemberActions
+                          member={m}
+                          busy={busyId === m.id}
+                          onAddChild={onAddChild}
+                          onEdit={onEdit}
+                          onDelete={(member) => void handleDelete(member)}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
+
+      {filteredRows.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-[var(--gp-scroll-edge)] px-4 py-10 text-center text-sm text-[var(--gp-muted)]">
+          Không có thành viên khớp bộ lọc. Thử xoá tìm kiếm hoặc đổi đời/chi.
+        </p>
+      ) : null}
     </div>
   );
 }

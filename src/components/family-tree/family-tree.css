@@ -1020,3 +1020,45 @@
 .ft-export-tree .react-flow__attribution {
   display: none !important;
 }
+
+/* —— Nhãn đời thứ bên ngoài từng cấp bậc —— */
+.ft-gen-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  width: 88px;
+  min-height: 56px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ft-gen-label__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  padding: 0.4rem 0.65rem;
+  border-radius: 999px;
+  border: 1.5px solid rgba(122, 31, 31, 0.45);
+  background: linear-gradient(180deg, #fffdf8 0%, #f3ebe0 100%);
+  color: #7a1f1f;
+  font-family: var(--font-literata), Literata, Georgia, serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  box-shadow: 0 4px 12px rgba(26, 20, 16, 0.08);
+  white-space: nowrap;
+}
+
+.ft-gen-label__hint {
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #6a6258;
+  text-align: right;
+}

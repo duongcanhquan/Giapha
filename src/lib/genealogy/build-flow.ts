@@ -15,6 +15,7 @@ import {
 import type { MemberNodeData } from "@/components/family-tree/nodes/MemberNode";
 import type { PlaceholderNodeData } from "@/components/family-tree/nodes/PlaceholderNode";
 import type { SpouseNodeData } from "@/components/family-tree/nodes/SpouseNode";
+import type { GenerationLabelNodeData } from "@/components/family-tree/nodes/GenerationLabelNode";
 import type { RelationshipEdgeData } from "@/components/family-tree/edges/RelationshipEdge";
 
 /** Kích thước thẻ người trong họ */
@@ -28,8 +29,15 @@ const SPOUSE_NODE_WIDTH = 168;
 const SPOUSE_NODE_HEIGHT = 128;
 const SPOUSE_GAP = 28;
 
+const GEN_LABEL_WIDTH = 88;
+const GEN_LABEL_HEIGHT = 56;
+const GEN_LABEL_GAP = 36;
+
 export type FamilyFlowNode = Node<
-  MemberNodeData | PlaceholderNodeData | SpouseNodeData
+  | MemberNodeData
+  | PlaceholderNodeData
+  | SpouseNodeData
+  | GenerationLabelNodeData
 >;
 export type FamilyFlowEdge = Edge<RelationshipEdgeData>;
 
@@ -404,8 +412,69 @@ export function buildFlowGraph(
   });
   }
 
+  /** Nhãn đời thứ bên trái từng cấp bậc (theo rank Y sau dagre) */
+  const genBuckets = new Map<
+    number,
+    { minX: number; sumY: number; count: number; branches: Set<string> }
+  >();
+  for (const node of positionedMembers) {
+    const gen =
+      "generation" in node.data
+        ? Number((node.data as { generation: number }).generation)
+        : 0;
+    if (!gen) continue;
+    const branchLabel =
+      "branchLabel" in node.data
+        ? String((node.data as { branchLabel?: string }).branchLabel ?? "")
+        : "";
+    const cur = genBuckets.get(gen);
+    if (!cur) {
+      genBuckets.set(gen, {
+        minX: node.position.x,
+        sumY: node.position.y + (node.height ?? BASE_NODE_HEIGHT) / 2,
+        count: 1,
+        branches: new Set(branchLabel ? [branchLabel] : []),
+      });
+    } else {
+      cur.minX = Math.min(cur.minX, node.position.x);
+      cur.sumY += node.position.y + (node.height ?? BASE_NODE_HEIGHT) / 2;
+      cur.count += 1;
+      if (branchLabel) cur.branches.add(branchLabel);
+    }
+  }
+
+  const generationNodes: FamilyFlowNode[] = [...genBuckets.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([gen, bucket]) => {
+      const avgY = bucket.sumY / bucket.count;
+      const branchHint =
+        bucket.branches.size === 1
+          ? [...bucket.branches][0]
+          : bucket.branches.size > 1
+            ? `${bucket.branches.size} chi`
+            : null;
+      return {
+        id: `gen-label-${gen}`,
+        type: "generationLabel" as const,
+        position: {
+          x: bucket.minX - GEN_LABEL_WIDTH - GEN_LABEL_GAP,
+          y: avgY - GEN_LABEL_HEIGHT / 2,
+        },
+        width: GEN_LABEL_WIDTH,
+        height: GEN_LABEL_HEIGHT,
+        draggable: false,
+        selectable: false,
+        connectable: false,
+        data: {
+          generation: gen,
+          label: `Đời ${gen}`,
+          branchHint,
+        } satisfies GenerationLabelNodeData,
+      };
+    });
+
   return {
-    nodes: [...positionedMembers, ...spouseNodes],
+    nodes: [...positionedMembers, ...spouseNodes, ...generationNodes],
     edges,
   };
 }

@@ -24,6 +24,8 @@ type DashboardShellProps = {
 const OWNER_NAV = [
   { href: "", label: "Cây hương hỏa" },
   { href: "/members", label: "Thành viên" },
+  { href: "/book", label: "Sách gia phả" },
+  { href: "/events", label: "Sự kiện" },
   { href: "/branches", label: "Nhánh" },
   { href: "/managers", label: "Phân quyền" },
   { href: "/appearance", label: "Giao diện" },
@@ -32,6 +34,8 @@ const OWNER_NAV = [
 const BRANCH_NAV = [
   { href: "", label: "Cây hương hỏa" },
   { href: "/members", label: "Thành viên" },
+  { href: "/book", label: "Sách gia phả" },
+  { href: "/events", label: "Sự kiện" },
   { href: "/managers", label: "Quyền của tôi" },
 ] as const;
 

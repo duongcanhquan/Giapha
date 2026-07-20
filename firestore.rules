@@ -100,6 +100,42 @@ service cloud.firestore {
         || branchAdminMatches(data);
     }
 
+    function isActiveListedManager(familyId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/family_managers/$(familyId + '__' + request.auth.uid))
+        && listedManagerDoc(familyId).data.status == 'active'
+        && listedManagerDoc(familyId).data.family_id == familyId;
+    }
+
+    function canAccessFamilyDashboard(familyId) {
+      return isSuperAdmin()
+        || isFamilyOwner(familyId)
+        || isActiveListedManager(familyId)
+        || (
+          isClaimBranchAdmin()
+          && request.auth.token.family_id == familyId
+        );
+    }
+
+    /* ─── family_events (sự kiện dòng họ) ─────────────────────── */
+
+    match /family_events/{eventId} {
+      allow read: if isSignedIn()
+        && resource.data.keys().hasAll(['family_id'])
+        && canAccessFamilyDashboard(resource.data.family_id);
+
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasAll(['family_id', 'title', 'type'])
+        && canAccessFamilyDashboard(request.resource.data.family_id);
+
+      allow update, delete: if isSignedIn()
+        && resource.data.keys().hasAll(['family_id'])
+        && (
+          isSuperAdmin()
+          || isFamilyOwner(resource.data.family_id)
+        );
+    }
+
     /* ─── families ───────────────────────────────────────────── */
 
     match /families/{familyId} {
